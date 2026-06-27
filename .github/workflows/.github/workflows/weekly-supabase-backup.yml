@@ -1,0 +1,41 @@
+name: Weekly Supabase Backup
+
+on:
+  schedule:
+    - cron: "0 17 * * 5"   # UTC 17:00 Friday = BDT 23:00 Friday
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Dump database
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir -p backups
+          STAMP=$(date +'%Y-%m-%d')
+          supabase db dump --db-url "$DB_URL" -f "backups/backup-$STAMP.sql"
+
+      - name: Commit backup to repo
+        run: |
+          git config user.name "backup-bot"
+          git config user.email "backup-bot@users.noreply.github.com"
+          git add backups/*.sql
+          git commit -m "Weekly Supabase backup $(date +'%Y-%m-%d')" || echo "No changes to commit"
+          git push
+
+      - name: Delete backups older than 90 days
+        run: |
+          find backups -name "*.sql" -mtime +90 -delete
+          git add -A
+          git commit -m "Cleanup old backups" || echo "Nothing to clean"
+          git push
