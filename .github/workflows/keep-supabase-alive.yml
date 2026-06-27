@@ -1,0 +1,22 @@
+name: Keep Supabase Alive
+
+# প্রজেক্ট ৭ দিন inactive থাকলে Supabase pause করে দেয়
+# এই workflow সপ্তাহে ২ বার (রবি ও বুধ) ছোট একটা request পাঠাবে যাতে কখনো pause না হয়
+on:
+  schedule:
+    - cron: "0 6 * * 0,3"   # UTC 06:00, Sunday & Wednesday (BDT 12:00 PM)
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase (simple read request)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          curl -s -o /dev/null -w "%{http_code}\n" \
+            "$SUPABASE_URL/rest/v1/buyers?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY"
