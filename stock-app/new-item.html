@@ -1,8 +1,998 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>GMS Accessories Stock - new-item</title></head>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>New Item — GMS Accessories Stock</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0a1628">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-bg-strong: rgba(255, 255, 255, 0.12);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(255, 255, 255, 0.5);
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --accent-purple: #8b5cf6;
+        }
+
+        [data-theme="light"] {
+            --glass-bg: rgba(255, 255, 255, 0.6);
+            --glass-bg-strong: rgba(255, 255, 255, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --glass-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            padding-bottom: 80px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* 3D Animated Background */
+        .bg-3d {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -2;
+            background: linear-gradient(135deg, #0a1628 0%, #1a1a3e 25%, #0f2027 50%, #203a43 75%, #0a1628 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        [data-theme="light"] .bg-3d {
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 25%, #dbeafe 50%, #e0e7ff 75%, #f0f4ff 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.4;
+            z-index: -1;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .orb-1 { width: 300px; height: 300px; background: radial-gradient(circle, var(--accent-blue), transparent); top: -100px; right: -100px; }
+        .orb-2 { width: 250px; height: 250px; background: radial-gradient(circle, var(--accent-purple), transparent); bottom: -80px; left: -80px; animation-delay: -5s; }
+        .orb-3 { width: 200px; height: 200px; background: radial-gradient(circle, var(--accent-pink), transparent); top: 50%; left: 50%; animation-delay: -10s; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -30px) scale(1.1); }
+            50% { transform: translate(-20px, 20px) scale(0.9); }
+            75% { transform: translate(20px, 10px) scale(1.05); }
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        /* Header */
+        .header {
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 22, 40, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        [data-theme="light"] .header {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 18px;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        [data-theme="light"] .header-title {
+            background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .theme-toggle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Main */
+        .main {
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Page Title */
+        .page-title {
+            margin-bottom: 20px;
+        }
+
+        .page-title h2 {
+            font-size: 22px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-title h2 i {
+            -webkit-text-fill-color: var(--accent-blue);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-secondary);
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            border-color: transparent;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Form Card */
+        .form-card {
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group label .required {
+            color: var(--accent-red);
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        [data-theme="light"] .form-group input,
+        [data-theme="light"] .form-group select {
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--accent-green), #059669);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--accent-yellow), #d97706);
+            color: #1e293b;
+        }
+
+        /* QR Result Section */
+        .qr-result {
+            display: none;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .qr-result.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .qr-label-box {
+            background: white;
+            color: black;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 0 auto 20px;
+            max-width: 280px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .qr-label-box #qrcode {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .qr-label-box .qr-item-code {
+            font-size: 16px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 4px;
+            font-family: monospace;
+        }
+
+        .qr-label-box .qr-desc {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 2px;
+            font-weight: 500;
+        }
+
+        .qr-label-box .qr-buyer {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .qr-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120px);
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(20px);
+            color: var(--text-primary);
+            padding: 12px 22px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            z-index: 500;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.4s ease;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.error { border-left: 4px solid var(--accent-red); }
+        .toast.success { border-left: 4px solid var(--accent-green); }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 22, 40, 0.9);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0 10px;
+            z-index: 100;
+        }
+
+        [data-theme="light"] .bottom-nav {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-item.active {
+            color: var(--accent-blue);
+        }
+
+        .nav-item .nav-icon {
+            font-size: 18px;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .main { padding: 16px; }
+            .qr-actions { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
 <body>
-<h1>new-item</h1>
-<p>🚧 Under construction.</p>
+    <!-- 3D Background -->
+    <div class="bg-3d"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <a href="index.html" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div class="logo-icon">G</div>
+            <div class="header-title">New Entry</div>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
+            <i class="fas fa-moon"></i>
+        </button>
+    </header>
+
+    <!-- Main -->
+    <main class="main">
+        <!-- Page Title -->
+        <div class="page-title">
+            <h2><i class="fas fa-plus-circle"></i> Add New</h2>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('buyer', this)">
+                <i class="fas fa-user-plus"></i> New Buyer
+            </button>
+            <button class="tab-btn" onclick="switchTab('item', this)">
+                <i class="fas fa-box-open"></i> New Item
+            </button>
+        </div>
+
+        <!-- Tab 1: New Buyer -->
+        <div id="tab-buyer" class="tab-content active">
+            <div class="form-card glass">
+                <div class="form-group">
+                    <label>Buyer Name <span class="required">*</span></label>
+                    <input type="text" id="buyerName" placeholder="Enter buyer name (e.g., H&M, Zara)">
+                </div>
+                <button class="btn btn-success" onclick="saveBuyer()" id="btnSaveBuyer">
+                    <i class="fas fa-save"></i> Save Buyer
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab 2: New Item -->
+        <div id="tab-item" class="tab-content">
+            <div class="form-card glass">
+                <div class="form-group">
+                    <label>Buyer <span class="required">*</span></label>
+                    <select id="itemBuyer">
+                        <option value="">Select buyer</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description <span class="required">*</span></label>
+                    <input type="text" id="itemDesc" placeholder="Item description (e.g., BLISTER POLY BAG)">
+                </div>
+                <div class="form-group">
+                    <label>Unit <span class="required">*</span></label>
+                    <input type="text" id="itemUnit" placeholder="Unit (e.g., Pcs, Roll, Yds)">
+                </div>
+                <div class="form-group">
+                    <label>Unit Price <span class="required">*</span></label>
+                    <input type="number" id="itemPrice" step="any" min="0" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label>Goods Location</label>
+                    <input type="text" id="itemLocation" placeholder="Location (e.g., A-9-1 L)">
+                </div>
+                <div class="form-group">
+                    <label>Supplier</label>
+                    <input type="text" id="itemSupplier" placeholder="Supplier name">
+                </div>
+                
+                <div style="border-top: 1px solid var(--glass-border); margin: 20px 0; padding-top: 20px;">
+                    <label style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; display: block;">
+                        <i class="fas fa-history"></i> Opening Stock (Optional)
+                    </label>
+                    <div class="form-group">
+                        <label>Previous Qty</label>
+                        <input type="number" id="prevQty" step="any" min="0" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Previous Date</label>
+                        <input type="date" id="prevDate">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="saveItem()" id="btnSaveItem">
+                    <i class="fas fa-save"></i> Save Item & Generate QR
+                </button>
+            </div>
+        </div>
+
+        <!-- QR Result Section -->
+        <div id="qrResult" class="qr-result glass">
+            <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--accent-green);">
+                <i class="fas fa-check-circle"></i> Item Created Successfully!
+            </h3>
+            
+            <div class="qr-label-box" id="qrLabelContent">
+                <div id="qrcode"></div>
+                <div class="qr-item-code" id="qrCodeText">—</div>
+                <div class="qr-desc" id="qrDescText">—</div>
+                <div class="qr-buyer" id="qrBuyerText">—</div>
+            </div>
+
+            <div class="qr-actions">
+                <button class="btn btn-warning" onclick="printLabel()">
+                    <i class="fas fa-print"></i> Print Label
+                </button>
+                <button class="btn btn-primary" onclick="resetForm()">
+                    <i class="fas fa-plus"></i> Add Another
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <i class="fas fa-home nav-icon"></i> Home
+        </a>
+        <a href="dashboard.html" class="nav-item">
+            <i class="fas fa-chart-line nav-icon"></i> Dashboard
+        </a>
+        <a href="transactions.html" class="nav-item">
+            <i class="fas fa-list nav-icon"></i> Ledger
+        </a>
+        <a href="pivot.html" class="nav-item">
+            <i class="fas fa-table nav-icon"></i> Pivot
+        </a>
+        <a href="ageing.html" class="nav-item">
+            <i class="fas fa-hourglass-half nav-icon"></i> Ageing
+        </a>
+        <a href="new-item.html" class="nav-item active">
+            <i class="fas fa-plus-circle nav-icon"></i> New
+        </a>
+    </nav>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle" id="toastIcon"></i>
+        <span id="toastMsg">Success!</span>
+    </div>
+
+    <script>
+        // ============ SUPABASE ============
+        const SUPABASE_URL = 'https://qwtourjspllhiiryqewf.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_pcQFRFQWWAT1zTXfVfgdSw_43rcVr5S';
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ============ THEME ============
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateThemeIcon(next);
+        }
+
+        function updateThemeIcon(theme) {
+            const btn = document.getElementById('themeBtn');
+            btn.innerHTML = theme === 'dark' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+        }
+
+        (function() {
+            const saved = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', saved);
+            updateThemeIcon(saved);
+        })();
+
+        // ============ TOAST ============
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMsg');
+            toast.className = 'toast ' + type;
+            icon.className = type === 'error' ? 'fas fa-times-circle' : 'fas fa-check-circle';
+            msg.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3500);
+        }
+
+        // ============ TABS ============
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+            document.getElementById('qrResult').classList.remove('show');
+        }
+
+        // ============ LOAD BUYERS ============
+        async function loadBuyers() {
+            try {
+                const { data, error } = await db.from('buyers').select('id, name').order('name');
+                if (error) throw error;
+                
+                const select = document.getElementById('itemBuyer');
+                select.innerHTML = '<option value="">Select buyer</option>';
+                (data || []).forEach(b => {
+                    select.innerHTML += `<option value="${b.id}" data-name="${b.name}">${b.name}</option>`;
+                });
+            } catch (err) {
+                console.error('Load buyers error:', err);
+            }
+        }
+
+        // ============ SAVE BUYER ============
+        async function saveBuyer() {
+            const name = document.getElementById('buyerName').value.trim();
+            if (!name) {
+                showToast('Buyer name দিন!', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btnSaveBuyer');
+            btn.innerHTML = '<span class="spinner"></span> Saving...';
+            btn.disabled = true;
+
+            try {
+                const { data, error } = await db
+                    .from('buyers')
+                    .insert({ name: name })
+                    .select();
+
+                if (error) throw error;
+
+                showToast('✅ Buyer saved successfully!', 'success');
+                document.getElementById('buyerName').value = '';
+                await loadBuyers();
+                
+                // Auto switch to item tab
+                setTimeout(() => {
+                    const itemTabBtn = document.querySelectorAll('.tab-btn')[1];
+                    switchTab('item', itemTabBtn);
+                    // Select the newly added buyer
+                    const select = document.getElementById('itemBuyer');
+                    for (let i = 0; i < select.options.length; i++) {
+                        if (select.options[i].text === name) {
+                            select.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }, 1000);
+
+            } catch (err) {
+                console.error('Save buyer error:', err);
+                showToast('Error: ' + err.message, 'error');
+            } finally {
+                btn.innerHTML = '<i class="fas fa-save"></i> Save Buyer';
+                btn.disabled = false;
+            }
+        }
+
+        // ============ HELPER: Generate Buyer Code ============
+        function getBuyerCode(name) {
+            // Simple logic to generate 3-letter code from buyer name
+            const words = name.replace(/[()]/g, '').split(/\s+/);
+            let code = '';
+            for (let word of words) {
+                if (word.length > 0) {
+                    code += word[0].toUpperCase();
+                }
+                if (code.length >= 3) break;
+            }
+            return code.padEnd(3, 'X').substring(0, 3);
+        }
+
+        // ============ HELPER: Generate Item Short Code ============
+        function getItemShortCode(desc) {
+            const words = desc.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/);
+            let code = '';
+            for (let word of words) {
+                if (word.length > 0) {
+                    code += word[0].toUpperCase();
+                }
+                if (code.length >= 3) break;
+            }
+            return code.padEnd(3, 'X').substring(0, 3);
+        }
+
+        // ============ HELPER: Get Next Sequence ============
+        async function getNextSequence(buyerCode, itemCode) {
+            try {
+                const prefix = `GMS-${buyerCode}-${itemCode}-`;
+                const { data } = await db
+                    .from('items')
+                    .select('item_code')
+                    .ilike('item_code', `${prefix}%`)
+                    .order('item_code', { ascending: false })
+                    .limit(1);
+
+                if (data && data.length > 0) {
+                    const lastCode = data[0].item_code;
+                    const lastSeq = parseInt(lastCode.split('-').pop()) || 0;
+                    return (lastSeq + 1).toString().padStart(4, '0');
+                }
+                return '0001';
+            } catch (err) {
+                console.error('Sequence error:', err);
+                return '0001';
+            }
+        }
+
+        // ============ SAVE ITEM ============
+        async function saveItem() {
+            const buyerSelect = document.getElementById('itemBuyer');
+            const buyerId = buyerSelect.value;
+            const buyerName = buyerSelect.options[buyerSelect.selectedIndex]?.dataset?.name || '';
+            const desc = document.getElementById('itemDesc').value.trim();
+            const unit = document.getElementById('itemUnit').value.trim();
+            const price = parseFloat(document.getElementById('itemPrice').value) || 0;
+            const location = document.getElementById('itemLocation').value.trim();
+            const supplier = document.getElementById('itemSupplier').value.trim();
+            const prevQty = parseFloat(document.getElementById('prevQty').value) || 0;
+            const prevDate = document.getElementById('prevDate').value;
+
+            if (!buyerId || !desc || !unit || price <= 0) {
+                showToast('Buyer, Description, Unit এবং Price দিন!', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btnSaveItem');
+            btn.innerHTML = '<span class="spinner"></span> Saving...';
+            btn.disabled = true;
+
+            try {
+                // Generate codes
+                const buyerCode = getBuyerCode(buyerName);
+                const itemShort = getItemShortCode(desc);
+                const sequence = await getNextSequence(buyerCode, itemShort);
+                const itemCode = `GMS-${buyerCode}-${itemShort}-${sequence}`;
+
+                // Insert item
+                const { data: itemData, error: itemError } = await db
+                    .from('items')
+                    .insert({
+                        buyer_id: buyerId,
+                        description: desc,
+                        unit: unit,
+                        unit_price: price,
+                        goods_location: location,
+                        supplier: supplier,
+                        item_code: itemCode,
+                        qr_payload: itemCode,
+                        current_stock: prevQty,
+                        current_value: prevQty * price,
+                        last_txn_date: prevDate || new Date().toISOString().split('T')[0]
+                    })
+                    .select()
+                    .single();
+
+                if (itemError) throw itemError;
+
+                // Insert PRVS transaction if prevQty > 0
+                if (prevQty > 0 && prevDate) {
+                    await db.from('transactions').insert({
+                        item_id: itemData.id,
+                        type: 'PRVS',
+                        txn_date: prevDate,
+                        qty: prevQty,
+                        unit_price_snapshot: price,
+                        present_stock_after: prevQty,
+                        stock_value_after: prevQty * price
+                    });
+                }
+
+                // Show QR
+                showQR(itemCode, desc, buyerName);
+                showToast('✅ Item created successfully!', 'success');
+
+            } catch (err) {
+                console.error('Save item error:', err);
+                showToast('Error: ' + err.message, 'error');
+            } finally {
+                btn.innerHTML = '<i class="fas fa-save"></i> Save Item & Generate QR';
+                btn.disabled = false;
+            }
+        }
+
+        // ============ SHOW QR ============
+        function showQR(code, desc, buyer) {
+            document.getElementById('qrCodeText').textContent = code;
+            document.getElementById('qrDescText').textContent = desc;
+            document.getElementById('qrBuyerText').textContent = buyer;
+
+            // Clear previous QR
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = '';
+
+            // Generate new QR
+            new QRCode(qrContainer, {
+                text: code,
+                width: 150,
+                height: 150,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('qrResult').classList.add('show');
+            document.getElementById('qrResult').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ============ PRINT LABEL ============
+        function printLabel() {
+            const content = document.getElementById('qrLabelContent').innerHTML;
+            const win = window.open('', '', 'width=400,height=600');
+            win.document.write(`
+                <html>
+                <head>
+                    <title>Print Label</title>
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            text-align: center; 
+                            margin: 0; 
+                            padding: 20px; 
+                        }
+                        .label { 
+                            border: 2px solid #000; 
+                            padding: 20px; 
+                            margin: 20px auto; 
+                            max-width: 280px; 
+                            border-radius: 12px;
+                        }
+                        #qrcode { 
+                            display: flex; 
+                            justify-content: center; 
+                            margin-bottom: 12px; 
+                        }
+                        .qr-item-code { 
+                            font-size: 16px; 
+                            font-weight: 800; 
+                            margin-bottom: 4px; 
+                            font-family: monospace; 
+                        }
+                        .qr-desc { 
+                            font-size: 12px; 
+                            color: #666; 
+                            margin-bottom: 2px; 
+                        }
+                        .qr-buyer { 
+                            font-size: 11px; 
+                            color: #999; 
+                            text-transform: uppercase; 
+                        }
+                        @media print {
+                            body { margin: 0; padding: 10px; }
+                            .label { border: 2px solid #000; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="label">${content}</div>
+                    <script>
+                        window.onload = function() { window.print(); }
+                    <\/script>
+                </body>
+                </html>
+            `);
+            win.document.close();
+        }
+
+        // ============ RESET FORM ============
+        function resetForm() {
+            document.getElementById('itemDesc').value = '';
+            document.getElementById('itemUnit').value = '';
+            document.getElementById('itemPrice').value = '';
+            document.getElementById('itemLocation').value = '';
+            document.getElementById('itemSupplier').value = '';
+            document.getElementById('prevQty').value = '';
+            document.getElementById('prevDate').value = '';
+            document.getElementById('qrResult').classList.remove('show');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ============ INIT ============
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadBuyers();
+            
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('prevDate').value = today;
+        });
+
+        // PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('../sw.js').catch(() => {});
+        }
+    </script>
 </body>
 </html>
