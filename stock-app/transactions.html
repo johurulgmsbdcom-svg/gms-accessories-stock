@@ -434,7 +434,7 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 12px;
-            min-width: 2000px;
+            min-width: 2100px;
         }
 
         thead th {
@@ -557,6 +557,34 @@
         .barcode-btn:hover {
             background: var(--accent-purple);
             color: white;
+        }
+
+        .delete-btn {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--accent-red);
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 6px;
+        }
+
+        .delete-btn:hover {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .delete-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .action-cell {
+            display: flex;
+            align-items: center;
         }
 
         /* Pagination */
@@ -695,6 +723,66 @@
         .modal-close:hover {
             background: var(--accent-red);
             border-color: var(--accent-red);
+        }
+
+        /* Simple Confirm Modal */
+        .confirm-modal-content {
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 26px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+
+        .confirm-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 14px;
+        }
+
+        .confirm-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .confirm-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 22px;
+            line-height: 1.5;
+        }
+
+        .confirm-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .confirm-actions .btn {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .btn-cancel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+        }
+
+        .btn-delete-confirm {
+            background: linear-gradient(135deg, var(--accent-red), #dc2626);
         }
 
         /* Barcode Pages - 10 items per page (5 cols x 2 rows) matching A4 landscape */
@@ -1144,6 +1232,23 @@
         </div>
     </div>
 
+    <!-- Delete Confirm Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="confirm-modal-content">
+            <div class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="confirm-title">এই এন্ট্রি ডিলিট করবেন?</div>
+            <div class="confirm-desc" id="confirmDesc">এই transaction ডিলিট হয়ে যাবে এবং stock automatic adjust হয়ে যাবে। এটা পূর্বাবস্থায় ফেরানো যাবে না।</div>
+            <div class="confirm-actions">
+                <button class="btn btn-cancel" onclick="closeConfirmModal()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button class="btn btn-delete-confirm" id="confirmDeleteBtn" onclick="confirmDeleteTransaction()">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Bottom Nav -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item">
@@ -1187,6 +1292,7 @@
         let sortColumn = 'txn_date';
         let sortDirection = 'desc';
         let currentBarcodeItems = [];
+        let pendingDeleteId = null;
 
         // How many barcode labels per printed A4 landscape page (5 cols x 2 rows)
         const BARCODES_PER_PAGE = 10;
@@ -1582,6 +1688,57 @@
             }
         }
 
+        // ============ DELETE TRANSACTION ============
+        // Opens the confirm modal for a given transaction row.
+        function openDeleteConfirm(txnId) {
+            const txn = filteredData.find(t => t.id === txnId);
+            pendingDeleteId = txnId;
+
+            const desc = document.getElementById('confirmDesc');
+            if (txn) {
+                const itemName = txn.items?.description || 'Unknown Item';
+                const typeLabel = txn.type;
+                const qty = fmt(txn.qty);
+                desc.innerHTML = `<b>${itemName}</b><br>Type: ${typeLabel} • Qty: ${qty}<br><br>এই transaction ডিলিট হয়ে যাবে এবং stock automatic adjust হয়ে যাবে। এটা পূর্বাবস্থায় ফেরানো যাবে না।`;
+            }
+
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+            pendingDeleteId = null;
+        }
+
+        // Called when user confirms deletion in the modal. Calls the
+        // delete_transaction() RPC (created in Supabase) which reverses the
+        // stock/value on the related item and removes the transaction row.
+        async function confirmDeleteTransaction() {
+            if (!pendingDeleteId) return;
+
+            const btn = document.getElementById('confirmDeleteBtn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+
+            try {
+                const { error } = await db.rpc('delete_transaction', { txn_id: pendingDeleteId });
+
+                if (error) throw error;
+
+                showToast('Entry deleted, stock adjusted!', 'success');
+                closeConfirmModal();
+                await loadTransactions();
+
+            } catch (err) {
+                console.error('Delete transaction error:', err);
+                showToast('Delete failed: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
         // ============ RENDER TABLE ============
         function renderTable() {
             const tableContent = document.getElementById('tableContent');
@@ -1624,7 +1781,7 @@
                 { key: 'supplier', label: 'Supplier', sortable: true },
                 { key: 'team', label: 'Team', sortable: true },
                 { key: 'remarks', label: 'Remarks', sortable: false },
-                { key: 'barcode', label: 'Barcode', sortable: false }
+                { key: 'actions', label: 'Actions', sortable: false }
             ];
 
             let html = '<div class="table-wrapper"><table><thead><tr>';
@@ -1644,7 +1801,9 @@
                 const qtyClass = txn.type === 'RCVD' ? 'qty-positive' : (txn.type === 'DLVD' ? 'qty-negative' : 'qty-neutral');
                 const qtyPrefix = txn.type === 'RCVD' ? '+' : (txn.type === 'DLVD' ? '-' : '');
                 const itemCode = txn.items?.item_code || txn.items?.qr_payload || '';
-
+                // PRVS (opening stock) entries usually shouldn't be deleted casually,
+                // but we still allow it since the RPC reverses PRVS-type safely as
+                // "no-op" on stock (only RCVD/DLVD adjust stock in delete_transaction).
                 html += `<tr>
                     <td>${startIdx + idx + 1}</td>
                     <td>${txn.txn_date || ''}</td>
@@ -1665,7 +1824,10 @@
                     <td>${txn.items?.supplier || ''}</td>
                     <td>${txn.team_members?.name || ''}</td>
                     <td>${txn.remarks || ''}</td>
-                    <td><button class="barcode-btn" onclick="showItemBarcode(${txn.item_id})"><i class="fas fa-barcode"></i> View</button></td>
+                    <td class="action-cell">
+                        <button class="barcode-btn" onclick="showItemBarcode(${txn.item_id})"><i class="fas fa-barcode"></i> View</button>
+                        <button class="delete-btn" onclick="openDeleteConfirm(${txn.id})"><i class="fas fa-trash"></i> Delete</button>
+                    </td>
                 </tr>`;
             });
 
@@ -1850,6 +2012,12 @@
         document.getElementById('barcodeModal').addEventListener('click', (e) => {
             if (e.target.id === 'barcodeModal') {
                 closeBarcodeModal();
+            }
+        });
+
+        document.getElementById('confirmModal').addEventListener('click', (e) => {
+            if (e.target.id === 'confirmModal') {
+                closeConfirmModal();
             }
         });
 
