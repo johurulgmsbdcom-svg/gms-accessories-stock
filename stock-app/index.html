@@ -227,6 +227,7 @@
         .stat-card.green .stat-value { color: var(--green); }
         .stat-card.yellow .stat-value { color: var(--yellow); }
         .stat-card.purple .stat-value { color: var(--purple); }
+        .stat-card.red .stat-value { color: var(--red); }
 
         /* Section Title */
         .section-title {
@@ -506,6 +507,7 @@
             .scan-btn { width: 150px; height: 150px; font-size: 40px; }
             .main { padding: 16px; }
             .stat-card .stat-value { font-size: 18px; }
+            .stats-row { grid-template-columns: 1fr 1fr !important; }
         }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: var(--bg); }
@@ -558,22 +560,26 @@
         </div>
 
         <!-- Stats -->
-        <div class="stats-row">
+        <div class="stats-row" style="grid-template-columns:1fr 1fr 1fr;">
             <div class="stat-card blue">
                 <div class="stat-value" id="statItems">—</div>
-                <div class="stat-label">Total Items</div>
+                <div class="stat-label">📦 Total Items</div>
             </div>
             <div class="stat-card green">
-                <div class="stat-value" id="statValue">—</div>
-                <div class="stat-label">Total Stock Value</div>
+                <div class="stat-value" id="statQty">—</div>
+                <div class="stat-label">🔢 Total Stock Qty</div>
             </div>
             <div class="stat-card yellow">
-                <div class="stat-value" id="statRcvd">—</div>
-                <div class="stat-label">Today RCVD</div>
+                <div class="stat-value" id="statValue">—</div>
+                <div class="stat-label">💰 Total Value ($)</div>
             </div>
             <div class="stat-card purple">
+                <div class="stat-value" id="statRcvd">—</div>
+                <div class="stat-label">✅ Today RCVD</div>
+            </div>
+            <div class="stat-card red">
                 <div class="stat-value" id="statDlvd">—</div>
-                <div class="stat-label">Today DLVD</div>
+                <div class="stat-label">🚚 Today DLVD</div>
             </div>
         </div>
 
@@ -824,15 +830,22 @@
         // ============ STATS ============
         async function loadStats() {
             try {
+                // 1. Total Items Count
                 const { count: itemCount } = await db
                     .from('items')
                     .select('*', { count: 'exact', head: true });
                 document.getElementById('statItems').textContent = fmt(itemCount || 0);
 
-                const { data: valueData } = await db.from('items').select('current_value');
-                const totalValue = (valueData || []).reduce((s, i) => s + (parseFloat(i.current_value) || 0), 0);
+                // 2. Total Stock Qty & Total Value (Combined query for performance)
+                const { data: itemsData } = await db.from('items').select('current_value, current_stock');
+                
+                const totalValue = (itemsData || []).reduce((s, i) => s + (parseFloat(i.current_value) || 0), 0);
                 document.getElementById('statValue').textContent = '$' + fmtCompact(totalValue);
 
+                const totalQty = (itemsData || []).reduce((s, i) => s + (parseFloat(i.current_stock) || 0), 0);
+                document.getElementById('statQty').textContent = fmtCompact(totalQty);
+
+                // 3. Today's Transactions
                 const today = new Date().toISOString().split('T')[0];
 
                 const { count: rcvdCount } = await db
