@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Data Labels Plugin - চার্টে সরাসরি সংখ্যা দেখাবে -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <style>
         :root {
             --glass-bg: rgba(255, 255, 255, 0.08);
@@ -88,41 +90,10 @@
             animation: float 20s ease-in-out infinite;
         }
 
-        .orb-1 {
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, var(--accent-blue), transparent);
-            top: -100px;
-            right: -100px;
-            animation-delay: 0s;
-        }
-
-        .orb-2 {
-            width: 250px;
-            height: 250px;
-            background: radial-gradient(circle, var(--accent-purple), transparent);
-            bottom: -80px;
-            left: -80px;
-            animation-delay: -5s;
-        }
-
-        .orb-3 {
-            width: 200px;
-            height: 200px;
-            background: radial-gradient(circle, var(--accent-pink), transparent);
-            top: 50%;
-            left: 50%;
-            animation-delay: -10s;
-        }
-
-        .orb-4 {
-            width: 180px;
-            height: 180px;
-            background: radial-gradient(circle, var(--accent-cyan), transparent);
-            top: 20%;
-            left: 10%;
-            animation-delay: -15s;
-        }
+        .orb-1 { width: 300px; height: 300px; background: radial-gradient(circle, var(--accent-blue), transparent); top: -100px; right: -100px; }
+        .orb-2 { width: 250px; height: 250px; background: radial-gradient(circle, var(--accent-purple), transparent); bottom: -80px; left: -80px; animation-delay: -5s; }
+        .orb-3 { width: 200px; height: 200px; background: radial-gradient(circle, var(--accent-pink), transparent); top: 50%; left: 50%; animation-delay: -10s; }
+        .orb-4 { width: 180px; height: 180px; background: radial-gradient(circle, var(--accent-cyan), transparent); top: 20%; left: 10%; animation-delay: -15s; }
 
         @keyframes float {
             0%, 100% { transform: translate(0, 0) scale(1); }
@@ -143,7 +114,7 @@
 
         /* Header */
         .header {
-            padding: 16px 24px;
+            padding: 14px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -213,7 +184,7 @@
         /* Main Content */
         .main {
             padding: 24px;
-            max-width: 100%;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
@@ -223,7 +194,7 @@
             align-items: center;
             justify-content: center;
             gap: 12px;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
         }
 
@@ -245,16 +216,16 @@
             outline: none;
         }
 
-        /* Summary Cards */
+        /* Summary Cards - 5-6 per row on desktop */
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-            margin-bottom: 28px;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
         }
 
         .summary-card {
-            padding: 24px;
+            padding: 18px 14px;
             position: relative;
             overflow: hidden;
             transition: all 0.3s;
@@ -282,14 +253,14 @@
         .summary-card.cyan::before { background: linear-gradient(90deg, var(--accent-cyan), #0891b2); }
 
         .summary-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
-            margin-bottom: 12px;
+            font-size: 18px;
+            margin-bottom: 10px;
             background: rgba(59, 130, 246, 0.15);
             color: var(--accent-blue);
         }
@@ -301,80 +272,81 @@
         .summary-card.cyan .summary-icon { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); }
 
         .summary-label {
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
         }
 
         .summary-value {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 800;
             color: var(--text-primary);
-            line-height: 1.3;
+            line-height: 1.2;
+            word-break: break-all;
         }
 
         /* Charts Grid */
         .charts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 24px;
-            margin-bottom: 28px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
         }
 
         .chart-card {
-            padding: 28px;
+            padding: 20px;
         }
 
         .chart-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
         }
 
         .chart-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             color: var(--text-primary);
         }
 
         .chart-title i {
-            font-size: 18px;
+            font-size: 16px;
             color: var(--accent-blue);
         }
 
         .chart-container {
             position: relative;
-            height: 420px;
+            height: 350px;
         }
 
         /* Table */
         .table-card {
-            padding: 28px;
-            margin-bottom: 28px;
+            padding: 20px;
+            margin-bottom: 24px;
         }
 
         .table-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
             flex-wrap: wrap;
             gap: 12px;
         }
 
         .table-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             color: var(--text-primary);
         }
 
@@ -409,14 +381,14 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         thead th {
-            padding: 14px 16px;
+            padding: 12px 14px;
             text-align: left;
             font-weight: 600;
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-muted);
@@ -433,7 +405,7 @@
         }
 
         tbody td {
-            padding: 14px 16px;
+            padding: 12px 14px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             color: var(--text-secondary);
             white-space: nowrap;
@@ -475,7 +447,7 @@
             gap: 4px;
             text-decoration: none;
             color: var(--text-muted);
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
             padding: 6px 12px;
             border-radius: 8px;
@@ -516,63 +488,72 @@
             transform: translateX(-50%) translateY(0);
         }
 
-        .toast.error {
-            border-left: 4px solid var(--accent-red);
-        }
+        .toast.error { border-left: 4px solid var(--accent-red); }
+        .toast.success { border-left: 4px solid var(--accent-green); }
 
-        .toast.success {
-            border-left: 4px solid var(--accent-green);
-        }
-
-        /* Responsive */
-        @media (max-width: 1024px) {
+        /* Responsive - Tablet */
+        @media (max-width: 1200px) {
+            .summary-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
             .charts-grid {
                 grid-template-columns: 1fr;
             }
-            
-            .chart-container {
-                height: 380px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .summary-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
-            }
-            
-            .summary-card {
-                padding: 16px;
-            }
-            
-            .summary-value {
-                font-size: 18px;
-            }
-            
-            .main {
-                padding: 16px;
-            }
-            
             .chart-container {
                 height: 320px;
             }
-            
+        }
+
+        /* Responsive - Mobile */
+        @media (max-width: 768px) {
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            .summary-card {
+                padding: 14px 10px;
+            }
+            .summary-value {
+                font-size: 16px;
+            }
+            .summary-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+            }
+            .summary-label {
+                font-size: 9px;
+            }
+            .main {
+                padding: 14px;
+            }
+            .chart-container {
+                height: 280px;
+            }
             .chart-card, .table-card {
-                padding: 16px;
+                padding: 14px;
+            }
+            .chart-title {
+                font-size: 12px;
             }
         }
 
         @media (max-width: 480px) {
             .summary-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
             }
-            
+            .summary-value {
+                font-size: 14px;
+            }
             .header {
                 padding: 12px 16px;
             }
-            
             .header-title {
-                font-size: 16px;
+                font-size: 14px;
+            }
+            .chart-container {
+                height: 250px;
             }
         }
 
@@ -581,16 +562,13 @@
             width: 8px;
             height: 8px;
         }
-
         ::-webkit-scrollbar-track {
             background: transparent;
         }
-
         ::-webkit-scrollbar-thumb {
             background: var(--glass-border);
             border-radius: 4px;
         }
-
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.3);
         }
@@ -624,11 +602,11 @@
     <main class="main">
         <!-- Month Selector -->
         <div class="month-selector">
-            <label><i class="fas fa-calendar"></i> Select Month</label>
+            <label><i class="fas fa-calendar"></i> Month</label>
             <input type="month" id="monthPicker" value="2026-07" onchange="loadDashboard()">
         </div>
 
-        <!-- Summary Cards -->
+        <!-- Summary Cards - 6 cards in one row on desktop -->
         <div class="summary-grid">
             <div class="summary-card glass">
                 <div class="summary-icon">
@@ -655,7 +633,7 @@
                 <div class="summary-icon">
                     <i class="fas fa-coins"></i>
                 </div>
-                <div class="summary-label">Total Stock Value</div>
+                <div class="summary-label">Total Value</div>
                 <div class="summary-value" id="statValue">—</div>
             </div>
             <div class="summary-card glass green">
@@ -674,13 +652,13 @@
             </div>
         </div>
 
-        <!-- Charts -->
+        <!-- Charts Row 1 -->
         <div class="charts-grid">
             <div class="chart-card glass">
                 <div class="chart-header">
                     <div class="chart-title">
                         <i class="fas fa-chart-bar"></i>
-                        Buyer-wise Monthly RCVD vs DLVD
+                        Buyer-wise RCVD vs DLVD
                     </div>
                 </div>
                 <div class="chart-container">
@@ -691,7 +669,7 @@
                 <div class="chart-header">
                     <div class="chart-title">
                         <i class="fas fa-chart-pie"></i>
-                        Monthly Receive / Delivery
+                        Receive / Delivery Ratio
                     </div>
                 </div>
                 <div class="chart-container">
@@ -700,12 +678,13 @@
             </div>
         </div>
 
+        <!-- Charts Row 2 -->
         <div class="charts-grid">
             <div class="chart-card glass">
                 <div class="chart-header">
                     <div class="chart-title">
                         <i class="fas fa-calendar-day"></i>
-                        Date Wise Total RCVD & DLVD
+                        Date Wise RCVD & DLVD
                     </div>
                 </div>
                 <div class="chart-container">
@@ -715,7 +694,7 @@
             <div class="chart-card glass">
                 <div class="chart-header">
                     <div class="chart-title">
-                        <i class="fas fa-user-chart"></i>
+                        <i class="fas fa-user-tie"></i>
                         Team Member Performance
                     </div>
                 </div>
@@ -725,8 +704,9 @@
             </div>
         </div>
 
+        <!-- Charts Row 3 -->
         <div class="charts-grid">
-            <div class="chart-card glass">
+            <div class="chart-card glass" style="grid-column: 1 / -1;">
                 <div class="chart-header">
                     <div class="chart-title">
                         <i class="fas fa-chart-line"></i>
@@ -820,6 +800,9 @@
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // Register DataLabels plugin globally
+        Chart.register(ChartDataLabels);
+
         // ============ STATE ============
         let charts = {};
         let buyers = [];
@@ -832,31 +815,13 @@
             html.setAttribute('data-theme', next);
             localStorage.setItem('theme', next);
             updateThemeIcon(next);
-            updateChartsTheme();
+            // Recreate charts with new theme colors
+            loadCharts();
         }
 
         function updateThemeIcon(theme) {
             const btn = document.getElementById('themeBtn');
             btn.innerHTML = theme === 'dark' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
-        }
-
-        function updateChartsTheme() {
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            const textColor = isDark ? 'rgba(255,255,255,0.85)' : 'rgba(15,23,42,0.85)';
-            const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-            
-            Object.values(charts).forEach(chart => {
-                if (chart.options.scales) {
-                    Object.values(chart.options.scales).forEach(scale => {
-                        if (scale.ticks) scale.ticks.color = textColor;
-                        if (scale.grid) scale.grid.color = gridColor;
-                    });
-                }
-                if (chart.options.plugins && chart.options.plugins.legend) {
-                    chart.options.plugins.legend.labels.color = textColor;
-                }
-                chart.update();
-            });
         }
 
         (function() {
@@ -882,18 +847,25 @@
             if (n === null || n === undefined) return '0';
             const num = parseFloat(n);
             if (isNaN(num)) return '0';
-            return num.toLocaleString('en-US', { 
-                minimumFractionDigits: 0, 
-                maximumFractionDigits: 2 
-            });
+            return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
         }
 
         function fmtCompact(n) {
             if (n === null || isNaN(n)) return '0';
             n = parseFloat(n);
-            if (Math.abs(n) >= 1000000) return (n / 1000000).toFixed(2) + 'M';
+            if (Math.abs(n) >= 1000000) return (n / 1000000).toFixed(1) + 'M';
             if (Math.abs(n) >= 1000) return (n / 1000).toFixed(1) + 'K';
             return n.toFixed(0);
+        }
+
+        function getChartColors() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return {
+                text: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(15,23,42,0.9)',
+                muted: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(100,116,139,1)',
+                grid: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+                labelBg: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)'
+            };
         }
 
         // ============ REFRESH ============
@@ -932,7 +904,7 @@
 
                 const { data: valueData } = await db.from('items').select('current_value');
                 const totalValue = (valueData || []).reduce((s, i) => s + (parseFloat(i.current_value) || 0), 0);
-                document.getElementById('statValue').textContent = '$' + fmtCompact(totalValue);
+                document.getElementById('statValue').textContent = '$' + fmt(totalValue);
 
                 const month = document.getElementById('monthPicker').value;
                 const [year, mon] = month.split('-');
@@ -954,7 +926,6 @@
                 const { data, error } = await db.from('buyers').select('id, name').order('name');
                 if (error) throw error;
                 buyers = data || [];
-
                 const select = document.getElementById('buyerFilter');
                 select.innerHTML = '<option value="">All Buyers</option>';
                 buyers.forEach(b => {
@@ -1028,10 +999,10 @@
                 renderTeamChart(teamNames, teamRcvd, teamDlvd);
 
                 // Stock value by buyer
-                const { data: stockData } = await db.from('items').select(`current_value, buyers:buyer_id (name)`);
+                const { data: stockBuyerData } = await db.from('items').select(`current_value, buyers:buyer_id (name)`);
 
                 const stockByBuyer = {};
-                (stockData || []).forEach(item => {
+                (stockBuyerData || []).forEach(item => {
                     const buyerName = item.buyers?.name || 'Unknown';
                     stockByBuyer[buyerName] = (stockByBuyer[buyerName] || 0) + (parseFloat(item.current_value) || 0);
                 });
@@ -1045,16 +1016,8 @@
             }
         }
 
-        // ============ RENDER CHARTS ============
-        function getChartColors() {
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            return {
-                text: isDark ? 'rgba(255,255,255,0.85)' : 'rgba(15,23,42,0.85)',
-                muted: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(100,116,139,1)',
-                grid: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
-            };
-        }
-
+        // ============ RENDER CHARTS WITH DATA LABELS ============
+        
         function renderBuyerChart(labels, rcvd, dlvd) {
             const ctx = document.getElementById('buyerChart').getContext('2d');
             if (charts.buyer) charts.buyer.destroy();
@@ -1071,7 +1034,7 @@
                             backgroundColor: 'rgba(16, 185, 129, 0.8)',
                             borderColor: 'rgba(16, 185, 129, 1)',
                             borderWidth: 2,
-                            borderRadius: 8,
+                            borderRadius: 6,
                             borderSkipped: false,
                         },
                         {
@@ -1080,7 +1043,7 @@
                             backgroundColor: 'rgba(239, 68, 68, 0.8)',
                             borderColor: 'rgba(239, 68, 68, 1)',
                             borderWidth: 2,
-                            borderRadius: 8,
+                            borderRadius: 6,
                             borderSkipped: false,
                         }
                     ]
@@ -1090,19 +1053,22 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            labels: { color: colors.text, font: { family: 'Poppins', size: 12 } }
+                            labels: { color: colors.text, font: { family: 'Poppins', size: 11 } }
+                        },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            color: colors.text,
+                            font: { weight: 'bold', size: 10, family: 'Poppins' },
+                            formatter: function(value) {
+                                return fmtCompact(value);
+                            },
+                            display: function(context) {
+                                return context.dataset.data[context.dataIndex] > 0;
+                            }
                         },
                         tooltip: {
                             enabled: true,
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: 'rgba(0,0,0,0.8)',
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            borderColor: 'rgba(255,255,255,0.2)',
-                            borderWidth: 1,
-                            padding: 12,
-                            displayColors: true,
                             callbacks: {
                                 label: function(context) {
                                     return context.dataset.label + ': ' + fmt(context.parsed.y);
@@ -1110,10 +1076,13 @@
                             }
                         }
                     },
+                    layout: {
+                        padding: { top: 25 }
+                    },
                     scales: {
                         x: {
-                            ticks: { color: colors.muted, font: { family: 'Poppins', size: 10 } },
-                            grid: { color: colors.grid }
+                            ticks: { color: colors.muted, font: { family: 'Poppins', size: 9 }, maxRotation: 45, minRotation: 45 },
+                            grid: { display: false }
                         },
                         y: {
                             ticks: { color: colors.muted, font: { family: 'Poppins', size: 10 } },
@@ -1128,6 +1097,7 @@
             const ctx = document.getElementById('monthlyChart').getContext('2d');
             if (charts.monthly) charts.monthly.destroy();
             const colors = getChartColors();
+            const total = rcvd + dlvd;
 
             charts.monthly = new Chart(ctx, {
                 type: 'doughnut',
@@ -1135,7 +1105,7 @@
                     labels: ['Receive', 'Delivery'],
                     datasets: [{
                         data: [rcvd, dlvd],
-                        backgroundColor: ['rgba(16, 185, 129, 0.8)', 'rgba(239, 68, 68, 0.8)'],
+                        backgroundColor: ['rgba(16, 185, 129, 0.85)', 'rgba(239, 68, 68, 0.85)'],
                         borderColor: ['rgba(16, 185, 129, 1)', 'rgba(239, 68, 68, 1)'],
                         borderWidth: 3,
                         hoverOffset: 15
@@ -1144,28 +1114,23 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '65%',
+                    cutout: '60%',
                     plugins: {
                         legend: {
                             position: 'bottom',
                             labels: { color: colors.text, font: { family: 'Poppins', size: 12 }, padding: 20 }
                         },
-                        tooltip: {
-                            enabled: true,
-                            backgroundColor: 'rgba(0,0,0,0.8)',
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            borderColor: 'rgba(255,255,255,0.2)',
-                            borderWidth: 1,
-                            padding: 12,
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = fmt(context.parsed);
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
-                                    return label + ': ' + value + ' (' + percentage + '%)';
-                                }
+                        datalabels: {
+                            color: '#fff',
+                            font: { weight: 'bold', size: 14, family: 'Poppins' },
+                            formatter: function(value, context) {
+                                if (total === 0) return '';
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return fmtCompact(value) + '\n' + percentage + '%';
+                            },
+                            textAlign: 'center',
+                            display: function(context) {
+                                return context.dataset.data[context.dataIndex] > 0;
                             }
                         }
                     }
@@ -1178,20 +1143,26 @@
             if (charts.dateWise) charts.dateWise.destroy();
             const colors = getChartColors();
 
+            // Format date labels (show only day)
+            const shortLabels = labels.map(d => {
+                const parts = d.split('-');
+                return parts[2] + '/' + parts[1];
+            });
+
             charts.dateWise = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: shortLabels,
                     datasets: [
                         {
                             label: 'RCVD',
                             data: rcvd,
                             borderColor: 'rgba(16, 185, 129, 1)',
-                            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
                             borderWidth: 3,
                             fill: true,
                             tension: 0.4,
-                            pointRadius: 5,
+                            pointRadius: 4,
                             pointHoverRadius: 7,
                             pointBackgroundColor: 'rgba(16, 185, 129, 1)',
                             pointBorderColor: '#fff',
@@ -1201,11 +1172,11 @@
                             label: 'DLVD',
                             data: dlvd,
                             borderColor: 'rgba(239, 68, 68, 1)',
-                            backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.15)',
                             borderWidth: 3,
                             fill: true,
                             tension: 0.4,
-                            pointRadius: 5,
+                            pointRadius: 4,
                             pointHoverRadius: 7,
                             pointBackgroundColor: 'rgba(239, 68, 68, 1)',
                             pointBorderColor: '#fff',
@@ -1218,30 +1189,35 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            labels: { color: colors.text, font: { family: 'Poppins', size: 12 } }
+                            labels: { color: colors.text, font: { family: 'Poppins', size: 11 } }
                         },
-                        tooltip: {
-                            enabled: true,
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: 'rgba(0,0,0,0.8)',
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            borderColor: 'rgba(255,255,255,0.2)',
-                            borderWidth: 1,
-                            padding: 12,
-                            displayColors: true,
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ' + fmt(context.parsed.y);
-                                }
-                            }
+                        datalabels: {
+                            backgroundColor: function(context) {
+                                return context.datasetIndex === 0 ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)';
+                            },
+                            borderRadius: 4,
+                            color: '#fff',
+                            font: { weight: 'bold', size: 9, family: 'Poppins' },
+                            padding: 4,
+                            formatter: function(value) {
+                                return value > 0 ? fmtCompact(value) : '';
+                            },
+                            display: function(context) {
+                                return context.dataset.data[context.dataIndex] > 0;
+                            },
+                            align: function(context) {
+                                return context.datasetIndex === 0 ? 'top' : 'bottom';
+                            },
+                            offset: 4
                         }
+                    },
+                    layout: {
+                        padding: { top: 30, bottom: 20 }
                     },
                     scales: {
                         x: {
-                            ticks: { color: colors.muted, font: { family: 'Poppins', size: 10 }, maxRotation: 45, minRotation: 45 },
-                            grid: { color: colors.grid }
+                            ticks: { color: colors.muted, font: { family: 'Poppins', size: 9 }, maxRotation: 45, minRotation: 45 },
+                            grid: { display: false }
                         },
                         y: {
                             ticks: { color: colors.muted, font: { family: 'Poppins', size: 10 } },
@@ -1263,20 +1239,20 @@
                     labels: labels,
                     datasets: [
                         {
-                            label: 'RCVD Entries',
+                            label: 'RCVD',
                             data: rcvd,
                             backgroundColor: 'rgba(59, 130, 246, 0.8)',
                             borderColor: 'rgba(59, 130, 246, 1)',
                             borderWidth: 2,
-                            borderRadius: 8,
+                            borderRadius: 6,
                         },
                         {
-                            label: 'DLVD Entries',
+                            label: 'DLVD',
                             data: dlvd,
                             backgroundColor: 'rgba(245, 158, 11, 0.8)',
                             borderColor: 'rgba(245, 158, 11, 1)',
                             borderWidth: 2,
-                            borderRadius: 8,
+                            borderRadius: 6,
                         }
                     ]
                 },
@@ -1285,32 +1261,31 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            labels: { color: colors.text, font: { family: 'Poppins', size: 12 } }
+                            labels: { color: colors.text, font: { family: 'Poppins', size: 11 } }
                         },
-                        tooltip: {
-                            enabled: true,
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: 'rgba(0,0,0,0.8)',
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            borderColor: 'rgba(255,255,255,0.2)',
-                            borderWidth: 1,
-                            padding: 12,
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ' + fmt(context.parsed.y);
-                                }
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            color: colors.text,
+                            font: { weight: 'bold', size: 10, family: 'Poppins' },
+                            formatter: function(value) {
+                                return value > 0 ? value : '';
+                            },
+                            display: function(context) {
+                                return context.dataset.data[context.dataIndex] > 0;
                             }
                         }
                     },
+                    layout: {
+                        padding: { top: 25 }
+                    },
                     scales: {
                         x: {
-                            ticks: { color: colors.muted, font: { family: 'Poppins', size: 10 } },
-                            grid: { color: colors.grid }
+                            ticks: { color: colors.muted, font: { family: 'Poppins', size: 9 }, maxRotation: 45, minRotation: 45 },
+                            grid: { display: false }
                         },
                         y: {
-                            ticks: { color: colors.muted, font: { family: 'Poppins', size: 10 } },
+                            ticks: { color: colors.muted, font: { family: 'Poppins', size: 10 }, stepSize: 1 },
                             grid: { color: colors.grid }
                         }
                     }
@@ -1333,7 +1308,7 @@
                         backgroundColor: 'rgba(139, 92, 246, 0.8)',
                         borderColor: 'rgba(139, 92, 246, 1)',
                         borderWidth: 2,
-                        borderRadius: 8,
+                        borderRadius: 6,
                     }]
                 },
                 options: {
@@ -1342,22 +1317,23 @@
                     indexAxis: 'y',
                     plugins: {
                         legend: {
-                            labels: { color: colors.text, font: { family: 'Poppins', size: 12 } }
+                            display: false
                         },
-                        tooltip: {
-                            enabled: true,
-                            backgroundColor: 'rgba(0,0,0,0.8)',
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            borderColor: 'rgba(255,255,255,0.2)',
-                            borderWidth: 1,
-                            padding: 12,
-                            callbacks: {
-                                label: function(context) {
-                                    return 'Value: $' + fmt(context.parsed.x);
-                                }
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'end',
+                            color: colors.text,
+                            font: { weight: 'bold', size: 10, family: 'Poppins' },
+                            formatter: function(value) {
+                                return '$' + fmtCompact(value);
+                            },
+                            display: function(context) {
+                                return context.dataset.data[context.dataIndex] > 0;
                             }
                         }
+                    },
+                    layout: {
+                        padding: { right: 60 }
                     },
                     scales: {
                         x: {
@@ -1366,7 +1342,7 @@
                         },
                         y: {
                             ticks: { color: colors.muted, font: { family: 'Poppins', size: 10 } },
-                            grid: { color: colors.grid }
+                            grid: { display: false }
                         }
                     }
                 }
@@ -1389,7 +1365,6 @@
                 }
 
                 const { data, error } = await query;
-
                 if (error) throw error;
 
                 const tbody = document.getElementById('balanceBody');
@@ -1399,7 +1374,7 @@
                         <tr>
                             <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
                                 <i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 10px; display: block; opacity: 0.5;"></i>
-                                No transactions found for this period
+                                No transactions found
                             </td>
                         </tr>
                     `;
@@ -1455,7 +1430,6 @@
             loadDashboard();
         });
 
-        // PWA Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('../sw.js').catch(() => {});
         }
