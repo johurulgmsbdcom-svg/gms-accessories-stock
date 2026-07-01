@@ -51,7 +51,6 @@
             position: relative;
         }
 
-        /* 3D Animated Background */
         .bg-3d {
             position: fixed;
             top: 0; left: 0;
@@ -104,7 +103,6 @@
             box-shadow: var(--glass-shadow);
         }
 
-        /* Header */
         .header {
             padding: 14px 20px;
             display: flex;
@@ -198,14 +196,12 @@
             transform: translateY(-2px);
         }
 
-        /* Main */
         .main {
             padding: 20px;
             max-width: 1400px;
             margin: 0 auto;
         }
 
-        /* Page Title */
         .page-title {
             display: flex;
             align-items: center;
@@ -270,7 +266,6 @@
             background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
         }
 
-        /* Filter Card */
         .filter-card {
             padding: 20px;
             margin-bottom: 20px;
@@ -339,42 +334,6 @@
             color: var(--text-muted);
         }
 
-        /* Grouping Tabs */
-        .group-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .group-tab {
-            padding: 10px 18px;
-            border-radius: 10px;
-            border: 1px solid var(--glass-border);
-            background: var(--glass-bg);
-            color: var(--text-secondary);
-            font-family: 'Poppins', sans-serif;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .group-tab.active {
-            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-            color: white;
-            border-color: transparent;
-        }
-
-        .group-tab:hover:not(.active) {
-            background: var(--glass-bg-strong);
-            color: var(--text-primary);
-        }
-
-        /* Stats Row */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -442,7 +401,6 @@
             background-clip: text;
         }
 
-        /* Table Card */
         .table-card {
             padding: 20px;
             margin-bottom: 20px;
@@ -489,17 +447,6 @@
             background: rgba(59, 130, 246, 0.1);
         }
 
-        thead th .sort-icon {
-            margin-left: 4px;
-            font-size: 9px;
-            opacity: 0.5;
-        }
-
-        thead th.sorted .sort-icon {
-            opacity: 1;
-            color: var(--accent-blue);
-        }
-
         tbody tr {
             transition: all 0.2s;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -524,157 +471,30 @@
             font-size: 12px;
         }
 
-        /* Group Header Row */
-        tbody tr.group-row {
+        tbody tr.buyer-row {
             background: rgba(59, 130, 246, 0.15);
-            cursor: pointer;
         }
 
-        tbody tr.group-row:hover {
-            background: rgba(59, 130, 246, 0.25);
-        }
-
-        tbody tr.group-row td {
+        tbody tr.buyer-row td {
             font-weight: 700;
             color: var(--text-primary);
             font-size: 13px;
             padding: 12px 10px;
+            border-top: 2px solid var(--accent-blue);
         }
 
-        tbody tr.group-row td .group-toggle {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            margin-right: 8px;
-            text-align: center;
-            line-height: 20px;
-            border-radius: 4px;
-            background: var(--accent-blue);
-            color: white;
-            font-size: 10px;
+        tbody tr.total-row {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.3));
         }
 
-        tbody tr.child-row {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        tbody tr.child-row.hidden {
-            display: none;
-        }
-
-        .type-badge {
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: inline-block;
-        }
-
-        .type-badge.rcvd {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--accent-green);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .type-badge.dlvd {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--accent-red);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .type-badge.prvs {
-            background: rgba(59, 130, 246, 0.2);
-            color: var(--accent-blue);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-
-        .qty-positive {
-            color: var(--accent-green);
-            font-weight: 600;
-        }
-
-        .qty-negative {
-            color: var(--accent-red);
-            font-weight: 600;
-        }
-
-        .qty-neutral {
-            color: var(--accent-blue);
-            font-weight: 600;
-        }
-
-        /* Pagination */
-        .pagination {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 0 0;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .pagination-info {
-            font-size: 12px;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        .pagination-controls {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }
-
-        .page-btn {
-            min-width: 36px;
-            height: 36px;
-            padding: 0 12px;
-            border-radius: 8px;
-            border: 1px solid var(--glass-border);
-            background: var(--glass-bg);
+        tbody tr.total-row td {
+            font-weight: 800;
             color: var(--text-primary);
-            font-family: 'Poppins', sans-serif;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            font-size: 14px;
+            padding: 14px 10px;
+            border-top: 3px solid var(--accent-blue);
         }
 
-        .page-btn:hover:not(:disabled) {
-            background: var(--accent-blue);
-            color: white;
-            border-color: var(--accent-blue);
-        }
-
-        .page-btn.active {
-            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-            color: white;
-            border-color: transparent;
-        }
-
-        .page-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        .per-page-select {
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid var(--glass-border);
-            background: var(--glass-bg);
-            color: var(--text-primary);
-            font-family: 'Poppins', sans-serif;
-            font-size: 12px;
-            outline: none;
-            cursor: pointer;
-        }
-
-        /* Loading / Empty */
         .loading-state, .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -701,7 +521,6 @@
             to { transform: translateY(0); opacity: 1; }
         }
 
-        /* Bottom Nav */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -746,7 +565,6 @@
             font-size: 18px;
         }
 
-        /* Toast */
         .toast {
             position: fixed;
             top: 20px;
@@ -775,13 +593,11 @@
         .toast.error { border-left: 4px solid var(--accent-red); }
         .toast.success { border-left: 4px solid var(--accent-green); }
 
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .main { padding: 16px; }
             .filter-grid { grid-template-columns: 1fr 1fr; }
@@ -799,14 +615,12 @@
     </style>
 </head>
 <body>
-    <!-- 3D Background -->
     <div class="bg-3d"></div>
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
     <div class="orb orb-4"></div>
 
-    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <a href="index.html" class="back-btn">
@@ -822,11 +636,9 @@
         </div>
     </header>
 
-    <!-- Main -->
     <main class="main">
-        <!-- Page Title -->
         <div class="page-title">
-            <h2><i class="fas fa-table-cells-large"></i> Pivot Report</h2>
+            <h2><i class="fas fa-table-cells-large"></i> Buyer Wise Balance Value Report</h2>
             <div class="title-actions">
                 <button class="btn btn-reset" onclick="resetFilters()">
                     <i class="fas fa-redo"></i> Reset
@@ -837,7 +649,6 @@
             </div>
         </div>
 
-        <!-- Filter Card -->
         <div class="filter-card glass">
             <div class="filter-title">
                 <i class="fas fa-filter"></i> Filters
@@ -861,21 +672,6 @@
                     <label>Item</label>
                     <input type="text" id="fItem" placeholder="Search item...">
                 </div>
-                <div class="filter-group">
-                    <label>Type</label>
-                    <select id="fType">
-                        <option value="">All Types</option>
-                        <option value="PRVS">PRVS (Opening)</option>
-                        <option value="RCVD">RCVD (Received)</option>
-                        <option value="DLVD">DLVD (Delivery)</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>Team Member</label>
-                    <select id="fTeam">
-                        <option value="">All Members</option>
-                    </select>
-                </div>
                 <div class="filter-group" style="justify-content: flex-end;">
                     <button class="btn btn-search" onclick="applyFilters()" style="width: 100%;">
                         <i class="fas fa-search"></i> Search
@@ -884,50 +680,29 @@
             </div>
         </div>
 
-        <!-- Grouping Tabs -->
-        <div class="group-tabs">
-            <button class="group-tab active" onclick="setGroupBy('buyer', this)">
-                <i class="fas fa-building"></i> Group by Buyer
-            </button>
-            <button class="group-tab" onclick="setGroupBy('month', this)">
-                <i class="fas fa-calendar-alt"></i> Group by Month
-            </button>
-            <button class="group-tab" onclick="setGroupBy('item', this)">
-                <i class="fas fa-box"></i> Group by Item
-            </button>
-            <button class="group-tab" onclick="setGroupBy('team', this)">
-                <i class="fas fa-users"></i> Group by Team
-            </button>
-            <button class="group-tab" onclick="setGroupBy('none', this)">
-                <i class="fas fa-list"></i> No Grouping
-            </button>
-        </div>
-
-        <!-- Stats Row -->
         <div class="stats-row">
             <div class="stat-card glass blue">
-                <div class="stat-value" id="statTotal">—</div>
-                <div class="stat-label">Total Transactions</div>
+                <div class="stat-value" id="statTotalItems">—</div>
+                <div class="stat-label">Total Items</div>
             </div>
             <div class="stat-card glass green">
-                <div class="stat-value" id="statRcvd">—</div>
-                <div class="stat-label">RCVD Qty</div>
-            </div>
-            <div class="stat-card glass red">
-                <div class="stat-value" id="statDlvd">—</div>
-                <div class="stat-label">DLVD Qty</div>
+                <div class="stat-value" id="statPrevQty">—</div>
+                <div class="stat-label">Previous Qty</div>
             </div>
             <div class="stat-card glass yellow">
-                <div class="stat-value" id="statRcvdValue">—</div>
-                <div class="stat-label">RCVD Value</div>
+                <div class="stat-value" id="statPrevValue">—</div>
+                <div class="stat-label">Previous Value</div>
             </div>
             <div class="stat-card glass purple">
-                <div class="stat-value" id="statDlvdValue">—</div>
-                <div class="stat-label">DLVD Value</div>
+                <div class="stat-value" id="statPresentStock">—</div>
+                <div class="stat-label">Present Stock</div>
+            </div>
+            <div class="stat-card glass red">
+                <div class="stat-value" id="statStockValue">—</div>
+                <div class="stat-label">Stock Value</div>
             </div>
         </div>
 
-        <!-- Table Card -->
         <div class="table-card glass">
             <div id="tableContent">
                 <div class="loading-state">
@@ -938,7 +713,6 @@
         </div>
     </main>
 
-    <!-- Bottom Nav -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item">
             <i class="fas fa-home nav-icon"></i> Home
@@ -960,28 +734,20 @@
         </a>
     </nav>
 
-    <!-- Toast -->
     <div class="toast" id="toast">
         <i class="fas fa-check-circle" id="toastIcon"></i>
         <span id="toastMsg">Success!</span>
     </div>
 
     <script>
-        // ============ SUPABASE ============
         const SUPABASE_URL = 'https://qwtourjspllhiiryqewf.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_pcQFRFQWWAT1zTXfVfgdSw_43rcVr5S';
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ============ STATE ============
-        let allTransactions = [];
+        let allItems = [];
         let filteredData = [];
-        let currentPage = 1;
-        let perPage = 100;
-        let groupBy = 'buyer';
-        let collapsedGroups = new Set();
 
-        // ============ THEME ============
         function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -1002,7 +768,6 @@
             updateThemeIcon(saved);
         })();
 
-        // ============ TOAST ============
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toastIcon');
@@ -1014,7 +779,6 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // ============ UTILS ============
         function fmt(n) {
             if (n === null || n === undefined || isNaN(n)) return '0';
             return parseFloat(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -1028,25 +792,12 @@
             return n.toFixed(0);
         }
 
-        function getMonthKey(dateStr) {
-            if (!dateStr) return 'Unknown';
-            const d = new Date(dateStr);
-            return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-        }
-
-        // ============ LOAD FILTERS ============
         async function loadFilters() {
             try {
                 const { data: buyers } = await db.from('buyers').select('id, name').order('name');
                 const buyerSelect = document.getElementById('fBuyer');
                 (buyers || []).forEach(b => {
                     buyerSelect.innerHTML += `<option value="${b.id}">${b.name}</option>`;
-                });
-
-                const { data: teams } = await db.from('team_members').select('id, name').order('name');
-                const teamSelect = document.getElementById('fTeam');
-                (teams || []).forEach(t => {
-                    teamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
                 });
 
                 const today = new Date();
@@ -1060,15 +811,11 @@
             }
         }
 
-        // ============ APPLY FILTERS ============
         async function applyFilters() {
-            currentPage = 1;
-            collapsedGroups.clear();
-            await loadTransactions();
+            await loadItems();
         }
 
-        // ============ LOAD TRANSACTIONS ============
-        async function loadTransactions() {
+        async function loadItems() {
             const tableContent = document.getElementById('tableContent');
             tableContent.innerHTML = `
                 <div class="loading-state">
@@ -1079,56 +826,40 @@
 
             try {
                 let query = db
-                    .from('transactions')
+                    .from('items')
                     .select(`
-                        id, type, txn_date, qty, unit_price_snapshot, line_value,
-                        challan_no, mrr_no, order_no, style_no, remarks,
-                        present_stock_after, stock_value_after,
-                        items:item_id (
-                            description, unit, goods_location,
-                            buyer_id, supplier, item_code,
-                            buyers:buyer_id (name)
-                        ),
-                        team_members:team_member_id (name)
+                        id, description, unit, goods_location, current_stock, current_value,
+                        buyer_id, supplier, item_code,
+                        buyers:buyer_id (name)
                     `)
-                    .order('txn_date', { ascending: false })
-                    .order('created_at', { ascending: false });
+                    .order('buyers(name)', { ascending: true })
+                    .order('description', { ascending: true });
 
-                const dateFrom = document.getElementById('fDateFrom').value;
-                const dateTo = document.getElementById('fDateTo').value;
                 const buyerId = document.getElementById('fBuyer').value;
                 const itemSearch = document.getElementById('fItem').value.trim();
-                const type = document.getElementById('fType').value;
-                const teamId = document.getElementById('fTeam').value;
 
-                if (dateFrom) query = query.gte('txn_date', dateFrom);
-                if (dateTo) query = query.lte('txn_date', dateTo);
-                if (buyerId) query = query.eq('items.buyer_id', buyerId);
-                if (type) query = query.eq('type', type);
-                if (teamId) query = query.eq('team_member_id', teamId);
+                if (buyerId) query = query.eq('buyer_id', buyerId);
 
-                const { data, error } = await query.limit(5000);
+                const { data, error } = await query;
 
                 if (error) throw error;
 
-                allTransactions = data || [];
+                allItems = data || [];
 
-                // Filter by item search (client-side)
                 if (itemSearch) {
-                    allTransactions = allTransactions.filter(txn => {
-                        const desc = (txn.items?.description || '').toLowerCase();
-                        const code = (txn.items?.item_code || '').toLowerCase();
+                    allItems = allItems.filter(item => {
+                        const desc = (item.description || '').toLowerCase();
+                        const code = (item.item_code || '').toLowerCase();
                         const search = itemSearch.toLowerCase();
                         return desc.includes(search) || code.includes(search);
                     });
                 }
 
-                filteredData = [...allTransactions];
-                updateStats();
-                renderTable();
+                filteredData = [...allItems];
+                renderPivotTable();
 
             } catch (err) {
-                console.error('Load transactions error:', err);
+                console.error('Load items error:', err);
                 tableContent.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-exclamation-triangle"></i>
@@ -1139,97 +870,30 @@
             }
         }
 
-        // ============ UPDATE STATS ============
-        function updateStats() {
-            const total = filteredData.length;
-            let rcvdQty = 0, dlvdQty = 0, rcvdValue = 0, dlvdValue = 0;
-
-            filteredData.forEach(txn => {
-                const qty = parseFloat(txn.qty) || 0;
-                const value = parseFloat(txn.line_value) || 0;
-                if (txn.type === 'RCVD') {
-                    rcvdQty += qty;
-                    rcvdValue += value;
-                } else if (txn.type === 'DLVD') {
-                    dlvdQty += qty;
-                    dlvdValue += value;
-                }
-            });
-
-            document.getElementById('statTotal').textContent = fmt(total);
-            document.getElementById('statRcvd').textContent = fmtCompact(rcvdQty);
-            document.getElementById('statDlvd').textContent = fmtCompact(dlvdQty);
-            document.getElementById('statRcvdValue').textContent = '$' + fmtCompact(rcvdValue);
-            document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
-        }
-
-        // ============ GROUP BY ============
-        function setGroupBy(group, btn) {
-            groupBy = group;
-            collapsedGroups.clear();
-            document.querySelectorAll('.group-tab').forEach(t => t.classList.remove('active'));
-            btn.classList.add('active');
-            renderTable();
-        }
-
-        function getGroupKey(txn) {
-            switch (groupBy) {
-                case 'buyer':
-                    return txn.items?.buyers?.name || 'Unknown Buyer';
-                case 'month':
-                    return getMonthKey(txn.txn_date);
-                case 'item':
-                    return txn.items?.description || 'Unknown Item';
-                case 'team':
-                    return txn.team_members?.name || 'No Team';
-                case 'none':
-                default:
-                    return null;
-            }
-        }
-
-        function getGroupIcon() {
-            switch (groupBy) {
-                case 'buyer': return '<i class="fas fa-building"></i>';
-                case 'month': return '<i class="fas fa-calendar-alt"></i>';
-                case 'item': return '<i class="fas fa-box"></i>';
-                case 'team': return '<i class="fas fa-users"></i>';
-                default: return '<i class="fas fa-list"></i>';
-            }
-        }
-
-        // ============ RENDER TABLE ============
-        function renderTable() {
+        function renderPivotTable() {
             const tableContent = document.getElementById('tableContent');
 
             if (filteredData.length === 0) {
                 tableContent.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
-                        <p>No transactions found</p>
+                        <p>No items found</p>
                     </div>
                 `;
                 return;
             }
 
-            // Group data
             const groups = {};
-            let ungroupedData = [];
+            filteredData.forEach(item => {
+                const buyerName = item.buyers?.name || 'Unknown Buyer';
+                if (!groups[buyerName]) groups[buyerName] = [];
+                groups[buyerName].push(item);
+            });
 
-            if (groupBy === 'none') {
-                ungroupedData = filteredData;
-            } else {
-                filteredData.forEach(txn => {
-                    const key = getGroupKey(txn);
-                    if (!groups[key]) groups[key] = [];
-                    groups[key].push(txn);
-                });
-            }
-
-            // Build table
             const columns = [
-                'Date', 'Buyer', 'Item', 'Unit', 'Type', 'Qty', 'Price', 'Value',
-                'Challan', 'MRR', 'Order', 'Style', 'Stock After', 'Team', 'Remarks'
+                'Buyer', 'Description Of Item', 'Unit', 'Goods Location', 
+                'Previous Qty', 'Previous Value', 'Received Qty', 'Received Value', 
+                'Delivery Qty', 'Delivery Value', 'Present Stock', 'Stock Value'
             ];
 
             let html = '<div class="table-wrapper"><table><thead><tr>';
@@ -1238,174 +902,103 @@
             });
             html += '</tr></thead><tbody>';
 
-            if (groupBy === 'none') {
-                // Flat table
-                const startIdx = (currentPage - 1) * perPage;
-                const endIdx = Math.min(startIdx + perPage, ungroupedData.length);
-                const pageData = ungroupedData.slice(startIdx, endIdx);
+            let grandTotal = {
+                prevQty: 0, prevValue: 0, rcvdQty: 0, rcvdValue: 0,
+                dlvdQty: 0, dlvdValue: 0, presentStock: 0, stockValue: 0
+            };
 
-                pageData.forEach(txn => {
-                    html += renderRow(txn);
+            const buyerNames = Object.keys(groups).sort();
+            
+            buyerNames.forEach(buyerName => {
+                const items = groups[buyerName];
+                let buyerTotal = {
+                    prevQty: 0, prevValue: 0, rcvdQty: 0, rcvdValue: 0,
+                    dlvdQty: 0, dlvdValue: 0, presentStock: 0, stockValue: 0
+                };
+
+                items.forEach(item => {
+                    const prevQty = parseFloat(item.current_stock) || 0;
+                    const prevValue = parseFloat(item.current_value) || 0;
+                    
+                    buyerTotal.prevQty += prevQty;
+                    buyerTotal.prevValue += prevValue;
+                    buyerTotal.presentStock += prevQty;
+                    buyerTotal.stockValue += prevValue;
                 });
-            } else {
-                // Grouped table
-                const groupKeys = Object.keys(groups).sort();
-                let totalRendered = 0;
 
-                groupKeys.forEach(groupKey => {
-                    const groupTxns = groups[groupKey];
-                    const isCollapsed = collapsedGroups.has(groupKey);
+                grandTotal.prevQty += buyerTotal.prevQty;
+                grandTotal.prevValue += buyerTotal.prevValue;
+                grandTotal.presentStock += buyerTotal.presentStock;
+                grandTotal.stockValue += buyerTotal.stockValue;
 
-                    // Calculate group totals
-                    let gRcvd = 0, gDlvd = 0, gRcvdVal = 0, gDlvdVal = 0;
-                    groupTxns.forEach(t => {
-                        const q = parseFloat(t.qty) || 0;
-                        const v = parseFloat(t.line_value) || 0;
-                        if (t.type === 'RCVD') { gRcvd += q; gRcvdVal += v; }
-                        else if (t.type === 'DLVD') { gDlvd += q; gDlvdVal += v; }
-                    });
+                html += `<tr class="buyer-row">
+                    <td colspan="12"><i class="fas fa-building"></i> ${buyerName}</td>
+                </tr>`;
 
-                    html += `<tr class="group-row" onclick="toggleGroup('${groupKey.replace(/'/g, "\\'")}')">
-                        <td colspan="15">
-                            <span class="group-toggle">${isCollapsed ? '+' : '−'}</span>
-                            ${getGroupIcon()} ${groupKey}
-                            <span style="float:right; font-size:11px; opacity:0.8;">
-                                ${groupTxns.length} txns | 
-                                RCVD: ${fmtCompact(gRcvd)} ($${fmtCompact(gRcvdVal)}) | 
-                                DLVD: ${fmtCompact(gDlvd)} ($${fmtCompact(gDlvdVal)})
-                            </span>
-                        </td>
+                items.forEach(item => {
+                    const prevQty = parseFloat(item.current_stock) || 0;
+                    const prevValue = parseFloat(item.current_value) || 0;
+                    
+                    html += `<tr>
+                        <td></td>
+                        <td>${item.description || ''}</td>
+                        <td>${item.unit || ''}</td>
+                        <td>${item.goods_location || ''}</td>
+                        <td>${fmt(prevQty)}</td>
+                        <td>$${fmt(prevValue)}</td>
+                        <td>0</td>
+                        <td>$0</td>
+                        <td>0</td>
+                        <td>$0</td>
+                        <td>${fmt(prevQty)}</td>
+                        <td>$${fmt(prevValue)}</td>
                     </tr>`;
-
-                    if (!isCollapsed) {
-                        groupTxns.forEach(txn => {
-                            html += `<tr class="child-row">${renderRowCells(txn)}</tr>`;
-                        });
-                    }
                 });
-            }
+
+                html += `<tr style="background:rgba(59, 130, 246, 0.1);">
+                    <td colspan="4" style="text-align:right; font-weight:700;">${buyerName} Total</td>
+                    <td style="font-weight:700;">${fmt(buyerTotal.prevQty)}</td>
+                    <td style="font-weight:700;">$${fmt(buyerTotal.prevValue)}</td>
+                    <td style="font-weight:700;">${fmt(buyerTotal.rcvdQty)}</td>
+                    <td style="font-weight:700;">$${fmt(buyerTotal.rcvdValue)}</td>
+                    <td style="font-weight:700;">${fmt(buyerTotal.dlvdQty)}</td>
+                    <td style="font-weight:700;">$${fmt(buyerTotal.dlvdValue)}</td>
+                    <td style="font-weight:700;">${fmt(buyerTotal.presentStock)}</td>
+                    <td style="font-weight:700;">$${fmt(buyerTotal.stockValue)}</td>
+                </tr>`;
+            });
+
+            html += `<tr class="total-row">
+                <td colspan="4" style="text-align:right;">Grand Total</td>
+                <td>${fmt(grandTotal.prevQty)}</td>
+                <td>$${fmt(grandTotal.prevValue)}</td>
+                <td>${fmt(grandTotal.rcvdQty)}</td>
+                <td>$${fmt(grandTotal.rcvdValue)}</td>
+                <td>${fmt(grandTotal.dlvdQty)}</td>
+                <td>$${fmt(grandTotal.dlvdValue)}</td>
+                <td>${fmt(grandTotal.presentStock)}</td>
+                <td>$${fmt(grandTotal.stockValue)}</td>
+            </tr>`;
 
             html += '</tbody></table></div>';
-
-            // Pagination (only for flat view)
-            if (groupBy === 'none') {
-                const totalPages = Math.ceil(filteredData.length / perPage);
-                const startIdx = (currentPage - 1) * perPage;
-                const endIdx = Math.min(startIdx + perPage, filteredData.length);
-
-                html += `<div class="pagination">
-                    <div class="pagination-info">
-                        Showing ${startIdx + 1}-${endIdx} of ${filteredData.length} transactions
-                    </div>
-                    <div class="pagination-controls">
-                        <select class="per-page-select" onchange="changePerPage(this.value)">
-                            <option value="50" ${perPage === 50 ? 'selected' : ''}>50 / page</option>
-                            <option value="100" ${perPage === 100 ? 'selected' : ''}>100 / page</option>
-                            <option value="250" ${perPage === 250 ? 'selected' : ''}>250 / page</option>
-                            <option value="500" ${perPage === 500 ? 'selected' : ''}>500 / page</option>
-                        </select>
-                        <button class="page-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>
-                            <i class="fas fa-angle-double-left"></i>
-                        </button>
-                        <button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
-                            <i class="fas fa-angle-left"></i>
-                        </button>`;
-
-                const maxButtons = 5;
-                let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-                let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-                if (endPage - startPage < maxButtons - 1) {
-                    startPage = Math.max(1, endPage - maxButtons + 1);
-                }
-
-                for (let i = startPage; i <= endPage; i++) {
-                    html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
-                }
-
-                html += `
-                        <button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
-                            <i class="fas fa-angle-right"></i>
-                        </button>
-                        <button class="page-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>
-                            <i class="fas fa-angle-double-right"></i>
-                        </button>
-                    </div>
-                </div>`;
-            } else {
-                html += `<div class="pagination">
-                    <div class="pagination-info">
-                        Total: ${filteredData.length} transactions across ${Object.keys(groups).length} groups
-                    </div>
-                </div>`;
-            }
-
             tableContent.innerHTML = html;
+
+            document.getElementById('statTotalItems').textContent = fmt(filteredData.length);
+            document.getElementById('statPrevQty').textContent = fmtCompact(grandTotal.prevQty);
+            document.getElementById('statPrevValue').textContent = '$' + fmtCompact(grandTotal.prevValue);
+            document.getElementById('statPresentStock').textContent = fmtCompact(grandTotal.presentStock);
+            document.getElementById('statStockValue').textContent = '$' + fmtCompact(grandTotal.stockValue);
         }
 
-        function renderRow(txn) {
-            return `<tr>${renderRowCells(txn)}</tr>`;
-        }
-
-        function renderRowCells(txn) {
-            const typeClass = txn.type === 'RCVD' ? 'rcvd' : (txn.type === 'DLVD' ? 'dlvd' : 'prvs');
-            const qtyClass = txn.type === 'RCVD' ? 'qty-positive' : (txn.type === 'DLVD' ? 'qty-negative' : 'qty-neutral');
-            const qtyPrefix = txn.type === 'RCVD' ? '+' : (txn.type === 'DLVD' ? '-' : '');
-
-            return `
-                <td>${txn.txn_date || ''}</td>
-                <td>${txn.items?.buyers?.name || ''}</td>
-                <td>${txn.items?.description || ''}</td>
-                <td>${txn.items?.unit || ''}</td>
-                <td><span class="type-badge ${typeClass}">${txn.type}</span></td>
-                <td class="${qtyClass}">${qtyPrefix}${fmt(txn.qty)}</td>
-                <td>${parseFloat(txn.unit_price_snapshot || 0).toFixed(4)}</td>
-                <td>$${fmt(txn.line_value)}</td>
-                <td>${txn.challan_no || ''}</td>
-                <td>${txn.mrr_no || ''}</td>
-                <td>${txn.order_no || ''}</td>
-                <td>${txn.style_no || ''}</td>
-                <td>${fmt(txn.present_stock_after)}</td>
-                <td>${txn.team_members?.name || ''}</td>
-                <td>${txn.remarks || ''}</td>
-            `;
-        }
-
-        function toggleGroup(groupKey) {
-            if (collapsedGroups.has(groupKey)) {
-                collapsedGroups.delete(groupKey);
-            } else {
-                collapsedGroups.add(groupKey);
-            }
-            renderTable();
-        }
-
-        function goToPage(page) {
-            const totalPages = Math.ceil(filteredData.length / perPage);
-            if (page < 1 || page > totalPages) return;
-            currentPage = page;
-            renderTable();
-            document.querySelector('.table-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        function changePerPage(value) {
-            perPage = parseInt(value);
-            currentPage = 1;
-            renderTable();
-        }
-
-        // ============ RESET FILTERS ============
         function resetFilters() {
             document.getElementById('fDateFrom').value = '';
             document.getElementById('fDateTo').value = '';
             document.getElementById('fBuyer').value = '';
             document.getElementById('fItem').value = '';
-            document.getElementById('fType').value = '';
-            document.getElementById('fTeam').value = '';
             applyFilters();
             showToast('Filters reset', 'success');
         }
 
-        // ============ DOWNLOAD EXCEL ============
         function downloadExcel() {
             if (filteredData.length === 0) {
                 showToast('No data to download', 'error');
@@ -1414,37 +1007,92 @@
 
             showToast('Preparing Excel file...', 'success');
 
-            const excelData = filteredData.map((txn, idx) => ({
-                'No': idx + 1,
-                'Date': txn.txn_date || '',
-                'Buyer': txn.items?.buyers?.name || '',
-                'Item': txn.items?.description || '',
-                'Item Code': txn.items?.item_code || '',
-                'Unit': txn.items?.unit || '',
-                'Location': txn.items?.goods_location || '',
-                'Type': txn.type || '',
-                'Qty': parseFloat(txn.qty) || 0,
-                'Unit Price': parseFloat(txn.unit_price_snapshot) || 0,
-                'Line Value': parseFloat(txn.line_value) || 0,
-                'Challan No': txn.challan_no || '',
-                'MRR No': txn.mrr_no || '',
-                'Order No': txn.order_no || '',
-                'SR/Style No': txn.style_no || '',
-                'Present Stock': parseFloat(txn.present_stock_after) || 0,
-                'Stock Value': parseFloat(txn.stock_value_after) || 0,
-                'Supplier': txn.items?.supplier || '',
-                'Team Member': txn.team_members?.name || '',
-                'Remarks': txn.remarks || ''
-            }));
+            const groups = {};
+            filteredData.forEach(item => {
+                const buyerName = item.buyers?.name || 'Unknown Buyer';
+                if (!groups[buyerName]) groups[buyerName] = [];
+                groups[buyerName].push(item);
+            });
+
+            let excelData = [];
+            let grandTotal = {
+                prevQty: 0, prevValue: 0, presentStock: 0, stockValue: 0
+            };
+
+            const buyerNames = Object.keys(groups).sort();
+            
+            buyerNames.forEach(buyerName => {
+                const items = groups[buyerName];
+                let buyerTotal = { prevQty: 0, prevValue: 0, presentStock: 0, stockValue: 0 };
+
+                items.forEach(item => {
+                    const prevQty = parseFloat(item.current_stock) || 0;
+                    const prevValue = parseFloat(item.current_value) || 0;
+                    
+                    buyerTotal.prevQty += prevQty;
+                    buyerTotal.prevValue += prevValue;
+                    buyerTotal.presentStock += prevQty;
+                    buyerTotal.stockValue += prevValue;
+
+                    excelData.push({
+                        'Buyer': buyerName,
+                        'Description Of Item': item.description || '',
+                        'Unit': item.unit || '',
+                        'Goods Location': item.goods_location || '',
+                        'Previous Qty': prevQty,
+                        'Previous Value': prevValue,
+                        'Received Qty': 0,
+                        'Received Value': 0,
+                        'Delivery Qty': 0,
+                        'Delivery Value': 0,
+                        'Present Stock': prevQty,
+                        'Stock Value': prevValue
+                    });
+                });
+
+                grandTotal.prevQty += buyerTotal.prevQty;
+                grandTotal.prevValue += buyerTotal.prevValue;
+                grandTotal.presentStock += buyerTotal.presentStock;
+                grandTotal.stockValue += buyerTotal.stockValue;
+
+                excelData.push({
+                    'Buyer': `${buyerName} Total`,
+                    'Description Of Item': '',
+                    'Unit': '',
+                    'Goods Location': '',
+                    'Previous Qty': buyerTotal.prevQty,
+                    'Previous Value': buyerTotal.prevValue,
+                    'Received Qty': 0,
+                    'Received Value': 0,
+                    'Delivery Qty': 0,
+                    'Delivery Value': 0,
+                    'Present Stock': buyerTotal.presentStock,
+                    'Stock Value': buyerTotal.stockValue
+                });
+            });
+
+            excelData.push({
+                'Buyer': 'Grand Total',
+                'Description Of Item': '',
+                'Unit': '',
+                'Goods Location': '',
+                'Previous Qty': grandTotal.prevQty,
+                'Previous Value': grandTotal.prevValue,
+                'Received Qty': 0,
+                'Received Value': 0,
+                'Delivery Qty': 0,
+                'Delivery Value': 0,
+                'Present Stock': grandTotal.presentStock,
+                'Stock Value': grandTotal.stockValue
+            });
 
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(excelData);
 
             ws['!cols'] = [
-                { wch: 5 }, { wch: 12 }, { wch: 25 }, { wch: 30 }, { wch: 18 },
-                { wch: 8 }, { wch: 15 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
-                { wch: 12 }, { wch: 15 }, { wch: 18 }, { wch: 15 }, { wch: 25 },
-                { wch: 12 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 30 }
+                { wch: 25 }, { wch: 35 }, { wch: 8 }, { wch: 15 },
+                { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+                { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
             ];
 
             XLSX.utils.book_append_sheet(wb, ws, 'Pivot Report');
@@ -1456,20 +1104,17 @@
             showToast(`Downloaded: ${fileName}`, 'success');
         }
 
-        // ============ INIT ============
         document.addEventListener('DOMContentLoaded', async () => {
             await loadFilters();
-            await loadTransactions();
+            await loadItems();
         });
 
-        // Enter key on filter inputs
         document.querySelectorAll('.filter-group input').forEach(input => {
             input.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') applyFilters();
             });
         });
 
-        // PWA Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('../sw.js').catch(() => {});
         }
