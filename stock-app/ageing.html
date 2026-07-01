@@ -1,8 +1,1402 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>GMS Accessories Stock - ageing</title></head>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ageing Report — GMS Accessories Stock</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0a1628">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-bg-strong: rgba(255, 255, 255, 0.12);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(255, 255, 255, 0.5);
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #ec4899;
+            --accent-cyan: #06b6d4;
+            --accent-orange: #f97316;
+            --age-1: #10b981;
+            --age-2: #f59e0b;
+            --age-3: #f97316;
+            --age-4: #ef4444;
+            --age-5: #dc2626;
+            --age-6: #b91c1c;
+            --age-7: #7f1d1d;
+        }
+
+        [data-theme="light"] {
+            --glass-bg: rgba(255, 255, 255, 0.6);
+            --glass-bg-strong: rgba(255, 255, 255, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            padding-bottom: 80px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* 3D Animated Background */
+        .bg-3d {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -2;
+            background: linear-gradient(135deg, #0a1628 0%, #1a1a3e 25%, #0f2027 50%, #203a43 75%, #0a1628 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        [data-theme="light"] .bg-3d {
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 25%, #dbeafe 50%, #e0e7ff 75%, #f0f4ff 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.4;
+            z-index: -1;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .orb-1 { width: 300px; height: 300px; background: radial-gradient(circle, var(--accent-blue), transparent); top: -100px; right: -100px; }
+        .orb-2 { width: 250px; height: 250px; background: radial-gradient(circle, var(--accent-purple), transparent); bottom: -80px; left: -80px; animation-delay: -5s; }
+        .orb-3 { width: 200px; height: 200px; background: radial-gradient(circle, var(--accent-pink), transparent); top: 50%; left: 50%; animation-delay: -10s; }
+        .orb-4 { width: 180px; height: 180px; background: radial-gradient(circle, var(--accent-cyan), transparent); top: 20%; left: 10%; animation-delay: -15s; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -30px) scale(1.1); }
+            50% { transform: translate(-20px, 20px) scale(0.9); }
+            75% { transform: translate(20px, 10px) scale(1.05); }
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        /* Header */
+        .header {
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 22, 40, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        [data-theme="light"] .header {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 18px;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        [data-theme="light"] .header-title {
+            background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Main */
+        .main {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Page Title */
+        .page-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .page-title h2 {
+            font-size: 22px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-title h2 i {
+            -webkit-text-fill-color: var(--accent-blue);
+        }
+
+        .title-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-excel {
+            background: linear-gradient(135deg, var(--accent-green), #059669);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, var(--accent-yellow), #d97706);
+            color: #1e293b;
+        }
+
+        .btn-search {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        }
+
+        /* Filter Card */
+        .filter-card {
+            padding: 20px;
+            margin-bottom: 20px;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .filter-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-title i {
+            color: var(--accent-blue);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-group label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--text-primary);
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        [data-theme="light"] .filter-group input,
+        [data-theme="light"] .filter-group select {
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .filter-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Age Summary Cards */
+        .age-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .age-card {
+            padding: 16px;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .age-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .age-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .age-card.age-1::before { background: var(--age-1); }
+        .age-card.age-2::before { background: var(--age-2); }
+        .age-card.age-3::before { background: var(--age-3); }
+        .age-card.age-4::before { background: var(--age-4); }
+        .age-card.age-5::before { background: var(--age-5); }
+        .age-card.age-6::before { background: var(--age-6); }
+        .age-card.age-7::before { background: var(--age-7); }
+
+        .age-card .age-count {
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .age-card.age-1 .age-count { color: var(--age-1); }
+        .age-card.age-2 .age-count { color: var(--age-2); }
+        .age-card.age-3 .age-count { color: var(--age-3); }
+        .age-card.age-4 .age-count { color: var(--age-4); }
+        .age-card.age-5 .age-count { color: var(--age-5); }
+        .age-card.age-6 .age-count { color: var(--age-6); }
+        .age-card.age-7 .age-count { color: var(--age-7); }
+
+        .age-card .age-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .age-card .age-value {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* Table Card */
+        .table-card {
+            padding: 20px;
+            margin-bottom: 20px;
+            animation: fadeInUp 0.7s ease;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 12px;
+            margin: 0 -4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            min-width: 1000px;
+        }
+
+        thead th {
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 2px solid var(--glass-border);
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+            position: sticky;
+            top: 0;
+        }
+
+        [data-theme="light"] thead th {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        thead th:hover {
+            color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        thead th .sort-icon {
+            margin-left: 4px;
+            font-size: 9px;
+            opacity: 0.5;
+        }
+
+        thead th.sorted .sort-icon {
+            opacity: 1;
+            color: var(--accent-blue);
+        }
+
+        tbody tr {
+            transition: all 0.2s;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        tbody tr:hover {
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tbody tr:nth-child(even):hover {
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        tbody td {
+            padding: 10px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            font-size: 12px;
+        }
+
+        /* Age Badge */
+        .age-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+            text-align: center;
+            min-width: 60px;
+        }
+
+        .age-badge.age-1 {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--age-1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .age-badge.age-2 {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--age-2);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .age-badge.age-3 {
+            background: rgba(249, 115, 22, 0.2);
+            color: var(--age-3);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .age-badge.age-4 {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--age-4);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .age-badge.age-5 {
+            background: rgba(220, 38, 38, 0.2);
+            color: var(--age-5);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+        }
+
+        .age-badge.age-6 {
+            background: rgba(185, 28, 28, 0.2);
+            color: var(--age-6);
+            border: 1px solid rgba(185, 28, 28, 0.3);
+        }
+
+        .age-badge.age-7 {
+            background: rgba(127, 29, 29, 0.3);
+            color: var(--age-7);
+            border: 1px solid rgba(127, 29, 29, 0.4);
+        }
+
+        .age-days {
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .age-days.age-1 { color: var(--age-1); }
+        .age-days.age-2 { color: var(--age-2); }
+        .age-days.age-3 { color: var(--age-3); }
+        .age-days.age-4 { color: var(--age-4); }
+        .age-days.age-5 { color: var(--age-5); }
+        .age-days.age-6 { color: var(--age-6); }
+        .age-days.age-7 { color: var(--age-7); }
+
+        /* Row highlight by age */
+        tbody tr.row-age-1 { border-left: 3px solid var(--age-1); }
+        tbody tr.row-age-2 { border-left: 3px solid var(--age-2); }
+        tbody tr.row-age-3 { border-left: 3px solid var(--age-3); }
+        tbody tr.row-age-4 { border-left: 3px solid var(--age-4); }
+        tbody tr.row-age-5 { border-left: 3px solid var(--age-5); }
+        tbody tr.row-age-6 { border-left: 3px solid var(--age-6); }
+        tbody tr.row-age-7 { border-left: 3px solid var(--age-7); }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 0 0;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .pagination-info {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .page-btn {
+            min-width: 36px;
+            height: 36px;
+            padding: 0 12px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            font-family: 'Poppins', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .page-btn.active {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            border-color: transparent;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .per-page-select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            font-family: 'Poppins', sans-serif;
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* Loading / Empty */
+        .loading-state, .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .loading-state i {
+            font-size: 40px;
+            color: var(--accent-blue);
+            margin-bottom: 16px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        @keyframes fadeInUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 22, 40, 0.9);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0 10px;
+            z-index: 100;
+        }
+
+        [data-theme="light"] .bottom-nav {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-item.active {
+            color: var(--accent-blue);
+        }
+
+        .nav-item:hover {
+            color: var(--accent-blue);
+        }
+
+        .nav-item .nav-icon {
+            font-size: 18px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120px);
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(20px);
+            color: var(--text-primary);
+            padding: 12px 22px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            z-index: 500;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.4s ease;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.error { border-left: 4px solid var(--accent-red); }
+        .toast.success { border-left: 4px solid var(--accent-green); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main { padding: 16px; }
+            .filter-grid { grid-template-columns: 1fr 1fr; }
+            .page-title h2 { font-size: 18px; }
+            .age-summary { grid-template-columns: repeat(2, 1fr); }
+            .age-card .age-count { font-size: 20px; }
+            .btn { padding: 8px 14px; font-size: 12px; }
+        }
+
+        @media (max-width: 480px) {
+            .filter-grid { grid-template-columns: 1fr; }
+            .title-actions { width: 100%; }
+            .title-actions .btn { flex: 1; justify-content: center; }
+        }
+    </style>
+</head>
 <body>
-<h1>ageing</h1>
-<p>🚧 Under construction.</p>
+    <!-- 3D Background -->
+    <div class="bg-3d"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <a href="index.html" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div class="logo-icon">G</div>
+            <div class="header-title">Ageing Report</div>
+        </div>
+        <div class="header-actions">
+            <button class="header-btn" onclick="toggleTheme()" id="themeBtn" title="Theme">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="main">
+        <!-- Page Title -->
+        <div class="page-title">
+            <h2><i class="fas fa-hourglass-half"></i> Stock Ageing Report</h2>
+            <div class="title-actions">
+                <button class="btn btn-reset" onclick="resetFilters()">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+                <button class="btn btn-excel" onclick="downloadExcel()">
+                    <i class="fas fa-file-excel"></i> Download Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Card -->
+        <div class="filter-card glass">
+            <div class="filter-title">
+                <i class="fas fa-filter"></i> Filters
+            </div>
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label>Buyer</label>
+                    <select id="fBuyer">
+                        <option value="">All Buyers</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Age Category</label>
+                    <select id="fCategory">
+                        <option value="">All Categories</option>
+                        <option value="1-30 Days">1-30 Days (Fresh)</option>
+                        <option value="31-60 Days">31-60 Days</option>
+                        <option value="61-90 Days">61-90 Days</option>
+                        <option value="91-120 Days">91-120 Days</option>
+                        <option value="121-150 Days">121-150 Days</option>
+                        <option value="151-180 Days">151-180 Days</option>
+                        <option value="181>365 Days">181+ Days (Critical)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Search Item</label>
+                    <input type="text" id="fSearch" placeholder="Item name or code...">
+                </div>
+                <div class="filter-group">
+                    <label>Min Age (days)</label>
+                    <input type="number" id="fMinAge" placeholder="0" min="0">
+                </div>
+                <div class="filter-group">
+                    <label>Max Age (days)</label>
+                    <input type="number" id="fMaxAge" placeholder="9999" min="0">
+                </div>
+                <div class="filter-group" style="justify-content: flex-end;">
+                    <button class="btn btn-search" onclick="applyFilters()" style="width: 100%;">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Age Summary Cards -->
+        <div class="age-summary" id="ageSummary">
+            <div class="age-card glass age-1">
+                <div class="age-count" id="count1">—</div>
+                <div class="age-label">1-30 Days</div>
+                <div class="age-value" id="value1">$0</div>
+            </div>
+            <div class="age-card glass age-2">
+                <div class="age-count" id="count2">—</div>
+                <div class="age-label">31-60 Days</div>
+                <div class="age-value" id="value2">$0</div>
+            </div>
+            <div class="age-card glass age-3">
+                <div class="age-count" id="count3">—</div>
+                <div class="age-label">61-90 Days</div>
+                <div class="age-value" id="value3">$0</div>
+            </div>
+            <div class="age-card glass age-4">
+                <div class="age-count" id="count4">—</div>
+                <div class="age-label">91-120 Days</div>
+                <div class="age-value" id="value4">$0</div>
+            </div>
+            <div class="age-card glass age-5">
+                <div class="age-count" id="count5">—</div>
+                <div class="age-label">121-150 Days</div>
+                <div class="age-value" id="value5">$0</div>
+            </div>
+            <div class="age-card glass age-6">
+                <div class="age-count" id="count6">—</div>
+                <div class="age-label">151-180 Days</div>
+                <div class="age-value" id="value6">$0</div>
+            </div>
+            <div class="age-card glass age-7">
+                <div class="age-count" id="count7">—</div>
+                <div class="age-label">181+ Days</div>
+                <div class="age-value" id="value7">$0</div>
+            </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="table-card glass">
+            <div id="tableContent">
+                <div class="loading-state">
+                    <i class="fas fa-circle-notch"></i>
+                    <p>Loading ageing data...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <i class="fas fa-home nav-icon"></i> Home
+        </a>
+        <a href="dashboard.html" class="nav-item">
+            <i class="fas fa-chart-line nav-icon"></i> Dashboard
+        </a>
+        <a href="transactions.html" class="nav-item">
+            <i class="fas fa-list nav-icon"></i> Ledger
+        </a>
+        <a href="pivot.html" class="nav-item">
+            <i class="fas fa-table nav-icon"></i> Pivot
+        </a>
+        <a href="ageing.html" class="nav-item active">
+            <i class="fas fa-hourglass-half nav-icon"></i> Ageing
+        </a>
+        <a href="new-item.html" class="nav-item">
+            <i class="fas fa-plus-circle nav-icon"></i> New
+        </a>
+    </nav>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle" id="toastIcon"></i>
+        <span id="toastMsg">Success!</span>
+    </div>
+
+    <script>
+        // ============ SUPABASE ============
+        const SUPABASE_URL = 'https://qwtourjspllhiiryqewf.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_pcQFRFQWWAT1zTXfVfgdSw_43rcVr5S';
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ============ STATE ============
+        let allData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        let perPage = 100;
+        let sortColumn = 'age_days';
+        let sortDirection = 'desc';
+
+        // ============ AGE CATEGORIES ============
+        const AGE_CATEGORIES = [
+            { name: '1-30 Days', min: 1, max: 30, class: 'age-1' },
+            { name: '31-60 Days', min: 31, max: 60, class: 'age-2' },
+            { name: '61-90 Days', min: 61, max: 90, class: 'age-3' },
+            { name: '91-120 Days', min: 91, max: 120, class: 'age-4' },
+            { name: '121-150 Days', min: 121, max: 150, class: 'age-5' },
+            { name: '151-180 Days', min: 151, max: 180, class: 'age-6' },
+            { name: '181>365 Days', min: 181, max: 99999, class: 'age-7' }
+        ];
+
+        // ============ THEME ============
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateThemeIcon(next);
+        }
+
+        function updateThemeIcon(theme) {
+            const btn = document.getElementById('themeBtn');
+            btn.innerHTML = theme === 'dark' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+        }
+
+        (function() {
+            const saved = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', saved);
+            updateThemeIcon(saved);
+        })();
+
+        // ============ TOAST ============
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMsg');
+            toast.className = 'toast ' + type;
+            icon.className = type === 'error' ? 'fas fa-times-circle' : 'fas fa-check-circle';
+            msg.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ============ UTILS ============
+        function fmt(n) {
+            if (n === null || n === undefined || isNaN(n)) return '0';
+            return parseFloat(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
+        }
+
+        function fmtCompact(n) {
+            if (n === null || isNaN(n)) return '0';
+            n = parseFloat(n);
+            if (Math.abs(n) >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+            if (Math.abs(n) >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n.toFixed(0);
+        }
+
+        function getAgeClass(ageDays) {
+            if (ageDays <= 30) return 'age-1';
+            if (ageDays <= 60) return 'age-2';
+            if (ageDays <= 90) return 'age-3';
+            if (ageDays <= 120) return 'age-4';
+            if (ageDays <= 150) return 'age-5';
+            if (ageDays <= 180) return 'age-6';
+            return 'age-7';
+        }
+
+        function getCategoryName(ageDays) {
+            if (ageDays <= 30) return '1-30 Days';
+            if (ageDays <= 60) return '31-60 Days';
+            if (ageDays <= 90) return '61-90 Days';
+            if (ageDays <= 120) return '91-120 Days';
+            if (ageDays <= 150) return '121-150 Days';
+            if (ageDays <= 180) return '151-180 Days';
+            return '181>365 Days';
+        }
+
+        // ============ LOAD FILTERS ============
+        async function loadFilters() {
+            try {
+                const { data: buyers } = await db.from('buyers').select('id, name').order('name');
+                const buyerSelect = document.getElementById('fBuyer');
+                (buyers || []).forEach(b => {
+                    buyerSelect.innerHTML += `<option value="${b.id}">${b.name}</option>`;
+                });
+            } catch (err) {
+                console.error('Load filters error:', err);
+            }
+        }
+
+        // ============ APPLY FILTERS ============
+        function applyFilters() {
+            currentPage = 1;
+            filterData();
+            updateSummary();
+            renderTable();
+        }
+
+        // ============ LOAD DATA ============
+        async function loadData() {
+            const tableContent = document.getElementById('tableContent');
+            tableContent.innerHTML = `
+                <div class="loading-state">
+                    <i class="fas fa-circle-notch"></i>
+                    <p>Loading ageing data...</p>
+                </div>
+            `;
+
+            try {
+                const { data, error } = await db
+                    .from('v_ageing')
+                    .select('*')
+                    .order('age_days', { ascending: false });
+
+                if (error) throw error;
+
+                allData = data || [];
+                filterData();
+                updateSummary();
+                renderTable();
+
+            } catch (err) {
+                console.error('Load data error:', err);
+                tableContent.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Error: ${err.message}</p>
+                    </div>
+                `;
+                showToast('Error loading data', 'error');
+            }
+        }
+
+        // ============ FILTER DATA ============
+        function filterData() {
+            const buyerId = document.getElementById('fBuyer').value;
+            const category = document.getElementById('fCategory').value;
+            const search = document.getElementById('fSearch').value.trim().toLowerCase();
+            const minAge = parseInt(document.getElementById('fMinAge').value) || 0;
+            const maxAge = parseInt(document.getElementById('fMaxAge').value) || 99999;
+
+            filteredData = allData.filter(item => {
+                // Buyer filter
+                if (buyerId && item.buyer_id != buyerId) return false;
+
+                // Category filter
+                if (category && item.ageing_category !== category) return false;
+
+                // Search filter
+                if (search) {
+                    const desc = (item.description || '').toLowerCase();
+                    const code = (item.item_code || '').toLowerCase();
+                    if (!desc.includes(search) && !code.includes(search)) return false;
+                }
+
+                // Age range filter
+                const age = parseInt(item.age_days) || 0;
+                if (age < minAge || age > maxAge) return false;
+
+                return true;
+            });
+
+            // Apply sorting
+            applySorting();
+        }
+
+        // ============ SORTING ============
+        function applySorting() {
+            filteredData.sort((a, b) => {
+                let aVal = getSortValue(a, sortColumn);
+                let bVal = getSortValue(b, sortColumn);
+
+                if (aVal === null || aVal === undefined) aVal = '';
+                if (bVal === null || bVal === undefined) bVal = '';
+
+                if (typeof aVal === 'number' && typeof bVal === 'number') {
+                    return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+
+                aVal = String(aVal).toLowerCase();
+                bVal = String(bVal).toLowerCase();
+
+                if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function getSortValue(row, col) {
+            switch (col) {
+                case 'buyer': return row.buyer || '';
+                case 'item': return row.description || '';
+                case 'unit': return row.unit || '';
+                case 'stock': return parseFloat(row.current_stock) || 0;
+                case 'value': return parseFloat(row.current_value) || 0;
+                case 'last_date': return row.last_txn_date || '';
+                case 'age_days': return parseInt(row.age_days) || 0;
+                case 'category': return row.ageing_category || '';
+                default: return '';
+            }
+        }
+
+        function sortBy(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = column === 'age_days' ? 'desc' : 'asc';
+            }
+            applySorting();
+            renderTable();
+        }
+
+        // ============ UPDATE SUMMARY ============
+        function updateSummary() {
+            const counts = [0, 0, 0, 0, 0, 0, 0];
+            const values = [0, 0, 0, 0, 0, 0, 0];
+
+            filteredData.forEach(item => {
+                const age = parseInt(item.age_days) || 0;
+                const value = parseFloat(item.current_value) || 0;
+                let idx = 0;
+                if (age <= 30) idx = 0;
+                else if (age <= 60) idx = 1;
+                else if (age <= 90) idx = 2;
+                else if (age <= 120) idx = 3;
+                else if (age <= 150) idx = 4;
+                else if (age <= 180) idx = 5;
+                else idx = 6;
+
+                counts[idx]++;
+                values[idx] += value;
+            });
+
+            for (let i = 0; i < 7; i++) {
+                document.getElementById(`count${i + 1}`).textContent = fmt(counts[i]);
+                document.getElementById(`value${i + 1}`).textContent = '$' + fmtCompact(values[i]);
+            }
+        }
+
+        // ============ RENDER TABLE ============
+        function renderTable() {
+            const tableContent = document.getElementById('tableContent');
+
+            if (filteredData.length === 0) {
+                tableContent.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No items found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Pagination
+            const totalPages = Math.ceil(filteredData.length / perPage);
+            if (currentPage > totalPages) currentPage = totalPages;
+            const startIdx = (currentPage - 1) * perPage;
+            const endIdx = Math.min(startIdx + perPage, filteredData.length);
+            const pageData = filteredData.slice(startIdx, endIdx);
+
+            // Build table
+            const columns = [
+                { key: 'no', label: '#', sortable: false },
+                { key: 'buyer', label: 'Buyer', sortable: true },
+                { key: 'item', label: 'Item', sortable: true },
+                { key: 'unit', label: 'Unit', sortable: true },
+                { key: 'stock', label: 'Present Stock', sortable: true },
+                { key: 'value', label: 'Stock Value', sortable: true },
+                { key: 'last_date', label: 'Last Updated', sortable: true },
+                { key: 'age_days', label: 'Age (Days)', sortable: true },
+                { key: 'category', label: 'Category', sortable: true }
+            ];
+
+            let html = '<div class="table-wrapper"><table><thead><tr>';
+            columns.forEach(col => {
+                const isSorted = sortColumn === col.key;
+                const sortIcon = isSorted
+                    ? (sortDirection === 'asc' ? '<i class="fas fa-sort-up sort-icon"></i>' : '<i class="fas fa-sort-down sort-icon"></i>')
+                    : '<i class="fas fa-sort sort-icon"></i>';
+                const sortable = col.sortable ? `onclick="sortBy('${col.key}')"` : '';
+                const sortedClass = isSorted ? 'sorted' : '';
+                html += `<th class="${sortedClass}" ${sortable}>${col.label} ${col.sortable ? sortIcon : ''}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            pageData.forEach((item, idx) => {
+                const age = parseInt(item.age_days) || 0;
+                const ageClass = getAgeClass(age);
+                const categoryName = item.ageing_category || getCategoryName(age);
+
+                html += `<tr class="row-${ageClass}">
+                    <td>${startIdx + idx + 1}</td>
+                    <td>${item.buyer || ''}</td>
+                    <td>${item.description || ''}</td>
+                    <td>${item.unit || ''}</td>
+                    <td>${fmt(item.current_stock)}</td>
+                    <td>$${fmt(item.current_value)}</td>
+                    <td>${item.last_txn_date || '—'}</td>
+                    <td class="age-days ${ageClass}">${age}</td>
+                    <td><span class="age-badge ${ageClass}">${categoryName}</span></td>
+                </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+
+            // Pagination controls
+            html += `<div class="pagination">
+                <div class="pagination-info">
+                    Showing ${startIdx + 1}-${endIdx} of ${filteredData.length} items
+                </div>
+                <div class="pagination-controls">
+                    <select class="per-page-select" onchange="changePerPage(this.value)">
+                        <option value="50" ${perPage === 50 ? 'selected' : ''}>50 / page</option>
+                        <option value="100" ${perPage === 100 ? 'selected' : ''}>100 / page</option>
+                        <option value="250" ${perPage === 250 ? 'selected' : ''}>250 / page</option>
+                        <option value="500" ${perPage === 500 ? 'selected' : ''}>500 / page</option>
+                    </select>
+                    <button class="page-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                    <button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-angle-left"></i>
+                    </button>`;
+
+            const maxButtons = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+
+            html += `
+                    <button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                        <i class="fas fa-angle-right"></i>
+                    </button>
+                    <button class="page-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>
+                        <i class="fas fa-angle-double-right"></i>
+                    </button>
+                </div>
+            </div>`;
+
+            tableContent.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredData.length / perPage);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderTable();
+            document.querySelector('.table-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function changePerPage(value) {
+            perPage = parseInt(value);
+            currentPage = 1;
+            renderTable();
+        }
+
+        // ============ RESET FILTERS ============
+        function resetFilters() {
+            document.getElementById('fBuyer').value = '';
+            document.getElementById('fCategory').value = '';
+            document.getElementById('fSearch').value = '';
+            document.getElementById('fMinAge').value = '';
+            document.getElementById('fMaxAge').value = '';
+            applyFilters();
+            showToast('Filters reset', 'success');
+        }
+
+        // ============ DOWNLOAD EXCEL ============
+        function downloadExcel() {
+            if (filteredData.length === 0) {
+                showToast('No data to download', 'error');
+                return;
+            }
+
+            showToast('Preparing Excel file...', 'success');
+
+            const excelData = filteredData.map((item, idx) => ({
+                'No': idx + 1,
+                'Buyer': item.buyer || '',
+                'Item Code': item.item_code || '',
+                'Description': item.description || '',
+                'Unit': item.unit || '',
+                'Present Stock': parseFloat(item.current_stock) || 0,
+                'Stock Value': parseFloat(item.current_value) || 0,
+                'Last Updated': item.last_txn_date || '',
+                'Age (Days)': parseInt(item.age_days) || 0,
+                'Category': item.ageing_category || getCategoryName(parseInt(item.age_days) || 0)
+            }));
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(excelData);
+
+            ws['!cols'] = [
+                { wch: 5 },   // No
+                { wch: 25 },  // Buyer
+                { wch: 18 },  // Item Code
+                { wch: 30 },  // Description
+                { wch: 8 },   // Unit
+                { wch: 14 },  // Present Stock
+                { wch: 14 },  // Stock Value
+                { wch: 12 },  // Last Updated
+                { wch: 10 },  // Age (Days)
+                { wch: 16 }   // Category
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, 'Ageing Report');
+
+            const today = new Date().toISOString().split('T')[0];
+            const fileName = `GMS-Ageing-Report-${today}.xlsx`;
+
+            XLSX.writeFile(wb, fileName);
+            showToast(`Downloaded: ${fileName}`, 'success');
+        }
+
+        // ============ AGE CARD CLICK ============
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add click handlers to age cards
+            document.querySelectorAll('.age-card').forEach((card, idx) => {
+                card.addEventListener('click', () => {
+                    const categorySelect = document.getElementById('fCategory');
+                    const categories = [
+                        '1-30 Days', '31-60 Days', '61-90 Days',
+                        '91-120 Days', '121-150 Days', '151-180 Days', '181>365 Days'
+                    ];
+                    categorySelect.value = categories[idx];
+                    applyFilters();
+                });
+            });
+        });
+
+        // ============ INIT ============
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadFilters();
+            await loadData();
+        });
+
+        // Enter key on filter inputs
+        document.querySelectorAll('.filter-group input').forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') applyFilters();
+            });
+        });
+
+        // PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('../sw.js').catch(() => {});
+        }
+    </script>
 </body>
 </html>
