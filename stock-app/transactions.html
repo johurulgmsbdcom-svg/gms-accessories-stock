@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         :root {
             --glass-bg: rgba(255, 255, 255, 0.08);
@@ -262,6 +263,10 @@
             background: linear-gradient(135deg, var(--accent-green), #059669);
         }
 
+        .btn-print {
+            background: linear-gradient(135deg, var(--accent-purple), #7c3aed);
+        }
+
         .btn-reset {
             background: linear-gradient(135deg, var(--accent-yellow), #d97706);
             color: #1e293b;
@@ -269,6 +274,11 @@
 
         .btn-search {
             background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 11px;
         }
 
         /* Filter Card */
@@ -425,7 +435,7 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 12px;
-            min-width: 1800px;
+            min-width: 2000px;
         }
 
         thead th {
@@ -533,6 +543,23 @@
             font-weight: 600;
         }
 
+        .barcode-btn {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--accent-purple);
+            background: rgba(139, 92, 246, 0.2);
+            color: var(--accent-purple);
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .barcode-btn:hover {
+            background: var(--accent-purple);
+            color: white;
+        }
+
         /* Pagination */
         .pagination {
             display: flex;
@@ -600,6 +627,149 @@
             font-size: 12px;
             outline: none;
             cursor: pointer;
+        }
+
+        /* Barcode Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--accent-red);
+            border-color: var(--accent-red);
+        }
+
+        .barcode-item {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+
+        .barcode-item-info {
+            margin-bottom: 15px;
+        }
+
+        .barcode-item-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+
+        .barcode-item-buyer {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .barcode-item-code {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 5px;
+            font-family: monospace;
+        }
+
+        .barcode-svg {
+            width: 100%;
+            max-width: 400px;
+            height: 100px;
+            margin: 10px 0;
+        }
+
+        .print-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            justify-content: center;
+        }
+
+        /* Print Styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .modal-overlay, .modal-overlay * {
+                visibility: visible;
+            }
+            .modal-overlay {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white;
+            }
+            .modal-content {
+                box-shadow: none;
+                border: none;
+                max-width: 100%;
+            }
+            .modal-header, .print-actions {
+                display: none;
+            }
+            .barcode-item {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
         }
 
         /* Loading / Empty */
@@ -717,6 +887,7 @@
             .stats-row { grid-template-columns: repeat(2, 1fr); }
             .stat-card .stat-value { font-size: 18px; }
             .btn { padding: 8px 14px; font-size: 12px; }
+            .modal-content { padding: 20px; }
         }
 
         @media (max-width: 480px) {
@@ -758,6 +929,9 @@
             <div class="title-actions">
                 <button class="btn btn-reset" onclick="resetFilters()">
                     <i class="fas fa-redo"></i> Reset
+                </button>
+                <button class="btn btn-print" onclick="printAllBarcodes()">
+                    <i class="fas fa-barcode"></i> Print All
                 </button>
                 <button class="btn btn-excel" onclick="downloadExcel()">
                     <i class="fas fa-file-excel"></i> Download Excel
@@ -869,6 +1043,29 @@
         </div>
     </main>
 
+    <!-- Barcode Modal -->
+    <div class="modal-overlay" id="barcodeModal">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-barcode"></i> Item Barcodes</h3>
+                <button class="modal-close" onclick="closeBarcodeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="barcodeContainer">
+                <!-- Barcodes will be inserted here -->
+            </div>
+            <div class="print-actions">
+                <button class="btn btn-print" onclick="printBarcodes()">
+                    <i class="fas fa-print"></i> Print Barcodes
+                </button>
+                <button class="btn btn-reset" onclick="closeBarcodeModal()">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Bottom Nav -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item">
@@ -911,6 +1108,7 @@
         let perPage = 100;
         let sortColumn = 'txn_date';
         let sortDirection = 'desc';
+        let currentBarcodeItems = [];
 
         // ============ THEME ============
         function toggleTheme() {
@@ -1012,15 +1210,15 @@
             `;
 
             try {
-                // Build query
+                // Build query - REMOVED lc_pi_no as it doesn't exist
                 let query = db
                     .from('transactions')
                     .select(`
                         id, type, txn_date, qty, unit_price_snapshot, line_value,
-                        challan_no, mrr_no, order_no, style_no, remarks, lc_pi_no,
+                        challan_no, mrr_no, order_no, style_no, remarks,
                         present_stock_after, stock_value_after,
                         items:item_id (
-                            description, unit, goods_location,
+                            id, description, unit, goods_location, item_code, qr_payload,
                             buyer_id, supplier,
                             buyers:buyer_id (name)
                         ),
@@ -1123,6 +1321,7 @@
                 case 'stock_value': return parseFloat(row.stock_value_after) || 0;
                 case 'supplier': return row.items?.supplier || '';
                 case 'team': return row.team_members?.name || '';
+                case 'item_code': return row.items?.item_code || '';
                 default: return '';
             }
         }
@@ -1162,6 +1361,90 @@
             document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
         }
 
+        // ============ BARCODE FUNCTIONS ============
+        function showBarcodeModal(items) {
+            currentBarcodeItems = items;
+            const modal = document.getElementById('barcodeModal');
+            const container = document.getElementById('barcodeContainer');
+            
+            container.innerHTML = '';
+            
+            items.forEach((item, index) => {
+                const barcodeId = `barcode-${index}`;
+                const itemCode = item.item_code || item.qr_payload || `ITEM-${item.id}`;
+                const buyerName = item.buyers?.name || 'N/A';
+                const itemName = item.description || 'No Description';
+                
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'barcode-item';
+                itemDiv.innerHTML = `
+                    <div class="barcode-item-info">
+                        <div class="barcode-item-name">${itemName}</div>
+                        <div class="barcode-item-buyer">Buyer: ${buyerName}</div>
+                        <div class="barcode-item-code">${itemCode}</div>
+                    </div>
+                    <svg id="${barcodeId}" class="barcode-svg"></svg>
+                `;
+                
+                container.appendChild(itemDiv);
+                
+                // Generate barcode
+                setTimeout(() => {
+                    try {
+                        JsBarcode(`#${barcodeId}`, itemCode, {
+                            format: "CODE128",
+                            width: 2,
+                            height: 80,
+                            displayValue: true,
+                            fontSize: 14,
+                            margin: 10
+                        });
+                    } catch (err) {
+                        console.error('Barcode generation error:', err);
+                    }
+                }, 100);
+            });
+            
+            modal.classList.add('active');
+        }
+
+        function closeBarcodeModal() {
+            const modal = document.getElementById('barcodeModal');
+            modal.classList.remove('active');
+            currentBarcodeItems = [];
+        }
+
+        function printBarcodes() {
+            window.print();
+        }
+
+        function printAllBarcodes() {
+            if (filteredData.length === 0) {
+                showToast('No data to print', 'error');
+                return;
+            }
+            
+            // Get unique items from transactions
+            const uniqueItems = [];
+            const seenItems = new Set();
+            
+            filteredData.forEach(txn => {
+                const itemId = txn.item_id;
+                if (!seenItems.has(itemId)) {
+                    seenItems.add(itemId);
+                    uniqueItems.push({
+                        id: itemId,
+                        description: txn.items?.description,
+                        item_code: txn.items?.item_code,
+                        qr_payload: txn.items?.qr_payload,
+                        buyers: txn.items?.buyers
+                    });
+                }
+            });
+            
+            showBarcodeModal(uniqueItems);
+        }
+
         // ============ RENDER TABLE ============
         function renderTable() {
             const tableContent = document.getElementById('tableContent');
@@ -1189,6 +1472,7 @@
                 { key: 'txn_date', label: 'Date', sortable: true },
                 { key: 'buyer', label: 'Buyer', sortable: true },
                 { key: 'item', label: 'Item', sortable: true },
+                { key: 'item_code', label: 'Item Code', sortable: true },
                 { key: 'unit', label: 'Unit', sortable: true },
                 { key: 'type', label: 'Type', sortable: true },
                 { key: 'challan_no', label: 'Challan', sortable: true },
@@ -1202,8 +1486,8 @@
                 { key: 'stock_value', label: 'Stock Val', sortable: true },
                 { key: 'supplier', label: 'Supplier', sortable: true },
                 { key: 'team', label: 'Team', sortable: true },
-                { key: 'lc_pi', label: 'LC/PI', sortable: false },
-                { key: 'remarks', label: 'Remarks', sortable: false }
+                { key: 'remarks', label: 'Remarks', sortable: false },
+                { key: 'barcode', label: 'Barcode', sortable: false }
             ];
 
             let html = '<div class="table-wrapper"><table><thead><tr>';
@@ -1222,12 +1506,14 @@
                 const typeClass = txn.type === 'RCVD' ? 'rcvd' : (txn.type === 'DLVD' ? 'dlvd' : 'prvs');
                 const qtyClass = txn.type === 'RCVD' ? 'qty-positive' : (txn.type === 'DLVD' ? 'qty-negative' : 'qty-neutral');
                 const qtyPrefix = txn.type === 'RCVD' ? '+' : (txn.type === 'DLVD' ? '-' : '');
+                const itemCode = txn.items?.item_code || txn.items?.qr_payload || '';
 
                 html += `<tr>
                     <td>${startIdx + idx + 1}</td>
                     <td>${txn.txn_date || ''}</td>
                     <td>${txn.items?.buyers?.name || ''}</td>
                     <td>${txn.items?.description || ''}</td>
+                    <td>${itemCode}</td>
                     <td>${txn.items?.unit || ''}</td>
                     <td><span class="type-badge ${typeClass}">${txn.type}</span></td>
                     <td>${txn.challan_no || ''}</td>
@@ -1241,8 +1527,8 @@
                     <td>$${fmt(txn.stock_value_after)}</td>
                     <td>${txn.items?.supplier || ''}</td>
                     <td>${txn.team_members?.name || ''}</td>
-                    <td>${txn.lc_pi_no || ''}</td>
                     <td>${txn.remarks || ''}</td>
+                    <td><button class="barcode-btn" onclick="showItemBarcode(${txn.item_id})"><i class="fas fa-barcode"></i> View</button></td>
                 </tr>`;
             });
 
@@ -1292,6 +1578,21 @@
             tableContent.innerHTML = html;
         }
 
+        function showItemBarcode(itemId) {
+            const item = filteredData.find(t => t.item_id === itemId);
+            if (!item) return;
+            
+            const itemData = {
+                id: itemId,
+                description: item.items?.description,
+                item_code: item.items?.item_code,
+                qr_payload: item.items?.qr_payload,
+                buyers: item.items?.buyers
+            };
+            
+            showBarcodeModal([itemData]);
+        }
+
         function goToPage(page) {
             const totalPages = Math.ceil(filteredData.length / perPage);
             if (page < 1 || page > totalPages) return;
@@ -1338,6 +1639,7 @@
                 'Date': txn.txn_date || '',
                 'Buyer': txn.items?.buyers?.name || '',
                 'Item': txn.items?.description || '',
+                'Item Code': txn.items?.item_code || '',
                 'Unit': txn.items?.unit || '',
                 'Location': txn.items?.goods_location || '',
                 'Type': txn.type || '',
@@ -1352,7 +1654,6 @@
                 'Stock Value': parseFloat(txn.stock_value_after) || 0,
                 'Supplier': txn.items?.supplier || '',
                 'Team Member': txn.team_members?.name || '',
-                'LC/PI No': txn.lc_pi_no || '',
                 'Remarks': txn.remarks || ''
             }));
 
@@ -1366,6 +1667,7 @@
                 { wch: 12 },  // Date
                 { wch: 25 },  // Buyer
                 { wch: 30 },  // Item
+                { wch: 20 },  // Item Code
                 { wch: 8 },   // Unit
                 { wch: 15 },  // Location
                 { wch: 8 },   // Type
@@ -1380,7 +1682,6 @@
                 { wch: 12 },  // Stock Value
                 { wch: 20 },  // Supplier
                 { wch: 18 },  // Team
-                { wch: 15 },  // LC/PI
                 { wch: 30 }   // Remarks
             ];
 
@@ -1406,6 +1707,13 @@
             input.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') applyFilters();
             });
+        });
+
+        // Close modal on outside click
+        document.getElementById('barcodeModal').addEventListener('click', (e) => {
+            if (e.target.id === 'barcodeModal') {
+                closeBarcodeModal();
+            }
         });
 
         // PWA Service Worker
