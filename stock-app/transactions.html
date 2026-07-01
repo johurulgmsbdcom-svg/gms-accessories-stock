@@ -654,7 +654,7 @@
             border: 1px solid var(--glass-border);
             border-radius: 20px;
             padding: 30px;
-            max-width: 900px;
+            max-width: 1100px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
@@ -668,10 +668,12 @@
             margin-bottom: 24px;
             padding-bottom: 16px;
             border-bottom: 1px solid var(--glass-border);
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         .modal-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             color: var(--text-primary);
         }
@@ -695,15 +697,35 @@
             border-color: var(--accent-red);
         }
 
-        .barcode-grid {
+        /* Barcode Pages - 10 items per page (5 cols x 2 rows) matching A4 landscape */
+        .barcode-page {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px dashed var(--glass-border);
+        }
+
+        .barcode-page:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .barcode-page-label {
+            grid-column: 1 / -1;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
         }
 
         .barcode-item {
             background: white;
-            padding: 20px;
+            padding: 14px 10px;
             border-radius: 12px;
             text-align: center;
             page-break-inside: avoid;
@@ -711,34 +733,35 @@
         }
 
         .barcode-item-info {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
         .barcode-item-name {
-            font-size: 16px;
+            font-size: 12px;
             font-weight: 700;
             color: #1e293b;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
+            word-break: break-word;
         }
 
         .barcode-item-buyer {
-            font-size: 13px;
+            font-size: 10px;
             color: #64748b;
             font-weight: 600;
         }
 
         .barcode-item-code {
-            font-size: 11px;
+            font-size: 9px;
             color: #94a3b8;
-            margin-top: 5px;
+            margin-top: 3px;
             font-family: monospace;
         }
 
         .barcode-svg {
             width: 100%;
-            max-width: 350px;
-            height: 80px;
-            margin: 10px 0;
+            max-width: 200px;
+            height: 55px;
+            margin: 6px 0;
         }
 
         .print-actions {
@@ -748,13 +771,13 @@
             justify-content: center;
         }
 
-        /* Print Styles - A4 Landscape */
+        /* Print Styles - A4 Landscape, 10 barcodes per page */
         @media print {
             @page {
                 size: A4 landscape;
                 margin: 10mm;
             }
-            
+
             body * {
                 visibility: hidden;
             }
@@ -773,31 +796,54 @@
                 box-shadow: none;
                 border: none;
                 max-width: 100%;
+                max-height: none;
+                overflow: visible;
                 padding: 0;
             }
             .modal-header, .print-actions {
                 display: none;
             }
-            .barcode-grid {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 15px;
-                padding: 10px;
+            .barcode-page {
+                display: grid !important;
+                grid-template-columns: repeat(5, 1fr);
+                grid-template-rows: repeat(2, 1fr);
+                gap: 8mm 6mm;
+                padding: 0;
+                margin: 0;
+                border: none;
+                page-break-after: always;
+                break-after: page;
+                width: 100%;
+                height: 100%;
+            }
+            .barcode-page:last-child {
+                page-break-after: auto;
+                break-after: auto;
+            }
+            .barcode-page-label {
+                display: none;
             }
             .barcode-item {
                 break-inside: avoid;
                 page-break-inside: avoid;
                 border: 1px solid #ddd;
-                padding: 15px;
+                padding: 8px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
             }
             .barcode-item-name {
-                font-size: 14px;
-            }
-            .barcode-item-buyer {
                 font-size: 11px;
             }
+            .barcode-item-buyer {
+                font-size: 9px;
+            }
+            .barcode-item-code {
+                font-size: 8px;
+            }
             .barcode-svg {
-                height: 60px;
+                height: 45px;
             }
         }
 
@@ -917,8 +963,8 @@
             .stat-card .stat-value { font-size: 18px; }
             .btn { padding: 8px 14px; font-size: 12px; }
             .modal-content { padding: 20px; }
-            .barcode-grid {
-                grid-template-columns: 1fr;
+            .barcode-page {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
@@ -1079,13 +1125,13 @@
     <div class="modal-overlay" id="barcodeModal">
         <div class="modal-content glass">
             <div class="modal-header">
-                <h3 class="modal-title"><i class="fas fa-barcode"></i> Item Barcodes for Rack Labeling</h3>
+                <h3 class="modal-title" id="barcodeModalTitle"><i class="fas fa-barcode"></i> Item Barcodes for Rack Labeling</h3>
                 <button class="modal-close" onclick="closeBarcodeModal()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="barcode-grid" id="barcodeContainer">
-                <!-- Barcodes will be inserted here -->
+            <div id="barcodeContainer">
+                <!-- Barcode pages will be inserted here -->
             </div>
             <div class="print-actions">
                 <button class="btn btn-print" onclick="printBarcodes()">
@@ -1141,6 +1187,9 @@
         let sortColumn = 'txn_date';
         let sortDirection = 'desc';
         let currentBarcodeItems = [];
+
+        // How many barcode labels per printed A4 landscape page (5 cols x 2 rows)
+        const BARCODES_PER_PAGE = 10;
 
         // ============ THEME ============
         function toggleTheme() {
@@ -1394,49 +1443,91 @@
         }
 
         // ============ BARCODE FUNCTIONS ============
+        // Renders `items` as a series of "pages", each holding BARCODES_PER_PAGE
+        // barcode labels laid out in a 5x2 grid. In print mode each page becomes
+        // exactly one A4 landscape sheet (page-break-after), so if there are e.g.
+        // 34 items you get 4 pages: 10, 10, 10, 4.
         function showBarcodeModal(items) {
             currentBarcodeItems = items;
             const modal = document.getElementById('barcodeModal');
             const container = document.getElementById('barcodeContainer');
-            
+            const titleEl = document.getElementById('barcodeModalTitle');
+
             container.innerHTML = '';
-            
-            items.forEach((item, index) => {
-                const barcodeId = `barcode-${index}`;
-                const itemCode = item.item_code || item.qr_payload || `ITEM-${item.id}`;
-                const buyerName = item.buyers?.name || 'N/A';
-                const itemName = item.description || 'No Description';
-                
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'barcode-item';
-                itemDiv.innerHTML = `
-                    <div class="barcode-item-info">
-                        <div class="barcode-item-name">${itemName}</div>
-                        <div class="barcode-item-buyer">Buyer: ${buyerName}</div>
-                        <div class="barcode-item-code">${itemCode}</div>
+
+            if (!items || items.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No items found</p>
                     </div>
-                    <svg id="${barcodeId}" class="barcode-svg"></svg>
                 `;
-                
-                container.appendChild(itemDiv);
-                
-                // Generate barcode
-                setTimeout(() => {
-                    try {
-                        JsBarcode(`#${barcodeId}`, itemCode, {
-                            format: "CODE128",
-                            width: 2,
-                            height: 60,
-                            displayValue: true,
-                            fontSize: 12,
-                            margin: 10
-                        });
-                    } catch (err) {
-                        console.error('Barcode generation error:', err);
-                    }
-                }, 100);
+                modal.classList.add('active');
+                return;
+            }
+
+            // Split into pages of BARCODES_PER_PAGE
+            const pages = [];
+            for (let i = 0; i < items.length; i += BARCODES_PER_PAGE) {
+                pages.push(items.slice(i, i + BARCODES_PER_PAGE));
+            }
+
+            const totalPagesLabel = pages.length === 1 ? '1 page' : `${pages.length} pages`;
+            titleEl.innerHTML = `<i class="fas fa-barcode"></i> Item Barcodes for Rack Labeling — ${items.length} item${items.length > 1 ? 's' : ''} (${totalPagesLabel})`;
+
+            let barcodeIndex = 0;
+
+            pages.forEach((pageItems, pageIdx) => {
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'barcode-page';
+
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'barcode-page-label';
+                labelDiv.textContent = `Page ${pageIdx + 1} of ${pages.length}`;
+                pageDiv.appendChild(labelDiv);
+
+                pageItems.forEach(item => {
+                    const barcodeId = `barcode-${barcodeIndex}`;
+                    const itemCode = item.item_code || item.qr_payload || `ITEM-${item.id}`;
+                    const buyerName = item.buyers?.name || 'N/A';
+                    const itemName = item.description || 'No Description';
+
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'barcode-item';
+                    itemDiv.innerHTML = `
+                        <div class="barcode-item-info">
+                            <div class="barcode-item-name">${itemName}</div>
+                            <div class="barcode-item-buyer">Buyer: ${buyerName}</div>
+                            <div class="barcode-item-code">${itemCode}</div>
+                        </div>
+                        <svg id="${barcodeId}" class="barcode-svg"></svg>
+                    `;
+
+                    pageDiv.appendChild(itemDiv);
+                    barcodeIndex++;
+
+                    // Generate barcode (slight delay so element exists in DOM)
+                    (function(bid, code) {
+                        setTimeout(() => {
+                            try {
+                                JsBarcode(`#${bid}`, code, {
+                                    format: "CODE128",
+                                    width: 1.6,
+                                    height: 45,
+                                    displayValue: true,
+                                    fontSize: 10,
+                                    margin: 6
+                                });
+                            } catch (err) {
+                                console.error('Barcode generation error:', err);
+                            }
+                        }, 50);
+                    })(barcodeId, itemCode);
+                });
+
+                container.appendChild(pageDiv);
             });
-            
+
             modal.classList.add('active');
         }
 
@@ -1450,36 +1541,45 @@
             window.print();
         }
 
-        function printFilteredBarcodes() {
-            if (filteredData.length === 0) {
-                showToast('No data to print', 'error');
-                return;
-            }
-            
-            // Get unique items from filtered transactions (respects buyer filter)
-            const uniqueItems = [];
-            const seenItems = new Set();
-            
-            filteredData.forEach(txn => {
-                const itemId = txn.item_id;
-                if (!seenItems.has(itemId)) {
-                    seenItems.add(itemId);
-                    uniqueItems.push({
-                        id: itemId,
-                        description: txn.items?.description,
-                        item_code: txn.items?.item_code,
-                        qr_payload: txn.items?.qr_payload,
-                        buyers: txn.items?.buyers
-                    });
+        // Prints barcodes for ALL items belonging to the selected buyer (or all
+        // buyers if none selected). This is independent of the date-range /
+        // other transaction filters — it pulls straight from the items table so
+        // every item for that buyer gets a label, even ones with no recent
+        // transactions.
+        async function printFilteredBarcodes() {
+            const buyerId = document.getElementById('fBuyer').value;
+            const buyerSelect = document.getElementById('fBuyer');
+            const buyerLabel = buyerId ? buyerSelect.options[buyerSelect.selectedIndex].text : 'All Buyers';
+
+            showToast(`Loading items for ${buyerLabel}...`, 'success');
+
+            try {
+                let query = db
+                    .from('items')
+                    .select('id, description, item_code, qr_payload, buyer_id, buyers:buyer_id (name)')
+                    .order('buyer_id', { ascending: true })
+                    .order('description', { ascending: true });
+
+                if (buyerId) {
+                    query = query.eq('buyer_id', buyerId);
                 }
-            });
-            
-            if (uniqueItems.length === 0) {
-                showToast('No items found', 'error');
-                return;
+
+                const { data, error } = await query.limit(5000);
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    showToast('No items found for this selection', 'error');
+                    return;
+                }
+
+                showBarcodeModal(data);
+                showToast(`${data.length} item barcode(s) ready to print`, 'success');
+
+            } catch (err) {
+                console.error('printFilteredBarcodes error:', err);
+                showToast('Error loading items: ' + err.message, 'error');
             }
-            
-            showBarcodeModal(uniqueItems);
         }
 
         // ============ RENDER TABLE ============
@@ -1618,7 +1718,7 @@
         function showItemBarcode(itemId) {
             const item = filteredData.find(t => t.item_id === itemId);
             if (!item) return;
-            
+
             const itemData = {
                 id: itemId,
                 description: item.items?.description,
@@ -1626,7 +1726,7 @@
                 qr_payload: item.items?.qr_payload,
                 buyers: item.items?.buyers
             };
-            
+
             showBarcodeModal([itemData]);
         }
 
