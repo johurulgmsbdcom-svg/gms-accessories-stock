@@ -191,6 +191,7 @@
         .info-chip .value {
             font-size: 14px;
             font-weight: 700;
+            word-break: break-all;
         }
         .info-chip.stock {
             background: rgba(16,185,129,0.25);
@@ -422,7 +423,11 @@
             font-size: 13px;
         }
         .success-details .row .label { color: var(--muted); }
-        .success-details .row .value { font-weight: 600; color: var(--text); }
+        .success-details .row .value { 
+            font-weight: 600; 
+            color: var(--text);
+            word-break: break-all;
+        }
         .success-details .row.highlight .value {
             color: var(--green);
             font-size: 15px;
@@ -783,10 +788,17 @@
         }
 
         // ============ UTILS ============
+        // সংখ্যা কমা সহ পূর্ণ ফরম্যাটে দেখায় (যেমন: 17,800,000)
         function fmt(n) {
             if (n === null || n === undefined) return '0';
-            return parseFloat(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
+            const num = parseFloat(n);
+            if (isNaN(num)) return '0';
+            return num.toLocaleString('en-US', { 
+                minimumFractionDigits: 0, 
+                maximumFractionDigits: 2 
+            });
         }
+        
         function getParam(name) {
             const params = new URLSearchParams(window.location.search);
             return params.get(name);
