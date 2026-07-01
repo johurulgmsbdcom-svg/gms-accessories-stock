@@ -257,6 +257,10 @@
             background: linear-gradient(135deg, var(--accent-green), #059669);
         }
 
+        .btn-print {
+            background: linear-gradient(135deg, var(--accent-cyan), #0891b2);
+        }
+
         .btn-reset {
             background: linear-gradient(135deg, var(--accent-yellow), #d97706);
             color: #1e293b;
@@ -334,6 +338,116 @@
             color: var(--text-muted);
         }
 
+        /* Multiple Select Styling */
+        .multi-select-wrapper {
+            position: relative;
+        }
+
+        .multi-select-display {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--text-primary);
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            cursor: pointer;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s;
+        }
+
+        [data-theme="light"] .multi-select-display {
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .multi-select-display:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .multi-select-display .count-badge {
+            background: var(--accent-blue);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .multi-select-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            margin-top: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 50;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .multi-select-dropdown.show {
+            display: block;
+        }
+
+        .multi-select-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s;
+            font-size: 13px;
+        }
+
+        .multi-select-option:hover {
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .multi-select-option input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--accent-blue);
+        }
+
+        .multi-select-actions {
+            padding: 10px 12px;
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .multi-select-actions button {
+            flex: 1;
+            padding: 6px 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .multi-select-actions .btn-all {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .multi-select-actions .btn-none {
+            background: var(--accent-red);
+            color: white;
+        }
+
         .stats-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -355,6 +469,7 @@
             font-size: 22px;
             font-weight: 800;
             line-height: 1.2;
+            word-break: break-all;
         }
 
         .stat-card .stat-label {
@@ -598,6 +713,154 @@
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
+        /* ============================================ */
+        /* PRINT STYLES - A4 LANDSCAPE */
+        /* ============================================ */
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 10mm;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+                font-size: 10px !important;
+            }
+
+            .bg-3d, .orb, .header, .bottom-nav, .filter-card, 
+            .page-title, .stats-row, .toast, .title-actions {
+                display: none !important;
+            }
+
+            .main {
+                padding: 0 !important;
+                max-width: 100% !important;
+            }
+
+            .table-card {
+                background: white !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                page-break-inside: avoid;
+            }
+
+            .table-wrapper {
+                overflow: visible !important;
+                border-radius: 0 !important;
+            }
+
+            table {
+                min-width: auto !important;
+                width: 100% !important;
+                font-size: 9px !important;
+                border: 1px solid #333 !important;
+            }
+
+            thead {
+                display: table-header-group;
+            }
+
+            thead th {
+                background: #1e40af !important;
+                color: white !important;
+                padding: 6px 4px !important;
+                font-size: 8px !important;
+                border: 1px solid #1e3a8a !important;
+                position: static !important;
+            }
+
+            tbody tr {
+                page-break-inside: avoid;
+                border-bottom: 1px solid #ddd !important;
+            }
+
+            tbody tr:nth-child(even) {
+                background: #f0f4ff !important;
+            }
+
+            tbody td {
+                padding: 4px !important;
+                color: black !important;
+                border: 1px solid #ddd !important;
+                font-size: 9px !important;
+                white-space: nowrap !important;
+            }
+
+            tbody tr.buyer-row {
+                background: #dbeafe !important;
+                page-break-before: always;
+            }
+
+            tbody tr.buyer-row:first-child {
+                page-break-before: auto;
+            }
+
+            tbody tr.buyer-row td {
+                background: #1e40af !important;
+                color: white !important;
+                font-size: 11px !important;
+                padding: 8px !important;
+                font-weight: 800 !important;
+                border: 1px solid #1e3a8a !important;
+            }
+
+            tbody tr[style*="background:rgba(59, 130, 246, 0.1)"] {
+                background: #e0e7ff !important;
+            }
+
+            tbody tr[style*="background:rgba(59, 130, 246, 0.1)"] td {
+                font-weight: 700 !important;
+                color: #1e40af !important;
+                border-top: 2px solid #1e40af !important;
+            }
+
+            tr.total-row {
+                background: #1e40af !important;
+            }
+
+            tr.total-row td {
+                color: white !important;
+                font-weight: 800 !important;
+                font-size: 11px !important;
+                border: 1px solid #1e3a8a !important;
+            }
+
+            /* Print Header */
+            .print-header {
+                display: block !important;
+                text-align: center;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 3px solid #1e40af;
+            }
+
+            .print-header h1 {
+                font-size: 18px;
+                color: #1e40af;
+                margin-bottom: 4px;
+            }
+
+            .print-header p {
+                font-size: 11px;
+                color: #666;
+            }
+        }
+
+        .print-header {
+            display: none;
+        }
+
         @media (max-width: 768px) {
             .main { padding: 16px; }
             .filter-grid { grid-template-columns: 1fr 1fr; }
@@ -621,6 +884,12 @@
     <div class="orb orb-3"></div>
     <div class="orb orb-4"></div>
 
+    <!-- Print Header (Only visible during print) -->
+    <div class="print-header">
+        <h1>GMS Accessories Stock</h1>
+        <p>Buyer Wise Balance Value Report | Generated: <span id="printDate"></span></p>
+    </div>
+
     <header class="header">
         <div class="header-left">
             <a href="index.html" class="back-btn">
@@ -643,8 +912,11 @@
                 <button class="btn btn-reset" onclick="resetFilters()">
                     <i class="fas fa-redo"></i> Reset
                 </button>
+                <button class="btn btn-print" onclick="printReport()">
+                    <i class="fas fa-print"></i> Print (A4)
+                </button>
                 <button class="btn btn-excel" onclick="downloadExcel()">
-                    <i class="fas fa-file-excel"></i> Download Excel
+                    <i class="fas fa-file-excel"></i> Excel
                 </button>
             </div>
         </div>
@@ -663,10 +935,20 @@
                     <input type="date" id="fDateTo">
                 </div>
                 <div class="filter-group">
-                    <label>Buyer</label>
-                    <select id="fBuyer">
-                        <option value="">All Buyers</option>
-                    </select>
+                    <label>Buyer (Multiple Select)</label>
+                    <div class="multi-select-wrapper" id="buyerMultiSelect">
+                        <div class="multi-select-display" onclick="toggleBuyerDropdown()">
+                            <span id="buyerDisplayText">All Buyers</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="multi-select-dropdown" id="buyerDropdown">
+                            <div class="multi-select-actions">
+                                <button class="btn-all" onclick="selectAllBuyers()">Select All</button>
+                                <button class="btn-none" onclick="deselectAllBuyers()">Clear All</button>
+                            </div>
+                            <div id="buyerOptions"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="filter-group">
                     <label>Item</label>
@@ -747,7 +1029,10 @@
 
         let allItems = [];
         let filteredData = [];
+        let allBuyers = [];
+        let selectedBuyerIds = [];
 
+        // ============ THEME ============
         function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -768,6 +1053,7 @@
             updateThemeIcon(saved);
         })();
 
+        // ============ TOAST ============
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toastIcon');
@@ -779,6 +1065,7 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
+        // ============ FORMAT ============
         function fmt(n) {
             if (n === null || n === undefined || isNaN(n)) return '0';
             return parseFloat(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -792,13 +1079,85 @@
             return n.toFixed(0);
         }
 
-        async function loadFilters() {
+        // ============ MULTI-SELECT BUYER ============
+        function toggleBuyerDropdown() {
+            const dropdown = document.getElementById('buyerDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('buyerMultiSelect');
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('buyerDropdown').classList.remove('show');
+            }
+        });
+
+        function selectAllBuyers() {
+            selectedBuyerIds = allBuyers.map(b => b.id);
+            updateBuyerCheckboxes();
+            updateBuyerDisplay();
+        }
+
+        function deselectAllBuyers() {
+            selectedBuyerIds = [];
+            updateBuyerCheckboxes();
+            updateBuyerDisplay();
+        }
+
+        function toggleBuyerSelection(buyerId) {
+            const idx = selectedBuyerIds.indexOf(buyerId);
+            if (idx > -1) {
+                selectedBuyerIds.splice(idx, 1);
+            } else {
+                selectedBuyerIds.push(buyerId);
+            }
+            updateBuyerDisplay();
+        }
+
+        function updateBuyerCheckboxes() {
+            const options = document.querySelectorAll('.buyer-checkbox');
+            options.forEach(cb => {
+                cb.checked = selectedBuyerIds.includes(parseInt(cb.value));
+            });
+        }
+
+        function updateBuyerDisplay() {
+            const displayText = document.getElementById('buyerDisplayText');
+            if (selectedBuyerIds.length === 0) {
+                displayText.innerHTML = 'All Buyers';
+            } else if (selectedBuyerIds.length === 1) {
+                const buyer = allBuyers.find(b => b.id === selectedBuyerIds[0]);
+                displayText.innerHTML = buyer ? buyer.name : '1 Selected';
+            } else if (selectedBuyerIds.length === allBuyers.length) {
+                displayText.innerHTML = 'All Buyers';
+            } else {
+                displayText.innerHTML = `${selectedBuyerIds.length} Buyers Selected <span class="count-badge">${selectedBuyerIds.length}</span>`;
+            }
+        }
+
+        async function loadBuyerOptions() {
             try {
                 const { data: buyers } = await db.from('buyers').select('id, name').order('name');
-                const buyerSelect = document.getElementById('fBuyer');
-                (buyers || []).forEach(b => {
-                    buyerSelect.innerHTML += `<option value="${b.id}">${b.name}</option>`;
-                });
+                allBuyers = buyers || [];
+                
+                const optionsContainer = document.getElementById('buyerOptions');
+                optionsContainer.innerHTML = allBuyers.map(b => `
+                    <label class="multi-select-option">
+                        <input type="checkbox" class="buyer-checkbox" value="${b.id}" 
+                               onchange="toggleBuyerSelection(${b.id})">
+                        <span>${b.name}</span>
+                    </label>
+                `).join('');
+            } catch (err) {
+                console.error('Load buyers error:', err);
+            }
+        }
+
+        // ============ LOAD FILTERS ============
+        async function loadFilters() {
+            try {
+                await loadBuyerOptions();
 
                 const today = new Date();
                 const thirtyDaysAgo = new Date(today);
@@ -835,10 +1194,12 @@
                     .order('buyers(name)', { ascending: true })
                     .order('description', { ascending: true });
 
-                const buyerId = document.getElementById('fBuyer').value;
                 const itemSearch = document.getElementById('fItem').value.trim();
 
-                if (buyerId) query = query.eq('buyer_id', buyerId);
+                // Apply buyer filter (multiple)
+                if (selectedBuyerIds.length > 0 && selectedBuyerIds.length < allBuyers.length) {
+                    query = query.in('buyer_id', selectedBuyerIds);
+                }
 
                 const { data, error } = await query;
 
@@ -984,21 +1345,42 @@
             tableContent.innerHTML = html;
 
             document.getElementById('statTotalItems').textContent = fmt(filteredData.length);
-            document.getElementById('statPrevQty').textContent = fmtCompact(grandTotal.prevQty);
-            document.getElementById('statPrevValue').textContent = '$' + fmtCompact(grandTotal.prevValue);
-            document.getElementById('statPresentStock').textContent = fmtCompact(grandTotal.presentStock);
-            document.getElementById('statStockValue').textContent = '$' + fmtCompact(grandTotal.stockValue);
+            document.getElementById('statPrevQty').textContent = fmt(grandTotal.prevQty);
+            document.getElementById('statPrevValue').textContent = '$' + fmt(grandTotal.prevValue);
+            document.getElementById('statPresentStock').textContent = fmt(grandTotal.presentStock);
+            document.getElementById('statStockValue').textContent = '$' + fmt(grandTotal.stockValue);
         }
 
         function resetFilters() {
             document.getElementById('fDateFrom').value = '';
             document.getElementById('fDateTo').value = '';
-            document.getElementById('fBuyer').value = '';
             document.getElementById('fItem').value = '';
+            deselectAllBuyers();
             applyFilters();
             showToast('Filters reset', 'success');
         }
 
+        // ============ PRINT REPORT ============
+        function printReport() {
+            if (filteredData.length === 0) {
+                showToast('No data to print', 'error');
+                return;
+            }
+
+            // Set print date
+            const now = new Date();
+            document.getElementById('printDate').textContent = 
+                now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + 
+                ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+            showToast('Opening print dialog...', 'success');
+            
+            setTimeout(() => {
+                window.print();
+            }, 300);
+        }
+
+        // ============ DOWNLOAD EXCEL ============
         function downloadExcel() {
             if (filteredData.length === 0) {
                 showToast('No data to download', 'error');
@@ -1104,6 +1486,7 @@
             showToast(`Downloaded: ${fileName}`, 'success');
         }
 
+        // ============ INIT ============
         document.addEventListener('DOMContentLoaded', async () => {
             await loadFilters();
             await loadItems();
