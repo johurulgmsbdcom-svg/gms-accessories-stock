@@ -654,7 +654,7 @@
             border: 1px solid var(--glass-border);
             border-radius: 20px;
             padding: 30px;
-            max-width: 600px;
+            max-width: 900px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
@@ -695,13 +695,19 @@
             border-color: var(--accent-red);
         }
 
+        .barcode-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
         .barcode-item {
             background: white;
             padding: 20px;
             border-radius: 12px;
-            margin-bottom: 20px;
             text-align: center;
             page-break-inside: avoid;
+            break-inside: avoid;
         }
 
         .barcode-item-info {
@@ -730,8 +736,8 @@
 
         .barcode-svg {
             width: 100%;
-            max-width: 400px;
-            height: 100px;
+            max-width: 350px;
+            height: 80px;
             margin: 10px 0;
         }
 
@@ -742,8 +748,13 @@
             justify-content: center;
         }
 
-        /* Print Styles */
+        /* Print Styles - A4 Landscape */
         @media print {
+            @page {
+                size: A4 landscape;
+                margin: 10mm;
+            }
+            
             body * {
                 visibility: hidden;
             }
@@ -756,18 +767,37 @@
                 top: 0;
                 width: 100%;
                 background: white;
+                padding: 0;
             }
             .modal-content {
                 box-shadow: none;
                 border: none;
                 max-width: 100%;
+                padding: 0;
             }
             .modal-header, .print-actions {
                 display: none;
             }
+            .barcode-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 15px;
+                padding: 10px;
+            }
             .barcode-item {
                 break-inside: avoid;
                 page-break-inside: avoid;
+                border: 1px solid #ddd;
+                padding: 15px;
+            }
+            .barcode-item-name {
+                font-size: 14px;
+            }
+            .barcode-item-buyer {
+                font-size: 11px;
+            }
+            .barcode-svg {
+                height: 60px;
             }
         }
 
@@ -887,6 +917,9 @@
             .stat-card .stat-value { font-size: 18px; }
             .btn { padding: 8px 14px; font-size: 12px; }
             .modal-content { padding: 20px; }
+            .barcode-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 480px) {
@@ -929,8 +962,8 @@
                 <button class="btn btn-reset" onclick="resetFilters()">
                     <i class="fas fa-redo"></i> Reset
                 </button>
-                <button class="btn btn-print" onclick="printAllBarcodes()">
-                    <i class="fas fa-barcode"></i> Print All
+                <button class="btn btn-print" onclick="printFilteredBarcodes()">
+                    <i class="fas fa-barcode"></i> Print Barcodes
                 </button>
                 <button class="btn btn-excel" onclick="downloadExcel()">
                     <i class="fas fa-file-excel"></i> Download Excel
@@ -954,7 +987,7 @@
                 </div>
                 <div class="filter-group">
                     <label>Buyer</label>
-                    <select id="fBuyer">
+                    <select id="fBuyer" onchange="applyFilters()">
                         <option value="">All Buyers</option>
                     </select>
                 </div>
@@ -1046,17 +1079,17 @@
     <div class="modal-overlay" id="barcodeModal">
         <div class="modal-content glass">
             <div class="modal-header">
-                <h3 class="modal-title"><i class="fas fa-barcode"></i> Item Barcodes</h3>
+                <h3 class="modal-title"><i class="fas fa-barcode"></i> Item Barcodes for Rack Labeling</h3>
                 <button class="modal-close" onclick="closeBarcodeModal()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div id="barcodeContainer">
+            <div class="barcode-grid" id="barcodeContainer">
                 <!-- Barcodes will be inserted here -->
             </div>
             <div class="print-actions">
                 <button class="btn btn-print" onclick="printBarcodes()">
-                    <i class="fas fa-print"></i> Print Barcodes
+                    <i class="fas fa-print"></i> Print Barcodes (A4 Landscape)
                 </button>
                 <button class="btn btn-reset" onclick="closeBarcodeModal()">
                     <i class="fas fa-times"></i> Close
@@ -1209,7 +1242,7 @@
             `;
 
             try {
-                // Build query - REMOVED lc_pi_no as it doesn't exist
+                // Build query
                 let query = db
                     .from('transactions')
                     .select(`
@@ -1393,9 +1426,9 @@
                         JsBarcode(`#${barcodeId}`, itemCode, {
                             format: "CODE128",
                             width: 2,
-                            height: 80,
+                            height: 60,
                             displayValue: true,
-                            fontSize: 14,
+                            fontSize: 12,
                             margin: 10
                         });
                     } catch (err) {
@@ -1417,13 +1450,13 @@
             window.print();
         }
 
-        function printAllBarcodes() {
+        function printFilteredBarcodes() {
             if (filteredData.length === 0) {
                 showToast('No data to print', 'error');
                 return;
             }
             
-            // Get unique items from transactions
+            // Get unique items from filtered transactions (respects buyer filter)
             const uniqueItems = [];
             const seenItems = new Set();
             
@@ -1440,6 +1473,11 @@
                     });
                 }
             });
+            
+            if (uniqueItems.length === 0) {
+                showToast('No items found', 'error');
+                return;
+            }
             
             showBarcodeModal(uniqueItems);
         }
