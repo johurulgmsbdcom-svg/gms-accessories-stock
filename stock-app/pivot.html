@@ -274,8 +274,6 @@
             padding: 20px;
             margin-bottom: 20px;
             animation: fadeInUp 0.5s ease;
-            position: relative;
-            z-index: 10;
         }
 
         .filter-title {
@@ -302,7 +300,6 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
-            position: relative;
         }
 
         .filter-group label {
@@ -341,10 +338,9 @@
             color: var(--text-muted);
         }
 
-        /* Multi-select dropdown styles */
+        /* Multiple Select Styling */
         .multi-select-wrapper {
             position: relative;
-            z-index: 1000;
         }
 
         .multi-select-display {
@@ -394,7 +390,7 @@
             margin-top: 4px;
             max-height: 300px;
             overflow-y: auto;
-            z-index: 1001;
+            z-index: 50;
             box-shadow: var(--glass-shadow);
         }
 
@@ -717,6 +713,154 @@
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
+        /* ============================================ */
+        /* PRINT STYLES - A4 LANDSCAPE */
+        /* ============================================ */
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 10mm;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+                font-size: 10px !important;
+            }
+
+            .bg-3d, .orb, .header, .bottom-nav, .filter-card, 
+            .page-title, .stats-row, .toast, .title-actions {
+                display: none !important;
+            }
+
+            .main {
+                padding: 0 !important;
+                max-width: 100% !important;
+            }
+
+            .table-card {
+                background: white !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                page-break-inside: avoid;
+            }
+
+            .table-wrapper {
+                overflow: visible !important;
+                border-radius: 0 !important;
+            }
+
+            table {
+                min-width: auto !important;
+                width: 100% !important;
+                font-size: 9px !important;
+                border: 1px solid #333 !important;
+            }
+
+            thead {
+                display: table-header-group;
+            }
+
+            thead th {
+                background: #1e40af !important;
+                color: white !important;
+                padding: 6px 4px !important;
+                font-size: 8px !important;
+                border: 1px solid #1e3a8a !important;
+                position: static !important;
+            }
+
+            tbody tr {
+                page-break-inside: avoid;
+                border-bottom: 1px solid #ddd !important;
+            }
+
+            tbody tr:nth-child(even) {
+                background: #f0f4ff !important;
+            }
+
+            tbody td {
+                padding: 4px !important;
+                color: black !important;
+                border: 1px solid #ddd !important;
+                font-size: 9px !important;
+                white-space: nowrap !important;
+            }
+
+            tbody tr.buyer-row {
+                background: #dbeafe !important;
+                page-break-before: always;
+            }
+
+            tbody tr.buyer-row:first-child {
+                page-break-before: auto;
+            }
+
+            tbody tr.buyer-row td {
+                background: #1e40af !important;
+                color: white !important;
+                font-size: 11px !important;
+                padding: 8px !important;
+                font-weight: 800 !important;
+                border: 1px solid #1e3a8a !important;
+            }
+
+            tbody tr[style*="background:rgba(59, 130, 246, 0.1)"] {
+                background: #e0e7ff !important;
+            }
+
+            tbody tr[style*="background:rgba(59, 130, 246, 0.1)"] td {
+                font-weight: 700 !important;
+                color: #1e40af !important;
+                border-top: 2px solid #1e40af !important;
+            }
+
+            tr.total-row {
+                background: #1e40af !important;
+            }
+
+            tr.total-row td {
+                color: white !important;
+                font-weight: 800 !important;
+                font-size: 11px !important;
+                border: 1px solid #1e3a8a !important;
+            }
+
+            /* Print Header */
+            .print-header {
+                display: block !important;
+                text-align: center;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 3px solid #1e40af;
+            }
+
+            .print-header h1 {
+                font-size: 18px;
+                color: #1e40af;
+                margin-bottom: 4px;
+            }
+
+            .print-header p {
+                font-size: 11px;
+                color: #666;
+            }
+        }
+
+        .print-header {
+            display: none;
+        }
+
         @media (max-width: 768px) {
             .main { padding: 16px; }
             .filter-grid { grid-template-columns: 1fr 1fr; }
@@ -739,6 +883,12 @@
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
     <div class="orb orb-4"></div>
+
+    <!-- Print Header (Only visible during print) -->
+    <div class="print-header">
+        <h1>GMS Accessories Stock</h1>
+        <p>Buyer Wise Balance Value Report | Generated: <span id="printDate"></span></p>
+    </div>
 
     <header class="header">
         <div class="header-left">
@@ -1216,6 +1366,12 @@
                 showToast('No data to print', 'error');
                 return;
             }
+
+            // Set print date
+            const now = new Date();
+            document.getElementById('printDate').textContent = 
+                now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + 
+                ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
             showToast('Opening print dialog...', 'success');
             
