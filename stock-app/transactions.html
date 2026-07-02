@@ -285,6 +285,8 @@
             padding: 20px;
             margin-bottom: 20px;
             animation: fadeInUp 0.5s ease;
+            position: relative;
+            z-index: 20;
         }
 
         .filter-title {
@@ -1974,7 +1976,7 @@
                     <td>${txn.team_members?.name || ''}</td>
                     <td>${txn.remarks || ''}</td>
                     <td class="action-cell">
-                        <button class="qr-btn" onclick="showItemQR(${txn.item_id})"><i class="fas fa-qrcode"></i> View</button>
+                        <button class="qr-btn" onclick="showItemQR(${txn.items?.id})"><i class="fas fa-qrcode"></i> View</button>
                         <button class="delete-btn" onclick="openDeleteConfirm(${txn.id})"><i class="fas fa-trash"></i> Delete</button>
                     </td>
                 </tr>`;
