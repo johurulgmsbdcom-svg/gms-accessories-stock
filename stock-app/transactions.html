@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
     <style>
         :root {
             --glass-bg: rgba(255, 255, 255, 0.08);
@@ -849,12 +849,17 @@
             word-break: break-all;
         }
 
-        .qr-canvas {
+        .qr-svg-wrap {
             width: 140px;
             height: 140px;
             margin: 8px auto;
             display: block;
-            image-rendering: pixelated;
+        }
+
+        .qr-svg-wrap svg {
+            width: 100%;
+            height: 100%;
+            display: block;
         }
 
         .print-actions {
@@ -935,7 +940,7 @@
             .qr-item-code {
                 font-size: 7px;
             }
-            .qr-canvas {
+            .qr-svg-wrap {
                 width: 38mm !important;
                 height: 38mm !important;
                 margin: 2mm auto;
@@ -1558,6 +1563,23 @@
         }
 
         // ============ QR CODE FUNCTIONS ============
+        // Generates a QR code as an inline SVG string, synchronously (no
+        // canvas, no async timing to race against DOM insertion — this is
+        // what was causing the codes to render blank before). scalable:true
+        // makes the SVG size purely with CSS, so the same markup looks right
+        // both on screen (px) and on the printed page (mm).
+        function generateQRSvg(text) {
+            try {
+                const qr = qrcode(0, 'M');
+                qr.addData(String(text));
+                qr.make();
+                return qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+            } catch (err) {
+                console.error('QR generation error:', err);
+                return '<div style="font-size:9px;color:#ef4444;padding:20px 0;">QR error</div>';
+            }
+        }
+
         // Renders `items` as a series of "pages", each holding QR_PER_PAGE
         // QR labels laid out in a 5x3 grid. In print mode each page becomes
         // exactly one A4 landscape sheet (page-break-after), so e.g. 34 items
@@ -1590,8 +1612,6 @@
             const totalPagesLabel = pages.length === 1 ? '1 page' : `${pages.length} pages`;
             titleEl.innerHTML = `<i class="fas fa-qrcode"></i> Item QR Codes for Rack Labeling — ${items.length} item${items.length > 1 ? 's' : ''} (${totalPagesLabel})`;
 
-            let qrIndex = 0;
-
             pages.forEach((pageItems, pageIdx) => {
                 const pageDiv = document.createElement('div');
                 pageDiv.className = 'qr-page';
@@ -1602,7 +1622,6 @@
                 pageDiv.appendChild(labelDiv);
 
                 pageItems.forEach(item => {
-                    const qrId = `qr-${qrIndex}`;
                     const itemCode = item.item_code || item.qr_payload || `ITEM-${item.id}`;
                     const buyerName = item.buyers?.name || 'N/A';
                     const itemName = item.description || 'No Description';
@@ -1612,28 +1631,11 @@
                     itemDiv.innerHTML = `
                         <div class="qr-item-name">${itemName}</div>
                         <div class="qr-item-buyer">Buyer: ${buyerName}</div>
-                        <canvas id="${qrId}" class="qr-canvas"></canvas>
+                        <div class="qr-svg-wrap">${generateQRSvg(itemCode)}</div>
                         <div class="qr-item-code">${itemCode}</div>
                     `;
 
                     pageDiv.appendChild(itemDiv);
-                    qrIndex++;
-
-                    // Generate QR (slight delay so canvas element exists in DOM)
-                    (function(qid, code) {
-                        setTimeout(() => {
-                            const canvas = document.getElementById(qid);
-                            if (!canvas) return;
-                            QRCode.toCanvas(canvas, code, {
-                                width: 300,
-                                margin: 1,
-                                errorCorrectionLevel: 'M',
-                                color: { dark: '#000000', light: '#ffffff' }
-                            }, function(err) {
-                                if (err) console.error('QR generation error:', err);
-                            });
-                        }, 30);
-                    })(qrId, itemCode);
                 });
 
                 container.appendChild(pageDiv);
