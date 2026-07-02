@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <style>
         :root {
             --glass-bg: rgba(255, 255, 255, 0.08);
@@ -542,7 +542,7 @@
             font-weight: 600;
         }
 
-        .barcode-btn {
+        .qr-btn {
             padding: 4px 8px;
             border-radius: 6px;
             border: 1px solid var(--accent-purple);
@@ -554,7 +554,7 @@
             transition: all 0.2s;
         }
 
-        .barcode-btn:hover {
+        .qr-btn:hover {
             background: var(--accent-purple);
             color: white;
         }
@@ -607,6 +607,7 @@
             display: flex;
             gap: 6px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .page-btn {
@@ -656,7 +657,7 @@
             cursor: pointer;
         }
 
-        /* Barcode Modal */
+        /* QR Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -785,23 +786,29 @@
             background: linear-gradient(135deg, var(--accent-red), #dc2626);
         }
 
-        /* Barcode Pages - 10 items per page (5 cols x 2 rows) matching A4 landscape */
-        .barcode-page {
+        /*
+          QR Pages — 15 items per printed A4 landscape page (5 cols x 3 rows).
+          QR codes need far less footprint than a barcode's wide rectangle, so
+          more labels fit per sheet while still printing each QR at 38mm x 38mm,
+          which scans instantly with a phone camera from normal rack-labeling
+          distance on a plain black & white printer.
+        */
+        .qr-page {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 15px;
+            gap: 12px;
             margin-bottom: 24px;
             padding-bottom: 24px;
             border-bottom: 1px dashed var(--glass-border);
         }
 
-        .barcode-page:last-child {
+        .qr-page:last-child {
             border-bottom: none;
             margin-bottom: 0;
             padding-bottom: 0;
         }
 
-        .barcode-page-label {
+        .qr-page-label {
             grid-column: 1 / -1;
             font-size: 11px;
             font-weight: 700;
@@ -811,45 +818,43 @@
             margin-bottom: 2px;
         }
 
-        .barcode-item {
+        .qr-item {
             background: white;
-            padding: 14px 10px;
+            padding: 12px 8px;
             border-radius: 12px;
             text-align: center;
             page-break-inside: avoid;
             break-inside: avoid;
         }
 
-        .barcode-item-info {
-            margin-bottom: 10px;
-        }
-
-        .barcode-item-name {
-            font-size: 12px;
+        .qr-item-name {
+            font-size: 11px;
             font-weight: 700;
             color: #1e293b;
             margin-bottom: 3px;
             word-break: break-word;
         }
 
-        .barcode-item-buyer {
-            font-size: 10px;
+        .qr-item-buyer {
+            font-size: 9px;
             color: #64748b;
             font-weight: 600;
         }
 
-        .barcode-item-code {
+        .qr-item-code {
             font-size: 9px;
             color: #94a3b8;
-            margin-top: 3px;
+            margin-top: 4px;
             font-family: monospace;
+            word-break: break-all;
         }
 
-        .barcode-svg {
-            width: 100%;
-            max-width: 200px;
-            height: 55px;
-            margin: 6px 0;
+        .qr-canvas {
+            width: 140px;
+            height: 140px;
+            margin: 8px auto;
+            display: block;
+            image-rendering: pixelated;
         }
 
         .print-actions {
@@ -859,7 +864,7 @@
             justify-content: center;
         }
 
-        /* Print Styles - A4 Landscape, 10 barcodes per page */
+        /* Print Styles - A4 Landscape, 15 QR codes per page (5x3), each 38mm */
         @media print {
             @page {
                 size: A4 landscape;
@@ -891,11 +896,11 @@
             .modal-header, .print-actions {
                 display: none;
             }
-            .barcode-page {
+            .qr-page {
                 display: grid !important;
                 grid-template-columns: repeat(5, 1fr);
-                grid-template-rows: repeat(2, 1fr);
-                gap: 8mm 6mm;
+                grid-template-rows: repeat(3, 1fr);
+                gap: 5mm 4mm;
                 padding: 0;
                 margin: 0;
                 border: none;
@@ -904,34 +909,36 @@
                 width: 100%;
                 height: 100%;
             }
-            .barcode-page:last-child {
+            .qr-page:last-child {
                 page-break-after: auto;
                 break-after: auto;
             }
-            .barcode-page-label {
+            .qr-page-label {
                 display: none;
             }
-            .barcode-item {
+            .qr-item {
                 break-inside: avoid;
                 page-break-inside: avoid;
                 border: 1px solid #ddd;
-                padding: 8px;
+                padding: 3mm;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
             }
-            .barcode-item-name {
-                font-size: 11px;
+            .qr-item-name {
+                font-size: 10px;
             }
-            .barcode-item-buyer {
-                font-size: 9px;
-            }
-            .barcode-item-code {
+            .qr-item-buyer {
                 font-size: 8px;
             }
-            .barcode-svg {
-                height: 45px;
+            .qr-item-code {
+                font-size: 7px;
+            }
+            .qr-canvas {
+                width: 38mm !important;
+                height: 38mm !important;
+                margin: 2mm auto;
             }
         }
 
@@ -1051,7 +1058,7 @@
             .stat-card .stat-value { font-size: 18px; }
             .btn { padding: 8px 14px; font-size: 12px; }
             .modal-content { padding: 20px; }
-            .barcode-page {
+            .qr-page {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
@@ -1096,8 +1103,8 @@
                 <button class="btn btn-reset" onclick="resetFilters()">
                     <i class="fas fa-redo"></i> Reset
                 </button>
-                <button class="btn btn-print" onclick="printFilteredBarcodes()">
-                    <i class="fas fa-barcode"></i> Print Barcodes
+                <button class="btn btn-print" onclick="printFilteredQRCodes()">
+                    <i class="fas fa-qrcode"></i> Print QR Codes
                 </button>
                 <button class="btn btn-excel" onclick="downloadExcel()">
                     <i class="fas fa-file-excel"></i> Download Excel
@@ -1209,23 +1216,23 @@
         </div>
     </main>
 
-    <!-- Barcode Modal -->
-    <div class="modal-overlay" id="barcodeModal">
+    <!-- QR Modal -->
+    <div class="modal-overlay" id="qrModal">
         <div class="modal-content glass">
             <div class="modal-header">
-                <h3 class="modal-title" id="barcodeModalTitle"><i class="fas fa-barcode"></i> Item Barcodes for Rack Labeling</h3>
-                <button class="modal-close" onclick="closeBarcodeModal()">
+                <h3 class="modal-title" id="qrModalTitle"><i class="fas fa-qrcode"></i> Item QR Codes for Rack Labeling</h3>
+                <button class="modal-close" onclick="closeQRModal()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div id="barcodeContainer">
-                <!-- Barcode pages will be inserted here -->
+            <div id="qrContainer">
+                <!-- QR pages will be inserted here -->
             </div>
             <div class="print-actions">
-                <button class="btn btn-print" onclick="printBarcodes()">
-                    <i class="fas fa-print"></i> Print Barcodes (A4 Landscape)
+                <button class="btn btn-print" onclick="printQRCodes()">
+                    <i class="fas fa-print"></i> Print QR Codes (A4 Landscape)
                 </button>
-                <button class="btn btn-reset" onclick="closeBarcodeModal()">
+                <button class="btn btn-reset" onclick="closeQRModal()">
                     <i class="fas fa-times"></i> Close
                 </button>
             </div>
@@ -1291,11 +1298,13 @@
         let perPage = 100;
         let sortColumn = 'txn_date';
         let sortDirection = 'desc';
-        let currentBarcodeItems = [];
+        let currentQRItems = [];
         let pendingDeleteId = null;
 
-        // How many barcode labels per printed A4 landscape page (5 cols x 2 rows)
-        const BARCODES_PER_PAGE = 10;
+        // How many QR labels per printed A4 landscape page (5 cols x 3 rows).
+        // Each QR prints at 38mm x 38mm — big enough for an instant camera scan
+        // from normal rack-labeling distance, small enough that 15 fit per sheet.
+        const QR_PER_PAGE = 15;
 
         // ============ THEME ============
         function toggleTheme() {
@@ -1440,7 +1449,7 @@
                 if (supplier) query = query.ilike('items.supplier', `%${supplier}%`);
 
                 // Fetch all (with limit for safety)
-                const { data, error, count } = await query.limit(5000);
+                const { data, error } = await query.limit(5000);
 
                 if (error) throw error;
 
@@ -1548,16 +1557,16 @@
             document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
         }
 
-        // ============ BARCODE FUNCTIONS ============
-        // Renders `items` as a series of "pages", each holding BARCODES_PER_PAGE
-        // barcode labels laid out in a 5x2 grid. In print mode each page becomes
-        // exactly one A4 landscape sheet (page-break-after), so if there are e.g.
-        // 34 items you get 4 pages: 10, 10, 10, 4.
-        function showBarcodeModal(items) {
-            currentBarcodeItems = items;
-            const modal = document.getElementById('barcodeModal');
-            const container = document.getElementById('barcodeContainer');
-            const titleEl = document.getElementById('barcodeModalTitle');
+        // ============ QR CODE FUNCTIONS ============
+        // Renders `items` as a series of "pages", each holding QR_PER_PAGE
+        // QR labels laid out in a 5x3 grid. In print mode each page becomes
+        // exactly one A4 landscape sheet (page-break-after), so e.g. 34 items
+        // => 3 pages: 15, 15, 4.
+        function showQRModal(items) {
+            currentQRItems = items;
+            const modal = document.getElementById('qrModal');
+            const container = document.getElementById('qrContainer');
+            const titleEl = document.getElementById('qrModalTitle');
 
             container.innerHTML = '';
 
@@ -1572,63 +1581,59 @@
                 return;
             }
 
-            // Split into pages of BARCODES_PER_PAGE
+            // Split into pages of QR_PER_PAGE
             const pages = [];
-            for (let i = 0; i < items.length; i += BARCODES_PER_PAGE) {
-                pages.push(items.slice(i, i + BARCODES_PER_PAGE));
+            for (let i = 0; i < items.length; i += QR_PER_PAGE) {
+                pages.push(items.slice(i, i + QR_PER_PAGE));
             }
 
             const totalPagesLabel = pages.length === 1 ? '1 page' : `${pages.length} pages`;
-            titleEl.innerHTML = `<i class="fas fa-barcode"></i> Item Barcodes for Rack Labeling — ${items.length} item${items.length > 1 ? 's' : ''} (${totalPagesLabel})`;
+            titleEl.innerHTML = `<i class="fas fa-qrcode"></i> Item QR Codes for Rack Labeling — ${items.length} item${items.length > 1 ? 's' : ''} (${totalPagesLabel})`;
 
-            let barcodeIndex = 0;
+            let qrIndex = 0;
 
             pages.forEach((pageItems, pageIdx) => {
                 const pageDiv = document.createElement('div');
-                pageDiv.className = 'barcode-page';
+                pageDiv.className = 'qr-page';
 
                 const labelDiv = document.createElement('div');
-                labelDiv.className = 'barcode-page-label';
+                labelDiv.className = 'qr-page-label';
                 labelDiv.textContent = `Page ${pageIdx + 1} of ${pages.length}`;
                 pageDiv.appendChild(labelDiv);
 
                 pageItems.forEach(item => {
-                    const barcodeId = `barcode-${barcodeIndex}`;
+                    const qrId = `qr-${qrIndex}`;
                     const itemCode = item.item_code || item.qr_payload || `ITEM-${item.id}`;
                     const buyerName = item.buyers?.name || 'N/A';
                     const itemName = item.description || 'No Description';
 
                     const itemDiv = document.createElement('div');
-                    itemDiv.className = 'barcode-item';
+                    itemDiv.className = 'qr-item';
                     itemDiv.innerHTML = `
-                        <div class="barcode-item-info">
-                            <div class="barcode-item-name">${itemName}</div>
-                            <div class="barcode-item-buyer">Buyer: ${buyerName}</div>
-                            <div class="barcode-item-code">${itemCode}</div>
-                        </div>
-                        <svg id="${barcodeId}" class="barcode-svg"></svg>
+                        <div class="qr-item-name">${itemName}</div>
+                        <div class="qr-item-buyer">Buyer: ${buyerName}</div>
+                        <canvas id="${qrId}" class="qr-canvas"></canvas>
+                        <div class="qr-item-code">${itemCode}</div>
                     `;
 
                     pageDiv.appendChild(itemDiv);
-                    barcodeIndex++;
+                    qrIndex++;
 
-                    // Generate barcode (slight delay so element exists in DOM)
-                    (function(bid, code) {
+                    // Generate QR (slight delay so canvas element exists in DOM)
+                    (function(qid, code) {
                         setTimeout(() => {
-                            try {
-                                JsBarcode(`#${bid}`, code, {
-                                    format: "CODE128",
-                                    width: 1.6,
-                                    height: 45,
-                                    displayValue: true,
-                                    fontSize: 10,
-                                    margin: 6
-                                });
-                            } catch (err) {
-                                console.error('Barcode generation error:', err);
-                            }
-                        }, 50);
-                    })(barcodeId, itemCode);
+                            const canvas = document.getElementById(qid);
+                            if (!canvas) return;
+                            QRCode.toCanvas(canvas, code, {
+                                width: 300,
+                                margin: 1,
+                                errorCorrectionLevel: 'M',
+                                color: { dark: '#000000', light: '#ffffff' }
+                            }, function(err) {
+                                if (err) console.error('QR generation error:', err);
+                            });
+                        }, 30);
+                    })(qrId, itemCode);
                 });
 
                 container.appendChild(pageDiv);
@@ -1637,22 +1642,22 @@
             modal.classList.add('active');
         }
 
-        function closeBarcodeModal() {
-            const modal = document.getElementById('barcodeModal');
+        function closeQRModal() {
+            const modal = document.getElementById('qrModal');
             modal.classList.remove('active');
-            currentBarcodeItems = [];
+            currentQRItems = [];
         }
 
-        function printBarcodes() {
+        function printQRCodes() {
             window.print();
         }
 
-        // Prints barcodes for ALL items belonging to the selected buyer (or all
+        // Prints QR codes for ALL items belonging to the selected buyer (or all
         // buyers if none selected). This is independent of the date-range /
         // other transaction filters — it pulls straight from the items table so
         // every item for that buyer gets a label, even ones with no recent
         // transactions.
-        async function printFilteredBarcodes() {
+        async function printFilteredQRCodes() {
             const buyerId = document.getElementById('fBuyer').value;
             const buyerSelect = document.getElementById('fBuyer');
             const buyerLabel = buyerId ? buyerSelect.options[buyerSelect.selectedIndex].text : 'All Buyers';
@@ -1679,12 +1684,35 @@
                     return;
                 }
 
-                showBarcodeModal(data);
-                showToast(`${data.length} item barcode(s) ready to print`, 'success');
+                showQRModal(data);
+                showToast(`${data.length} item QR code(s) ready to print`, 'success');
 
             } catch (err) {
-                console.error('printFilteredBarcodes error:', err);
+                console.error('printFilteredQRCodes error:', err);
                 showToast('Error loading items: ' + err.message, 'error');
+            }
+        }
+
+        // Shows the QR code for a single item (called from the "View" button
+        // on a transaction row).
+        async function showItemQR(itemId) {
+            showToast('Loading QR code...', 'success');
+            try {
+                const { data, error } = await db
+                    .from('items')
+                    .select('id, description, item_code, qr_payload, buyer_id, buyers:buyer_id (name)')
+                    .eq('id', itemId)
+                    .single();
+
+                if (error) throw error;
+                if (!data) {
+                    showToast('Item not found', 'error');
+                    return;
+                }
+                showQRModal([data]);
+            } catch (err) {
+                console.error('showItemQR error:', err);
+                showToast('Error loading item: ' + err.message, 'error');
             }
         }
 
@@ -1825,7 +1853,7 @@
                     <td>${txn.team_members?.name || ''}</td>
                     <td>${txn.remarks || ''}</td>
                     <td class="action-cell">
-                        <button class="barcode-btn" onclick="showItemBarcode(${txn.item_id})"><i class="fas fa-barcode"></i> View</button>
+                        <button class="qr-btn" onclick="showItemQR(${txn.item_id})"><i class="fas fa-qrcode"></i> View</button>
                         <button class="delete-btn" onclick="openDeleteConfirm(${txn.id})"><i class="fas fa-trash"></i> Delete</button>
                     </td>
                 </tr>`;
@@ -1845,51 +1873,32 @@
                         <option value="250" ${perPage === 250 ? 'selected' : ''}>250 / page</option>
                         <option value="500" ${perPage === 500 ? 'selected' : ''}>500 / page</option>
                     </select>
-                    <button class="page-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>
-                        <i class="fas fa-angle-double-left"></i>
-                    </button>
-                    <button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
-                        <i class="fas fa-angle-left"></i>
-                    </button>`;
-
-            // Page numbers
-            const maxButtons = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-            if (endPage - startPage < maxButtons - 1) {
-                startPage = Math.max(1, endPage - maxButtons + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
-            }
-
-            html += `
-                    <button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
-                        <i class="fas fa-angle-right"></i>
-                    </button>
-                    <button class="page-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>
-                        <i class="fas fa-angle-double-right"></i>
-                    </button>
+                    <button class="page-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-angle-double-left"></i></button>
+                    <button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-angle-left"></i></button>
+                    ${buildPageNumbers(currentPage, totalPages)}
+                    <button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-angle-right"></i></button>
+                    <button class="page-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-angle-double-right"></i></button>
                 </div>
             </div>`;
 
             tableContent.innerHTML = html;
         }
 
-        function showItemBarcode(itemId) {
-            const item = filteredData.find(t => t.item_id === itemId);
-            if (!item) return;
+        function buildPageNumbers(current, total) {
+            let btns = '';
+            let start = Math.max(1, current - 2);
+            let end = Math.min(total, start + 4);
+            start = Math.max(1, end - 4);
+            for (let p = start; p <= end; p++) {
+                btns += `<button class="page-btn ${p === current ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`;
+            }
+            return btns;
+        }
 
-            const itemData = {
-                id: itemId,
-                description: item.items?.description,
-                item_code: item.items?.item_code,
-                qr_payload: item.items?.qr_payload,
-                buyers: item.items?.buyers
-            };
-
-            showBarcodeModal([itemData]);
+        function changePerPage(value) {
+            perPage = parseInt(value, 10) || 100;
+            currentPage = 1;
+            renderTable();
         }
 
         function goToPage(page) {
@@ -1900,16 +1909,8 @@
             document.querySelector('.table-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        function changePerPage(value) {
-            perPage = parseInt(value);
-            currentPage = 1;
-            renderTable();
-        }
-
         // ============ RESET FILTERS ============
         function resetFilters() {
-            document.getElementById('fDateFrom').value = '';
-            document.getElementById('fDateTo').value = '';
             document.getElementById('fBuyer').value = '';
             document.getElementById('fItem').value = '';
             document.getElementById('fType').value = '';
@@ -1919,80 +1920,51 @@
             document.getElementById('fStyle').value = '';
             document.getElementById('fTeam').value = '';
             document.getElementById('fSupplier').value = '';
+
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            document.getElementById('fDateTo').value = today.toISOString().split('T')[0];
+            document.getElementById('fDateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
+
             applyFilters();
-            showToast('Filters reset', 'success');
         }
 
-        // ============ DOWNLOAD EXCEL ============
+        // ============ EXCEL EXPORT ============
         function downloadExcel() {
-            if (filteredData.length === 0) {
-                showToast('No data to download', 'error');
+            if (!filteredData.length) {
+                showToast('No data to export', 'error');
                 return;
             }
 
-            showToast('Preparing Excel file...', 'success');
-
-            // Prepare data
-            const excelData = filteredData.map((txn, idx) => ({
-                'No': idx + 1,
+            const rows = filteredData.map((txn, idx) => ({
+                '#': idx + 1,
                 'Date': txn.txn_date || '',
                 'Buyer': txn.items?.buyers?.name || '',
                 'Item': txn.items?.description || '',
                 'Item Code': txn.items?.item_code || '',
                 'Unit': txn.items?.unit || '',
-                'Location': txn.items?.goods_location || '',
-                'Type': txn.type || '',
-                'Challan No': txn.challan_no || '',
-                'MRR No': txn.mrr_no || '',
-                'Order No': txn.order_no || '',
-                'SR/Style No': txn.style_no || '',
+                'Type': txn.type,
+                'Challan': txn.challan_no || '',
+                'MRR': txn.mrr_no || '',
+                'Order': txn.order_no || '',
+                'Style': txn.style_no || '',
                 'Qty': parseFloat(txn.qty) || 0,
                 'Unit Price': parseFloat(txn.unit_price_snapshot) || 0,
-                'Line Value': parseFloat(txn.line_value) || 0,
-                'Present Stock': parseFloat(txn.present_stock_after) || 0,
-                'Stock Value': parseFloat(txn.stock_value_after) || 0,
+                'Value': parseFloat(txn.line_value) || 0,
+                'Stock After': parseFloat(txn.present_stock_after) || 0,
+                'Stock Value After': parseFloat(txn.stock_value_after) || 0,
                 'Supplier': txn.items?.supplier || '',
-                'Team Member': txn.team_members?.name || '',
+                'Team': txn.team_members?.name || '',
                 'Remarks': txn.remarks || ''
             }));
 
-            // Create workbook
+            const ws = XLSX.utils.json_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(excelData);
-
-            // Set column widths
-            ws['!cols'] = [
-                { wch: 5 },   // No
-                { wch: 12 },  // Date
-                { wch: 25 },  // Buyer
-                { wch: 30 },  // Item
-                { wch: 20 },  // Item Code
-                { wch: 8 },   // Unit
-                { wch: 15 },  // Location
-                { wch: 8 },   // Type
-                { wch: 15 },  // Challan
-                { wch: 18 },  // MRR
-                { wch: 15 },  // Order
-                { wch: 25 },  // Style
-                { wch: 12 },  // Qty
-                { wch: 12 },  // Price
-                { wch: 12 },  // Value
-                { wch: 12 },  // Stock
-                { wch: 12 },  // Stock Value
-                { wch: 20 },  // Supplier
-                { wch: 18 },  // Team
-                { wch: 30 }   // Remarks
-            ];
-
             XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
-
-            // Generate file name with date
-            const today = new Date().toISOString().split('T')[0];
-            const fileName = `GMS-Transactions-${today}.xlsx`;
-
-            // Download
-            XLSX.writeFile(wb, fileName);
-            showToast(`Downloaded: ${fileName}`, 'success');
+            const dateStr = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `GMS_Transactions_${dateStr}.xlsx`);
+            showToast('Excel file downloaded!', 'success');
         }
 
         // ============ INIT ============
@@ -2000,31 +1972,6 @@
             await loadFilters();
             await loadTransactions();
         });
-
-        // Enter key on filter inputs
-        document.querySelectorAll('.filter-group input').forEach(input => {
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') applyFilters();
-            });
-        });
-
-        // Close modal on outside click
-        document.getElementById('barcodeModal').addEventListener('click', (e) => {
-            if (e.target.id === 'barcodeModal') {
-                closeBarcodeModal();
-            }
-        });
-
-        document.getElementById('confirmModal').addEventListener('click', (e) => {
-            if (e.target.id === 'confirmModal') {
-                closeConfirmModal();
-            }
-        });
-
-        // PWA Service Worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('../sw.js').catch(() => {});
-        }
     </script>
 </body>
 </html>
