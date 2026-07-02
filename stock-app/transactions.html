@@ -904,15 +904,15 @@
             .qr-page {
                 display: grid !important;
                 grid-template-columns: repeat(5, 1fr);
-                grid-template-rows: repeat(3, 1fr);
-                gap: 5mm 4mm;
+                grid-auto-rows: auto;
+                gap: 4mm 3mm;
                 padding: 0;
                 margin: 0;
                 border: none;
                 page-break-after: always;
                 break-after: page;
+                page-break-before: auto;
                 width: 100%;
-                height: 100%;
             }
             .qr-page:last-child {
                 page-break-after: auto;
@@ -925,25 +925,26 @@
                 break-inside: avoid;
                 page-break-inside: avoid;
                 border: 1px solid #ddd;
-                padding: 3mm;
+                padding: 2mm;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
             }
             .qr-item-name {
-                font-size: 10px;
+                font-size: 9px;
+                line-height: 1.2;
             }
             .qr-item-buyer {
-                font-size: 8px;
-            }
-            .qr-item-code {
                 font-size: 7px;
             }
+            .qr-item-code {
+                font-size: 6px;
+            }
             .qr-svg-wrap {
-                width: 38mm !important;
-                height: 38mm !important;
-                margin: 2mm auto;
+                width: 33mm !important;
+                height: 33mm !important;
+                margin: 1.5mm auto;
             }
         }
 
@@ -1055,7 +1056,7 @@
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
         /* Responsive */
-        @media (max-width: 768px) {
+        @media screen and (max-width: 768px) {
             .main { padding: 16px; }
             .filter-grid { grid-template-columns: 1fr 1fr; }
             .page-title h2 { font-size: 18px; }
@@ -1068,7 +1069,7 @@
             }
         }
 
-        @media (max-width: 480px) {
+        @media screen and (max-width: 480px) {
             .filter-grid { grid-template-columns: 1fr; }
             .title-actions { width: 100%; }
             .title-actions .btn { flex: 1; justify-content: center; }
