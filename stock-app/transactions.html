@@ -876,27 +876,28 @@
                 margin: 10mm;
             }
 
-            body * {
-                visibility: hidden;
+            body > *:not(#qrModal) {
+                display: none !important;
             }
-            .modal-overlay, .modal-overlay * {
-                visibility: visible;
+            #qrModal {
+                display: none;
             }
-            .modal-overlay {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                background: white;
-                padding: 0;
+            #qrModal.active {
+                display: block !important;
+                position: static !important;
+                background: white !important;
+                padding: 0 !important;
             }
             .modal-content {
+                display: block !important;
+                position: static !important;
                 box-shadow: none;
                 border: none;
                 max-width: 100%;
                 max-height: none;
                 overflow: visible;
                 padding: 0;
+                background: white;
             }
             .modal-header, .print-actions {
                 display: none;
