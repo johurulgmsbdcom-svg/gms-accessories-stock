@@ -1329,6 +1329,13 @@
             </div>
         </div>
 
+        <!-- Debug: shows the EXACT date values being sent to Supabase for the
+             current search, so date-filter issues can be diagnosed at a
+             glance (native date inputs display locale-formatted text like
+             06/04/2026 to the user, but the real underlying value sent to
+             the query is always ISO — this line shows that real value). -->
+        <div id="activeRangeDebug" style="font-size:11px;color:var(--text-muted);margin:-8px 0 14px;padding:0 4px;"></div>
+
         <!-- Stats Row -->
         <div class="stats-row">
             <div class="stat-card glass blue">
@@ -1713,6 +1720,18 @@
 
                 if (dateFrom) query = query.gte('txn_date', dateFrom);
                 if (dateTo) query = query.lte('txn_date', dateTo);
+
+                // Show exactly what's being sent to the database, in plain ISO
+                // form, so it's obvious whether the filter itself is wrong or
+                // whether the date fields simply don't contain what was intended.
+                const debugEl = document.getElementById('activeRangeDebug');
+                if (debugEl) {
+                    if (dateFrom || dateTo) {
+                        debugEl.innerHTML = `<i class="fas fa-filter"></i> Active date filter sent to server: <b>${dateFrom || '(no lower bound)'}</b> &rarr; <b>${dateTo || '(no upper bound)'}</b>`;
+                    } else {
+                        debugEl.innerHTML = `<i class="fas fa-filter"></i> No date filter applied — showing ALL dates`;
+                    }
+                }
                 if (buyerId) query = query.eq('items.buyer_id', buyerId);
                 if (itemText) {
                     const matchedItemId = itemNameToId[itemText];
