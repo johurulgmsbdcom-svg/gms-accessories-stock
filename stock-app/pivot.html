@@ -1054,7 +1054,7 @@
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let allItems = [];
-        let filteredData = [];
+        let pivotRows = [];      // one computed row per item: {item, prevQty, prevValue, rcvdQty, rcvdValue, dlvdQty, dlvdValue, presentQty, presentValue}
         let allBuyers = [];
         let selectedBuyerIds = [];
 
@@ -1204,6 +1204,108 @@
             await loadItems();
         }
 
+        // ============ FETCH TRANSACTIONS FOR A SET OF ITEM IDS ============
+        // Pulls the FULL transaction history (all dates) for the given items —
+        // not just the selected date range — because "Previous" needs to know
+        // the running balance from BEFORE the range started. Filtering by date
+        // happens afterwards in JS (computePivotForItem), not in this query.
+        async function fetchTransactionsForItems(itemIds) {
+            if (!itemIds.length) return {};
+
+            const CHUNK = 200; // avoid overly long .in() filters
+            const byItem = {};
+            itemIds.forEach(id => { byItem[id] = []; });
+
+            for (let i = 0; i < itemIds.length; i += CHUNK) {
+                const chunkIds = itemIds.slice(i, i + CHUNK);
+                const { data, error } = await db
+                    .from('transactions')
+                    .select('id, item_id, type, txn_date, qty, line_value, present_stock_after, stock_value_after')
+                    .in('item_id', chunkIds)
+                    .order('txn_date', { ascending: true })
+                    .order('id', { ascending: true })
+                    .limit(20000);
+
+                if (error) throw error;
+
+                (data || []).forEach(txn => {
+                    if (!byItem[txn.item_id]) byItem[txn.item_id] = [];
+                    byItem[txn.item_id].push(txn);
+                });
+            }
+
+            return byItem;
+        }
+
+        // ============ COMPUTE ONE PIVOT ROW FOR AN ITEM ============
+        // previous  = running balance from the last transaction dated BEFORE dateFrom
+        //             (falls back to the item's stored current_stock/current_value if
+        //             the item has no transaction history at all yet).
+        // received  = sum of qty/value for RCVD + PRVS type transactions inside [dateFrom, dateTo]
+        // delivered = sum of qty/value for DLVD type transactions inside [dateFrom, dateTo]
+        // present   = previous + received - delivered   (same rule for value)
+        function computePivotForItem(item, txns, dateFrom, dateTo) {
+            let prevQty = 0, prevValue = 0;
+            let rcvdQty = 0, rcvdValue = 0;
+            let dlvdQty = 0, dlvdValue = 0;
+
+            if (!txns || txns.length === 0) {
+                // No ledger history yet — use the item's own stored stock as the baseline.
+                prevQty = parseFloat(item.current_stock) || 0;
+                prevValue = parseFloat(item.current_value) || 0;
+            } else {
+                // Find the latest transaction strictly BEFORE dateFrom for "Previous".
+                let lastBefore = null;
+                txns.forEach(txn => {
+                    if (dateFrom && txn.txn_date < dateFrom) {
+                        if (!lastBefore || txn.id > lastBefore.id) lastBefore = txn;
+                    }
+                });
+
+                if (lastBefore) {
+                    prevQty = parseFloat(lastBefore.present_stock_after) || 0;
+                    prevValue = parseFloat(lastBefore.stock_value_after) || 0;
+                } else if (!dateFrom) {
+                    // No date-from filter at all -> nothing counts as "previous"
+                    prevQty = 0;
+                    prevValue = 0;
+                } else {
+                    // dateFrom is set but item has no transaction before it —
+                    // it simply didn't exist in the ledger yet, so previous = 0.
+                    prevQty = 0;
+                    prevValue = 0;
+                }
+
+                // Sum RCVD/PRVS and DLVD transactions that fall inside the selected range.
+                txns.forEach(txn => {
+                    const inRange = (!dateFrom || txn.txn_date >= dateFrom) && (!dateTo || txn.txn_date <= dateTo);
+                    if (!inRange) return;
+
+                    const qty = parseFloat(txn.qty) || 0;
+                    const val = parseFloat(txn.line_value) || 0;
+
+                    if (txn.type === 'RCVD' || txn.type === 'PRVS') {
+                        rcvdQty += qty;
+                        rcvdValue += val;
+                    } else if (txn.type === 'DLVD') {
+                        dlvdQty += qty;
+                        dlvdValue += val;
+                    }
+                });
+            }
+
+            const presentQty = prevQty + rcvdQty - dlvdQty;
+            const presentValue = prevValue + rcvdValue - dlvdValue;
+
+            return {
+                item,
+                prevQty, prevValue,
+                rcvdQty, rcvdValue,
+                dlvdQty, dlvdValue,
+                presentQty, presentValue
+            };
+        }
+
         async function loadItems() {
             const tableContent = document.getElementById('tableContent');
             tableContent.innerHTML = `
@@ -1246,7 +1348,18 @@
                     });
                 }
 
-                filteredData = [...allItems];
+                // Pull transaction history for exactly these items, then compute
+                // Previous / Received / Delivery / Present per item.
+                const dateFrom = document.getElementById('fDateFrom').value || '';
+                const dateTo = document.getElementById('fDateTo').value || '';
+
+                const itemIds = allItems.map(i => i.id);
+                const txnsByItem = await fetchTransactionsForItems(itemIds);
+
+                pivotRows = allItems.map(item =>
+                    computePivotForItem(item, txnsByItem[item.id] || [], dateFrom, dateTo)
+                );
+
                 renderPivotTable();
 
             } catch (err) {
@@ -1264,7 +1377,7 @@
         function renderPivotTable() {
             const tableContent = document.getElementById('tableContent');
 
-            if (filteredData.length === 0) {
+            if (pivotRows.length === 0) {
                 tableContent.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
@@ -1275,10 +1388,10 @@
             }
 
             const groups = {};
-            filteredData.forEach(item => {
-                const buyerName = item.buyers?.name || 'Unknown Buyer';
+            pivotRows.forEach(row => {
+                const buyerName = row.item.buyers?.name || 'Unknown Buyer';
                 if (!groups[buyerName]) groups[buyerName] = [];
-                groups[buyerName].push(item);
+                groups[buyerName].push(row);
             });
 
             const columns = [
@@ -1301,24 +1414,29 @@
             const buyerNames = Object.keys(groups).sort();
             
             buyerNames.forEach(buyerName => {
-                const items = groups[buyerName];
+                const rows = groups[buyerName];
                 let buyerTotal = {
                     prevQty: 0, prevValue: 0, rcvdQty: 0, rcvdValue: 0,
                     dlvdQty: 0, dlvdValue: 0, presentStock: 0, stockValue: 0
                 };
 
-                items.forEach(item => {
-                    const prevQty = parseFloat(item.current_stock) || 0;
-                    const prevValue = parseFloat(item.current_value) || 0;
-                    
-                    buyerTotal.prevQty += prevQty;
-                    buyerTotal.prevValue += prevValue;
-                    buyerTotal.presentStock += prevQty;
-                    buyerTotal.stockValue += prevValue;
+                rows.forEach(row => {
+                    buyerTotal.prevQty += row.prevQty;
+                    buyerTotal.prevValue += row.prevValue;
+                    buyerTotal.rcvdQty += row.rcvdQty;
+                    buyerTotal.rcvdValue += row.rcvdValue;
+                    buyerTotal.dlvdQty += row.dlvdQty;
+                    buyerTotal.dlvdValue += row.dlvdValue;
+                    buyerTotal.presentStock += row.presentQty;
+                    buyerTotal.stockValue += row.presentValue;
                 });
 
                 grandTotal.prevQty += buyerTotal.prevQty;
                 grandTotal.prevValue += buyerTotal.prevValue;
+                grandTotal.rcvdQty += buyerTotal.rcvdQty;
+                grandTotal.rcvdValue += buyerTotal.rcvdValue;
+                grandTotal.dlvdQty += buyerTotal.dlvdQty;
+                grandTotal.dlvdValue += buyerTotal.dlvdValue;
                 grandTotal.presentStock += buyerTotal.presentStock;
                 grandTotal.stockValue += buyerTotal.stockValue;
 
@@ -1326,23 +1444,21 @@
                     <td colspan="12"><i class="fas fa-building"></i> ${buyerName}</td>
                 </tr>`;
 
-                items.forEach(item => {
-                    const prevQty = parseFloat(item.current_stock) || 0;
-                    const prevValue = parseFloat(item.current_value) || 0;
-                    
+                rows.forEach(row => {
+                    const item = row.item;
                     html += `<tr>
                         <td></td>
                         <td>${item.description || ''}</td>
                         <td>${item.unit || ''}</td>
                         <td>${item.goods_location || ''}</td>
-                        <td>${fmt(prevQty)}</td>
-                        <td>$${fmt(prevValue)}</td>
-                        <td>0</td>
-                        <td>$0</td>
-                        <td>0</td>
-                        <td>$0</td>
-                        <td>${fmt(prevQty)}</td>
-                        <td>$${fmt(prevValue)}</td>
+                        <td>${fmt(row.prevQty)}</td>
+                        <td>$${fmt(row.prevValue)}</td>
+                        <td>${fmt(row.rcvdQty)}</td>
+                        <td>$${fmt(row.rcvdValue)}</td>
+                        <td>${fmt(row.dlvdQty)}</td>
+                        <td>$${fmt(row.dlvdValue)}</td>
+                        <td>${fmt(row.presentQty)}</td>
+                        <td>$${fmt(row.presentValue)}</td>
                     </tr>`;
                 });
 
@@ -1374,7 +1490,7 @@
             html += '</tbody></table></div>';
             tableContent.innerHTML = html;
 
-            document.getElementById('statTotalItems').textContent = fmt(filteredData.length);
+            document.getElementById('statTotalItems').textContent = fmt(pivotRows.length);
             document.getElementById('statPrevQty').textContent = fmt(grandTotal.prevQty);
             document.getElementById('statPrevValue').textContent = '$' + fmt(grandTotal.prevValue);
             document.getElementById('statPresentStock').textContent = fmt(grandTotal.presentStock);
@@ -1392,7 +1508,7 @@
 
         // ============ PRINT REPORT ============
         function printReport() {
-            if (filteredData.length === 0) {
+            if (pivotRows.length === 0) {
                 showToast('No data to print', 'error');
                 return;
             }
@@ -1412,7 +1528,7 @@
 
         // ============ DOWNLOAD EXCEL ============
         function downloadExcel() {
-            if (filteredData.length === 0) {
+            if (pivotRows.length === 0) {
                 showToast('No data to download', 'error');
                 return;
             }
@@ -1420,50 +1536,59 @@
             showToast('Preparing Excel file...', 'success');
 
             const groups = {};
-            filteredData.forEach(item => {
-                const buyerName = item.buyers?.name || 'Unknown Buyer';
+            pivotRows.forEach(row => {
+                const buyerName = row.item.buyers?.name || 'Unknown Buyer';
                 if (!groups[buyerName]) groups[buyerName] = [];
-                groups[buyerName].push(item);
+                groups[buyerName].push(row);
             });
 
             let excelData = [];
             let grandTotal = {
-                prevQty: 0, prevValue: 0, presentStock: 0, stockValue: 0
+                prevQty: 0, prevValue: 0, rcvdQty: 0, rcvdValue: 0,
+                dlvdQty: 0, dlvdValue: 0, presentStock: 0, stockValue: 0
             };
 
             const buyerNames = Object.keys(groups).sort();
             
             buyerNames.forEach(buyerName => {
-                const items = groups[buyerName];
-                let buyerTotal = { prevQty: 0, prevValue: 0, presentStock: 0, stockValue: 0 };
+                const rows = groups[buyerName];
+                let buyerTotal = {
+                    prevQty: 0, prevValue: 0, rcvdQty: 0, rcvdValue: 0,
+                    dlvdQty: 0, dlvdValue: 0, presentStock: 0, stockValue: 0
+                };
 
-                items.forEach(item => {
-                    const prevQty = parseFloat(item.current_stock) || 0;
-                    const prevValue = parseFloat(item.current_value) || 0;
-                    
-                    buyerTotal.prevQty += prevQty;
-                    buyerTotal.prevValue += prevValue;
-                    buyerTotal.presentStock += prevQty;
-                    buyerTotal.stockValue += prevValue;
+                rows.forEach(row => {
+                    buyerTotal.prevQty += row.prevQty;
+                    buyerTotal.prevValue += row.prevValue;
+                    buyerTotal.rcvdQty += row.rcvdQty;
+                    buyerTotal.rcvdValue += row.rcvdValue;
+                    buyerTotal.dlvdQty += row.dlvdQty;
+                    buyerTotal.dlvdValue += row.dlvdValue;
+                    buyerTotal.presentStock += row.presentQty;
+                    buyerTotal.stockValue += row.presentValue;
 
                     excelData.push({
                         'Buyer': buyerName,
-                        'Description Of Item': item.description || '',
-                        'Unit': item.unit || '',
-                        'Goods Location': item.goods_location || '',
-                        'Previous Qty': prevQty,
-                        'Previous Value': prevValue,
-                        'Received Qty': 0,
-                        'Received Value': 0,
-                        'Delivery Qty': 0,
-                        'Delivery Value': 0,
-                        'Present Stock': prevQty,
-                        'Stock Value': prevValue
+                        'Description Of Item': row.item.description || '',
+                        'Unit': row.item.unit || '',
+                        'Goods Location': row.item.goods_location || '',
+                        'Previous Qty': row.prevQty,
+                        'Previous Value': row.prevValue,
+                        'Received Qty': row.rcvdQty,
+                        'Received Value': row.rcvdValue,
+                        'Delivery Qty': row.dlvdQty,
+                        'Delivery Value': row.dlvdValue,
+                        'Present Stock': row.presentQty,
+                        'Stock Value': row.presentValue
                     });
                 });
 
                 grandTotal.prevQty += buyerTotal.prevQty;
                 grandTotal.prevValue += buyerTotal.prevValue;
+                grandTotal.rcvdQty += buyerTotal.rcvdQty;
+                grandTotal.rcvdValue += buyerTotal.rcvdValue;
+                grandTotal.dlvdQty += buyerTotal.dlvdQty;
+                grandTotal.dlvdValue += buyerTotal.dlvdValue;
                 grandTotal.presentStock += buyerTotal.presentStock;
                 grandTotal.stockValue += buyerTotal.stockValue;
 
@@ -1474,10 +1599,10 @@
                     'Goods Location': '',
                     'Previous Qty': buyerTotal.prevQty,
                     'Previous Value': buyerTotal.prevValue,
-                    'Received Qty': 0,
-                    'Received Value': 0,
-                    'Delivery Qty': 0,
-                    'Delivery Value': 0,
+                    'Received Qty': buyerTotal.rcvdQty,
+                    'Received Value': buyerTotal.rcvdValue,
+                    'Delivery Qty': buyerTotal.dlvdQty,
+                    'Delivery Value': buyerTotal.dlvdValue,
                     'Present Stock': buyerTotal.presentStock,
                     'Stock Value': buyerTotal.stockValue
                 });
@@ -1490,10 +1615,10 @@
                 'Goods Location': '',
                 'Previous Qty': grandTotal.prevQty,
                 'Previous Value': grandTotal.prevValue,
-                'Received Qty': 0,
-                'Received Value': 0,
-                'Delivery Qty': 0,
-                'Delivery Value': 0,
+                'Received Qty': grandTotal.rcvdQty,
+                'Received Value': grandTotal.rcvdValue,
+                'Delivery Qty': grandTotal.dlvdQty,
+                'Delivery Value': grandTotal.dlvdValue,
                 'Present Stock': grandTotal.presentStock,
                 'Stock Value': grandTotal.stockValue
             });
