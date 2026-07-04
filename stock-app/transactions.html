@@ -1189,6 +1189,7 @@
 
         .toast.error { border-left: 4px solid var(--accent-red); }
         .toast.success { border-left: 4px solid var(--accent-green); }
+        .toast.warning { border-left: 4px solid var(--accent-yellow); }
 
         /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -1267,11 +1268,11 @@
             <div class="filter-grid">
                 <div class="filter-group">
                     <label>Date From</label>
-                    <input type="date" id="fDateFrom">
+                    <input type="date" id="fDateFrom" onchange="applyFilters()">
                 </div>
                 <div class="filter-group">
                     <label>Date To</label>
-                    <input type="date" id="fDateTo">
+                    <input type="date" id="fDateTo" onchange="applyFilters()">
                 </div>
                 <div class="filter-group">
                     <label>Buyer</label>
@@ -1523,7 +1524,7 @@
             const icon = document.getElementById('toastIcon');
             const msg = document.getElementById('toastMsg');
             toast.className = 'toast ' + type;
-            icon.className = type === 'error' ? 'fas fa-times-circle' : 'fas fa-check-circle';
+            icon.className = type === 'error' ? 'fas fa-times-circle' : (type === 'warning' ? 'fas fa-exclamation-triangle' : 'fas fa-check-circle');
             msg.textContent = message;
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
@@ -1662,8 +1663,21 @@
                     .order('created_at', { ascending: false });
 
                 // Apply filters
-                const dateFrom = document.getElementById('fDateFrom').value;
-                const dateTo = document.getElementById('fDateTo').value;
+                let dateFrom = document.getElementById('fDateFrom').value;
+                let dateTo = document.getElementById('fDateTo').value;
+
+                // If someone picks Date From later than Date To, swap them so the
+                // filter still makes sense instead of silently returning nothing
+                // (an empty gte/lte range would otherwise look like "showing all").
+                if (dateFrom && dateTo && dateFrom > dateTo) {
+                    const tmp = dateFrom;
+                    dateFrom = dateTo;
+                    dateTo = tmp;
+                    document.getElementById('fDateFrom').value = dateFrom;
+                    document.getElementById('fDateTo').value = dateTo;
+                    showToast('Date From ও Date To উল্টো ছিল, ঠিক করে দেওয়া হয়েছে', 'warning');
+                }
+
                 const buyerId = document.getElementById('fBuyer').value;
                 const itemText = document.getElementById('fItem').value.trim();
                 const type = document.getElementById('fType').value;
