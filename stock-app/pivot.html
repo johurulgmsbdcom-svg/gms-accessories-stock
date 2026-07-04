@@ -1218,11 +1218,16 @@
 
             for (let i = 0; i < itemIds.length; i += CHUNK) {
                 const chunkIds = itemIds.slice(i, i + CHUNK);
+                // Ordered by id (insert order), NOT txn_date. present_stock_after is a
+                // running balance calculated in the order rows were INSERTED — if a
+                // transaction is later backdated (entered with an earlier txn_date
+                // after other rows already exist), sorting by date would misidentify
+                // which row is the true "genesis" entry for reversing the opening
+                // balance. Sorting by id always reflects the real calculation chain.
                 const { data, error } = await db
                     .from('transactions')
                     .select('id, item_id, type, txn_date, qty, line_value, present_stock_after, stock_value_after')
                     .in('item_id', chunkIds)
-                    .order('txn_date', { ascending: true })
                     .order('id', { ascending: true })
                     .limit(20000);
 
@@ -1263,21 +1268,33 @@
                 prevQty = parseFloat(item.current_stock) || 0;
                 prevValue = parseFloat(item.current_value) || 0;
             } else {
-                // txns is already sorted ascending by txn_date, then id (see
-                // fetchTransactionsForItems), so txns[0] is the earliest-ever entry.
-                // "Previous" is always derived from this — the date filter never
-                // affects it.
+                // txns is already sorted ascending by id / insert order (see
+                // fetchTransactionsForItems), so txns[0] is the genesis entry — the
+                // very first transaction ever recorded for this item, in the actual
+                // order the running balance was built. "Previous" is always derived
+                // from this — the date filter never affects it.
                 const earliest = txns[0];
                 const eQty = parseFloat(earliest.qty) || 0;
                 const eVal = parseFloat(earliest.line_value) || 0;
                 const eStockAfter = parseFloat(earliest.present_stock_after) || 0;
                 const eValueAfter = parseFloat(earliest.stock_value_after) || 0;
 
-                if (earliest.type === 'DLVD') {
+                if (earliest.type === 'PRVS') {
+                    // PRVS *is* the opening balance statement itself — it should be
+                    // used directly as "Previous", not reversed. Reversing it would
+                    // ask "what came before the opening balance?", which is always
+                    // (and meaninglessly) zero.
+                    prevQty = eStockAfter;
+                    prevValue = eValueAfter;
+                } else if (earliest.type === 'DLVD') {
+                    // Ledger started directly with a delivery (no PRVS was ever
+                    // entered) — reverse it to find what stock must have existed
+                    // right before that delivery happened.
                     prevQty = eStockAfter + eQty;
                     prevValue = eValueAfter + eVal;
                 } else {
-                    // RCVD or PRVS — both ADD to stock
+                    // Ledger started directly with a receipt (no PRVS was ever
+                    // entered) — reverse it to find what stock existed before it.
                     prevQty = eStockAfter - eQty;
                     prevValue = eValueAfter - eVal;
                 }
