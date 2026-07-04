@@ -599,6 +599,13 @@
                     <option value="">-- Buyer নির্বাচন করুন --</option>
                 </select>
             </div>
+            <div class="search-box" id="buyerItemSearchBox" style="margin-top:8px; display:none;">
+                <input type="text" id="buyerItemSearch" placeholder="Item Code বা নাম লিখে খুঁজুন..."
+                       oninput="filterBuyerItems()">
+                <button onclick="document.getElementById('buyerItemSearch').value=''; filterBuyerItems();">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
             <div class="buyer-items-list" id="buyerItemsList"></div>
         </div>
 
@@ -896,14 +903,19 @@
         async function loadItemsByBuyer() {
             const buyer = document.getElementById('buyerSelect').value;
             const list = document.getElementById('buyerItemsList');
+            const searchBox = document.getElementById('buyerItemSearchBox');
+            const searchInput = document.getElementById('buyerItemSearch');
 
             if (!buyer) {
                 list.innerHTML = '';
                 buyerItemsCache = [];
+                searchBox.style.display = 'none';
+                searchInput.value = '';
                 return;
             }
 
             list.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+            searchBox.style.display = 'none';
 
             try {
                 const { data, error } = await db
@@ -920,30 +932,63 @@
                     return;
                 }
 
-                list.innerHTML = buyerItemsCache.map((item, idx) => `
-                    <div class="recent-item buyer-item-row" data-idx="${idx}">
-                        <div class="left">
-                            <div class="item-info">
-                                <div class="item-name">${item.description || ''}</div>
-                                <div class="item-meta">${item.item_code || ''} • Stock: ${fmt(item.current_stock)} ${item.unit || ''}</div>
-                            </div>
-                        </div>
-                        <i class="fas fa-chevron-right" style="color:var(--muted)"></i>
-                    </div>
-                `).join('');
-
-                document.querySelectorAll('.buyer-item-row').forEach(row => {
-                    row.addEventListener('click', () => {
-                        const idx = parseInt(row.getAttribute('data-idx'), 10);
-                        currentItem = buyerItemsCache[idx];
-                        showItemModal(currentItem);
-                    });
-                });
+                searchInput.value = '';
+                searchBox.style.display = 'flex';
+                renderBuyerItems(buyerItemsCache);
             } catch (err) {
                 console.error("Buyer items error:", err);
                 list.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><br>Error loading items</div>';
                 showToast("Item লোড করতে সমস্যা: " + err.message, "error");
             }
+        }
+
+        // Live text filter within the currently selected buyer's items
+        function filterBuyerItems() {
+            const q = document.getElementById('buyerItemSearch').value.trim().toLowerCase();
+            if (!q) {
+                renderBuyerItems(buyerItemsCache);
+                return;
+            }
+            const filtered = buyerItemsCache.filter(item => {
+                const code = (item.item_code || '').toLowerCase();
+                const desc = (item.description || '').toLowerCase();
+                return code.includes(q) || desc.includes(q);
+            });
+            renderBuyerItems(filtered, true);
+        }
+
+        // Renders a list of items (buyer-filtered, optionally text-filtered) and wires up clicks
+        function renderBuyerItems(items, isFiltered = false) {
+            const list = document.getElementById('buyerItemsList');
+
+            if (!items || items.length === 0) {
+                list.innerHTML = isFiltered
+                    ? '<div class="empty-state"><i class="fas fa-search"></i><br>মিলে যাওয়া কোনো Item নেই</div>'
+                    : '<div class="empty-state"><i class="fas fa-inbox"></i><br>এই Buyer এর কোনো Item পাওয়া যায়নি</div>';
+                return;
+            }
+
+            list.innerHTML = items.map(item => `
+                <div class="recent-item buyer-item-row" data-item-id="${item.item_id}">
+                    <div class="left">
+                        <div class="item-info">
+                            <div class="item-name">${item.description || ''}</div>
+                            <div class="item-meta">${item.item_code || ''} • Stock: ${fmt(item.current_stock)} ${item.unit || ''}</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color:var(--muted)"></i>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.buyer-item-row').forEach(row => {
+                row.addEventListener('click', () => {
+                    const itemId = row.getAttribute('data-item-id');
+                    const found = buyerItemsCache.find(i => String(i.item_id) === String(itemId));
+                    if (!found) return;
+                    currentItem = found;
+                    showItemModal(currentItem);
+                });
+            });
         }
 
         // ============ ITEM MODAL ============
