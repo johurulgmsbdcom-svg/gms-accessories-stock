@@ -173,6 +173,46 @@
         }
         .search-box button:hover { opacity: 0.9; }
 
+        /* Buyer Browse Section */
+        .buyer-section { margin: 20px 0; }
+        .buyer-select-row {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 6px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        .buyer-select-row select {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M7 10l5 5 5-5z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 20px;
+        }
+        .buyer-select-row select option { background: var(--card); color: var(--text); }
+        .buyer-items-list {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 340px;
+            overflow-y: auto;
+        }
+        .buyer-item-row { cursor: pointer; }
+        .buyer-item-row:active { transform: scale(0.98); }
+
         /* Quick Actions */
         .quick-actions {
             display: grid;
@@ -551,6 +591,17 @@
             </div>
         </div>
 
+        <!-- Buyer দিয়ে খুঁজুন -->
+        <div class="section-title">Buyer দিয়ে Item খুঁজুন</div>
+        <div class="buyer-section">
+            <div class="buyer-select-row">
+                <select id="buyerSelect" onchange="loadItemsByBuyer()">
+                    <option value="">-- Buyer নির্বাচন করুন --</option>
+                </select>
+            </div>
+            <div class="buyer-items-list" id="buyerItemsList"></div>
+        </div>
+
         <!-- Quick Actions -->
         <div class="quick-actions">
             <a href="new-item.html" class="action-card">
@@ -698,6 +749,7 @@
         // ============ STATE ============
         let currentItem = null;
         let html5QrCode = null;
+        let buyerItemsCache = [];
 
         // ============ THEME ============
         function toggleTheme() {
@@ -810,14 +862,84 @@
             }
         }
 
+        // ============ BUYER BROWSE ============
+        async function loadBuyers() {
+            try {
+                const { data, error } = await db
+                    .from('items')
+                    .select('buyer')
+                    .not('buyer', 'is', null);
+                if (error) throw error;
+
+                const buyers = [...new Set((data || []).map(i => i.buyer).filter(Boolean))].sort();
+                const sel = document.getElementById('buyerSelect');
+                sel.innerHTML = '<option value="">-- Buyer নির্বাচন করুন --</option>' +
+                    buyers.map(b => `<option value="${b}">${b}</option>`).join('');
+            } catch (err) {
+                console.error("Buyer load error:", err);
+            }
+        }
+
+        async function loadItemsByBuyer() {
+            const buyer = document.getElementById('buyerSelect').value;
+            const list = document.getElementById('buyerItemsList');
+
+            if (!buyer) {
+                list.innerHTML = '';
+                buyerItemsCache = [];
+                return;
+            }
+
+            list.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+
+            try {
+                const { data, error } = await db
+                    .from('items')
+                    .select('*')
+                    .eq('buyer', buyer)
+                    .order('item_code', { ascending: true });
+
+                if (error) throw error;
+                buyerItemsCache = data || [];
+
+                if (buyerItemsCache.length === 0) {
+                    list.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><br>এই Buyer এর কোনো Item পাওয়া যায়নি</div>';
+                    return;
+                }
+
+                list.innerHTML = buyerItemsCache.map((item, idx) => `
+                    <div class="recent-item buyer-item-row" data-idx="${idx}">
+                        <div class="left">
+                            <div class="item-info">
+                                <div class="item-name">${item.description || ''}</div>
+                                <div class="item-meta">${item.item_code || ''} • Stock: ${fmt(item.current_stock)} ${item.unit || ''}</div>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color:var(--muted)"></i>
+                    </div>
+                `).join('');
+
+                document.querySelectorAll('.buyer-item-row').forEach(row => {
+                    row.addEventListener('click', () => {
+                        const idx = parseInt(row.getAttribute('data-idx'), 10);
+                        currentItem = buyerItemsCache[idx];
+                        showItemModal(currentItem);
+                    });
+                });
+            } catch (err) {
+                console.error("Buyer items error:", err);
+                list.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><br>Error loading items</div>';
+            }
+        }
+
         // ============ ITEM MODAL ============
         function showItemModal(item) {
             document.getElementById('modalItemCode').textContent = item.item_code;
             document.getElementById('modalItemDesc').textContent = item.description;
             document.getElementById('modalBuyer').textContent = item.buyer;
             document.getElementById('modalLocation').textContent = item.goods_location || '—';
-            document.getElementById('modalPrice').textContent = '$ ' + parseFloat(item.unit_price).toFixed(4);
-            document.getElementById('modalStock').textContent = fmt(item.current_stock) + ' ' + item.unit;
+            document.getElementById('modalPrice').textContent = '$ ' + parseFloat(item.unit_price || 0).toFixed(4);
+            document.getElementById('modalStock').textContent = fmt(item.current_stock) + ' ' + (item.unit || '');
             document.getElementById('modalValue').textContent = '$ ' + fmt(item.current_value);
             document.getElementById('modalLastDate').textContent = item.last_txn_date || '—';
             document.getElementById('itemModal').classList.add('active');
@@ -828,7 +950,8 @@
 
         function goToEntry(type) {
             if (!currentItem) return;
-            window.location.href = `entry.html?item_id=${currentItem.item_id}&type=${type}`;
+            const itemId = currentItem.item_id;
+            window.location.href = `entry.html?item_id=${itemId}&type=${type}`;
         }
 
         // ============ STATS ============
@@ -926,6 +1049,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadStats();
             loadRecent();
+            loadBuyers();
         });
 
         // Close modals on overlay click
