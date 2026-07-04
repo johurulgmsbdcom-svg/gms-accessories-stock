@@ -1277,7 +1277,7 @@
             <div class="buyer-total-grid">
                 <div class="buyer-total-item rcvd">
                     <div class="bt-value" id="btRcvdQty">0</div>
-                    <div class="bt-label">Total RCVD Qty</div>
+                    <div class="bt-label">Total PRVS+RCVD Qty</div>
                 </div>
                 <div class="buyer-total-item dlvd">
                     <div class="bt-value" id="btDlvdQty">0</div>
@@ -1285,11 +1285,11 @@
                 </div>
                 <div class="buyer-total-item net">
                     <div class="bt-value" id="btNetQty">0</div>
-                    <div class="bt-label">Net Qty (RCVD - DLVD)</div>
+                    <div class="bt-label">Net Qty</div>
                 </div>
                 <div class="buyer-total-item rcvdval">
                     <div class="bt-value" id="btRcvdVal">$0</div>
-                    <div class="bt-label">Total RCVD Value</div>
+                    <div class="bt-label">Total PRVS+RCVD Value</div>
                 </div>
                 <div class="buyer-total-item dlvdval">
                     <div class="bt-value" id="btDlvdVal">$0</div>
@@ -1298,6 +1298,14 @@
                 <div class="buyer-total-item netval">
                     <div class="bt-value" id="btNetVal">$0</div>
                     <div class="bt-label">Net Value</div>
+                </div>
+                <div class="buyer-total-item net">
+                    <div class="bt-value" id="btStock">0</div>
+                    <div class="bt-label">Total Present Stock</div>
+                </div>
+                <div class="buyer-total-item netval">
+                    <div class="bt-value" id="btStockVal">$0</div>
+                    <div class="bt-label">Total Stock Value</div>
                 </div>
             </div>
         </div>
@@ -1661,6 +1669,31 @@
             document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
         }
 
+        // ============ STOCK TOTAL HELPER ============
+        // Present Stock / Stock Value are RUNNING BALANCES stored on every
+        // transaction row for that item. If an item has multiple transactions
+        // in the filtered set, summing present_stock_after across all of them
+        // would massively over-count. So instead: group by item, keep only the
+        // most recent transaction (highest transaction id = latest insert),
+        // and sum THOSE values — giving the true current stock across the
+        // filtered items.
+        function computeStockTotals(data) {
+            const latestByItem = {};
+            data.forEach(txn => {
+                const itemId = txn.items?.id;
+                if (itemId === undefined || itemId === null) return;
+                if (!latestByItem[itemId] || txn.id > latestByItem[itemId].id) {
+                    latestByItem[itemId] = txn;
+                }
+            });
+            let stock = 0, stockVal = 0;
+            Object.values(latestByItem).forEach(t => {
+                stock += parseFloat(t.present_stock_after) || 0;
+                stockVal += parseFloat(t.stock_value_after) || 0;
+            });
+            return { stock, stockVal };
+        }
+
         // ============ BUYER GRAND TOTAL ============
         // Computes RCVD/DLVD qty & value totals from the currently filtered
         // data (which, after the !inner join fix, correctly reflects only the
@@ -1676,7 +1709,9 @@
                 return;
             }
 
-            let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0;
+            // PRVS (opening stock) counts the same as RCVD for the "adds to
+            // stock" side of the equation: Present Stock = Previous + Received - Delivery.
+            let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
@@ -1686,18 +1721,24 @@
                 } else if (txn.type === 'DLVD') {
                     dlvdQty += qty;
                     dlvdVal += val;
+                } else if (txn.type === 'PRVS') {
+                    prvsQty += qty;
+                    prvsVal += val;
                 }
             });
 
-            const netQty = rcvdQty - dlvdQty;
-            const netVal = rcvdVal - dlvdVal;
+            const netQty = (prvsQty + rcvdQty) - dlvdQty;
+            const netVal = (prvsVal + rcvdVal) - dlvdVal;
+            const stockTotals = computeStockTotals(filteredData);
 
-            document.getElementById('btRcvdQty').textContent = fmt(rcvdQty);
+            document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
             document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
             document.getElementById('btNetQty').textContent = fmt(netQty);
-            document.getElementById('btRcvdVal').textContent = '$' + fmt(rcvdVal);
+            document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
             document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
             document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
+            document.getElementById('btStock').textContent = fmt(stockTotals.stock);
+            document.getElementById('btStockVal').textContent = '$' + fmt(stockTotals.stockVal);
 
             if (buyerId) {
                 const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
@@ -1995,22 +2036,32 @@
             html += '</tbody>';
 
             // Grand total footer row (based on ALL filtered data, not just this page)
-            let footRcvdQty = 0, footDlvdQty = 0, footRcvdVal = 0, footDlvdVal = 0;
+            // Qty/Value: PRVS (opening) and RCVD both ADD to stock, DLVD SUBTRACTS —
+            // this matches the "Present Stock = Previous + Received - Delivery" rule.
+            let footAddQty = 0, footDlvdQty = 0, footAddVal = 0, footDlvdVal = 0;
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
-                if (txn.type === 'RCVD') { footRcvdQty += qty; footRcvdVal += val; }
+                if (txn.type === 'PRVS' || txn.type === 'RCVD') { footAddQty += qty; footAddVal += val; }
                 else if (txn.type === 'DLVD') { footDlvdQty += qty; footDlvdVal += val; }
             });
-            const footNetQty = footRcvdQty - footDlvdQty;
-            const footNetVal = footRcvdVal - footDlvdVal;
+            const footNetQty = footAddQty - footDlvdQty;
+            const footNetVal = footAddVal - footDlvdVal;
+
+            // Stock / Stock Value: sum the LATEST transaction's present_stock_after
+            // and stock_value_after per item (not every row), otherwise an item
+            // with 5 transactions would get counted 5x. "Latest" = highest
+            // transaction id, which reflects insert order.
+            const stockTotals = computeStockTotals(filteredData);
 
             html += `<tfoot><tr>
                 <td colspan="11" style="text-align:right;">GRAND TOTAL (all filtered rows):</td>
                 <td>${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
                 <td>—</td>
                 <td>${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
-                <td colspan="6"></td>
+                <td>${fmt(stockTotals.stock)}</td>
+                <td>$${fmt(stockTotals.stockVal)}</td>
+                <td colspan="4"></td>
             </tr></tfoot>`;
 
             html += '</table></div>';
@@ -2087,6 +2138,7 @@
             currentPage = 1;
             renderTable();
         }
+
         // ============ RESET FILTERS ============
         function resetFilters() {
             document.getElementById('fDateFrom').value = '';
