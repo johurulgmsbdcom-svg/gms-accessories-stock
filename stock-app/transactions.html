@@ -1268,11 +1268,11 @@
             <div class="filter-grid">
                 <div class="filter-group">
                     <label>Date From</label>
-                    <input type="date" id="fDateFrom" onchange="applyFilters()">
+                    <input type="date" id="fDateFrom" onchange="applyFiltersDebounced()">
                 </div>
                 <div class="filter-group">
                     <label>Date To</label>
-                    <input type="date" id="fDateTo" onchange="applyFilters()">
+                    <input type="date" id="fDateTo" onchange="applyFiltersDebounced()">
                 </div>
                 <div class="filter-group">
                     <label>Buyer</label>
@@ -1322,7 +1322,7 @@
                     <input type="text" id="fSupplier" placeholder="Supplier...">
                 </div>
                 <div class="filter-group" style="justify-content: flex-end;">
-                    <button class="btn btn-search" onclick="applyFilters()" style="width: 100%;">
+                    <button class="btn btn-search" onclick="if(dateFilterDebounce){clearTimeout(dateFilterDebounce);dateFilterDebounce=null;} applyFilters()" style="width: 100%;">
                         <i class="fas fa-search"></i> Search
                     </button>
                 </div>
@@ -1491,6 +1491,14 @@
         let itemNameToId = {};
         let allItemsList = [];
         let pendingDeleteId = null;
+        // Bumped every time loadTransactions() starts a new request. If an
+        // older, slower request's response comes back AFTER a newer one
+        // (very possible if the user changes Date From, then Date To, then
+        // clicks Search in quick succession — 3 overlapping network calls),
+        // we compare this against the id captured at the start of that
+        // specific call and simply discard stale results instead of letting
+        // them overwrite the correct, more recent filtered data.
+        let loadRequestId = 0;
 
         // How many QR labels per printed A4 landscape page (5 cols x 3 rows).
         // Each QR prints at 38mm x 38mm — big enough for an instant camera scan
@@ -1627,8 +1635,23 @@
             await loadTransactions();
         }
 
+        // Debounced version used by the date inputs specifically: if the user
+        // picks Date From and Date To back-to-back, this waits a moment so
+        // only ONE request goes out (using both new values) instead of firing
+        // twice in a row. The requestId guard in loadTransactions() already
+        // protects against incorrect results either way, but this avoids the
+        // extra network round-trip entirely.
+        let dateFilterDebounce = null;
+        function applyFiltersDebounced() {
+            if (dateFilterDebounce) clearTimeout(dateFilterDebounce);
+            dateFilterDebounce = setTimeout(() => {
+                applyFilters();
+            }, 350);
+        }
+
         // ============ LOAD TRANSACTIONS ============
         async function loadTransactions() {
+            const requestId = ++loadRequestId;
             const tableContent = document.getElementById('tableContent');
             tableContent.innerHTML = `
                 <div class="loading-state">
@@ -1712,6 +1735,12 @@
 
                 if (error) throw error;
 
+                // If a newer loadTransactions() call has started since this one
+                // began (user changed another filter while this was in flight),
+                // this response is stale — drop it so it can't overwrite the
+                // more recent, correct filtered results.
+                if (requestId !== loadRequestId) return;
+
                 allTransactions = data || [];
                 filteredData = [...allTransactions];
 
@@ -1728,6 +1757,7 @@
                 renderTable();
 
             } catch (err) {
+                if (requestId !== loadRequestId) return;
                 console.error('Load transactions error:', err);
                 tableContent.innerHTML = `
                     <div class="empty-state">
