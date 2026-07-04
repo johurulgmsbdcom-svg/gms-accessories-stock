@@ -1268,11 +1268,13 @@
             <div class="filter-grid">
                 <div class="filter-group">
                     <label>Date From</label>
-                    <input type="date" id="fDateFrom" onchange="applyFiltersDebounced()">
+                    <input type="date" id="fDateFrom" onchange="applyFiltersDebounced(); updateDateReadable()">
+                    <div id="fDateFromReadable" style="font-size:10.5px;color:var(--accent-blue);font-weight:600;margin-top:2px;"></div>
                 </div>
                 <div class="filter-group">
                     <label>Date To</label>
-                    <input type="date" id="fDateTo" onchange="applyFiltersDebounced()">
+                    <input type="date" id="fDateTo" onchange="applyFiltersDebounced(); updateDateReadable()">
+                    <div id="fDateToReadable" style="font-size:10.5px;color:var(--accent-blue);font-weight:600;margin-top:2px;"></div>
                 </div>
                 <div class="filter-group">
                     <label>Buyer</label>
@@ -1590,6 +1592,7 @@
                 thirtyDaysAgo.setDate(today.getDate() - 30);
                 document.getElementById('fDateTo').value = today.toISOString().split('T')[0];
                 document.getElementById('fDateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
+                updateDateReadable();
 
             } catch (err) {
                 console.error('Load filters error:', err);
@@ -1635,6 +1638,24 @@
                 closeItemDropdown();
             }
         });
+
+        // ============ DATE READABLE LABEL ============
+        // Native <input type="date"> displays a locale-formatted string like
+        // "06/04/2026" to the user, which is genuinely ambiguous — it could
+        // mean 6 April (DD/MM, common in Bangladesh) or June 4 (MM/DD, US
+        // format the browser is actually using). This writes an unambiguous
+        // "04 June 2026" style label under each field using the field's real
+        // ISO value, so there's never any doubt about which date is selected.
+        function updateDateReadable() {
+            const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            ['fDateFrom', 'fDateTo'].forEach(id => {
+                const val = document.getElementById(id).value; // "YYYY-MM-DD"
+                const labelEl = document.getElementById(id + 'Readable');
+                if (!val) { labelEl.textContent = ''; return; }
+                const [y, m, d] = val.split('-').map(Number);
+                labelEl.textContent = `${String(d).padStart(2,'0')} ${monthNames[m - 1]} ${y}`;
+            });
+        }
 
         // ============ APPLY FILTERS ============
         async function applyFilters() {
@@ -2347,6 +2368,7 @@
             thirtyDaysAgo.setDate(today.getDate() - 30);
             document.getElementById('fDateTo').value = today.toISOString().split('T')[0];
             document.getElementById('fDateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
+            updateDateReadable();
 
             applyFilters();
         }
