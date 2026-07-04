@@ -863,20 +863,33 @@
         }
 
         // ============ BUYER BROWSE ============
+        // NOTE: buyer name comes through the v_scan_lookup view (same source that
+        // powers QR-scan and code search), because the raw items table may not
+        // carry a direct "buyer" text column — this view already resolves it.
         async function loadBuyers() {
+            const sel = document.getElementById('buyerSelect');
             try {
                 const { data, error } = await db
-                    .from('items')
+                    .from('v_scan_lookup')
                     .select('buyer')
                     .not('buyer', 'is', null);
+
                 if (error) throw error;
 
                 const buyers = [...new Set((data || []).map(i => i.buyer).filter(Boolean))].sort();
-                const sel = document.getElementById('buyerSelect');
+
+                if (buyers.length === 0) {
+                    sel.innerHTML = '<option value="">-- কোনো Buyer পাওয়া যায়নি --</option>';
+                    showToast("Buyer লিস্ট খালি এসেছে, ডাটা চেক করুন", "warning");
+                    return;
+                }
+
                 sel.innerHTML = '<option value="">-- Buyer নির্বাচন করুন --</option>' +
                     buyers.map(b => `<option value="${b}">${b}</option>`).join('');
             } catch (err) {
                 console.error("Buyer load error:", err);
+                sel.innerHTML = '<option value="">-- Buyer লোড করা যায়নি --</option>';
+                showToast("Buyer লোড করতে সমস্যা: " + err.message, "error");
             }
         }
 
@@ -894,7 +907,7 @@
 
             try {
                 const { data, error } = await db
-                    .from('items')
+                    .from('v_scan_lookup')
                     .select('*')
                     .eq('buyer', buyer)
                     .order('item_code', { ascending: true });
@@ -929,6 +942,7 @@
             } catch (err) {
                 console.error("Buyer items error:", err);
                 list.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><br>Error loading items</div>';
+                showToast("Item লোড করতে সমস্যা: " + err.message, "error");
             }
         }
 
