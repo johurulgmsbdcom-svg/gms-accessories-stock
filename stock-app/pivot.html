@@ -1124,6 +1124,7 @@
             updateBuyerCheckboxes();
             updateBuyerDisplay();
         }
+
         function deselectAllBuyers() {
             selectedBuyerIds = [];
             updateBuyerCheckboxes();
@@ -1237,11 +1238,20 @@
         }
 
         // ============ COMPUTE ONE PIVOT ROW FOR AN ITEM ============
-        // previous  = running balance from the last transaction dated BEFORE dateFrom
-        //             (falls back to the item's stored current_stock/current_value if
-        //             the item has no transaction history at all yet).
-        // received  = sum of qty/value for RCVD + PRVS type transactions inside [dateFrom, dateTo]
-        // delivered = sum of qty/value for DLVD type transactions inside [dateFrom, dateTo]
+        // previous  = FIXED baseline — the item's very first-ever recorded stock,
+        //             derived by reversing the earliest-ever transaction. This does
+        //             NOT change with the Date From/To filter — it always shows the
+        //             original opening balance for the item, exactly as first entered:
+        //               - if earliest is RCVD or PRVS (both ADD to stock):
+        //                     previous = earliest.present_stock_after - earliest.qty
+        //               - if earliest is DLVD (SUBTRACTS from stock):
+        //                     previous = earliest.present_stock_after + earliest.qty
+        //             Falls back to the item's stored current_stock/current_value only
+        //             if the item has no transaction history at all.
+        // received  = sum of qty/value for RCVD-type transactions inside [dateFrom, dateTo]
+        // delivered = sum of qty/value for DLVD-type transactions inside [dateFrom, dateTo]
+        //             (PRVS is never counted as Received/Delivered — it's the one-time
+        //             opening snapshot that's already captured in "Previous" above.)
         // present   = previous + received - delivered   (same rule for value)
         function computePivotForItem(item, txns, dateFrom, dateTo) {
             let prevQty = 0, prevValue = 0;
@@ -1253,37 +1263,38 @@
                 prevQty = parseFloat(item.current_stock) || 0;
                 prevValue = parseFloat(item.current_value) || 0;
             } else {
-                // Find the latest transaction strictly BEFORE dateFrom for "Previous".
-                let lastBefore = null;
-                txns.forEach(txn => {
-                    if (dateFrom && txn.txn_date < dateFrom) {
-                        if (!lastBefore || txn.id > lastBefore.id) lastBefore = txn;
-                    }
-                });
+                // txns is already sorted ascending by txn_date, then id (see
+                // fetchTransactionsForItems), so txns[0] is the earliest-ever entry.
+                // "Previous" is always derived from this — the date filter never
+                // affects it.
+                const earliest = txns[0];
+                const eQty = parseFloat(earliest.qty) || 0;
+                const eVal = parseFloat(earliest.line_value) || 0;
+                const eStockAfter = parseFloat(earliest.present_stock_after) || 0;
+                const eValueAfter = parseFloat(earliest.stock_value_after) || 0;
 
-                if (lastBefore) {
-                    prevQty = parseFloat(lastBefore.present_stock_after) || 0;
-                    prevValue = parseFloat(lastBefore.stock_value_after) || 0;
-                } else if (!dateFrom) {
-                    // No date-from filter at all -> nothing counts as "previous"
-                    prevQty = 0;
-                    prevValue = 0;
+                if (earliest.type === 'DLVD') {
+                    prevQty = eStockAfter + eQty;
+                    prevValue = eValueAfter + eVal;
                 } else {
-                    // dateFrom is set but item has no transaction before it —
-                    // it simply didn't exist in the ledger yet, so previous = 0.
-                    prevQty = 0;
-                    prevValue = 0;
+                    // RCVD or PRVS — both ADD to stock
+                    prevQty = eStockAfter - eQty;
+                    prevValue = eValueAfter - eVal;
                 }
 
-                // Sum RCVD/PRVS and DLVD transactions that fall inside the selected range.
+                // Sum RCVD and DLVD transactions that fall inside the selected range.
+                // PRVS is intentionally excluded — it's the one-time opening snapshot,
+                // already accounted for above as "Previous", never a period movement.
                 txns.forEach(txn => {
+                    if (txn.type === 'PRVS') return;
+
                     const inRange = (!dateFrom || txn.txn_date >= dateFrom) && (!dateTo || txn.txn_date <= dateTo);
                     if (!inRange) return;
 
                     const qty = parseFloat(txn.qty) || 0;
                     const val = parseFloat(txn.line_value) || 0;
 
-                    if (txn.type === 'RCVD' || txn.type === 'PRVS') {
+                    if (txn.type === 'RCVD') {
                         rcvdQty += qty;
                         rcvdValue += val;
                     } else if (txn.type === 'DLVD') {
