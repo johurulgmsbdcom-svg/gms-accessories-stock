@@ -559,6 +559,7 @@
             border-collapse: collapse;
             font-size: 12px;
             min-width: 1200px;
+            border: 1px solid var(--glass-border);
         }
 
         thead th {
@@ -570,7 +571,7 @@
             letter-spacing: 0.5px;
             color: var(--text-muted);
             background: rgba(0, 0, 0, 0.2);
-            border-bottom: 2px solid var(--glass-border);
+            border: 1px solid var(--glass-border);
             white-space: nowrap;
             cursor: pointer;
             user-select: none;
@@ -590,7 +591,6 @@
 
         tbody tr {
             transition: all 0.2s;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         tbody tr:hover {
@@ -610,6 +610,7 @@
             color: var(--text-secondary);
             white-space: nowrap;
             font-size: 12px;
+            border: 1px solid var(--glass-border);
         }
 
         tbody tr.buyer-row {
@@ -622,6 +623,21 @@
             font-size: 13px;
             padding: 12px 10px;
             border-top: 2px solid var(--accent-blue);
+        }
+
+        tbody tr.col-header-row td {
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            padding: 10px;
+        }
+
+        [data-theme="light"] tbody tr.col-header-row td {
+            background: rgba(255, 255, 255, 0.5);
         }
 
         tbody tr.total-row {
@@ -740,7 +756,7 @@
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
         /* ============================================ */
-        /* PRINT STYLES - A4 LANDSCAPE */
+        /* PRINT STYLES - A4 LANDSCAPE (BLACK & WHITE FRIENDLY) */
         /* ============================================ */
         @media print {
             @page {
@@ -790,7 +806,7 @@
                 min-width: auto !important;
                 width: 100% !important;
                 font-size: 9px !important;
-                border: 1px solid #333 !important;
+                border: 1.5px solid black !important;
             }
 
             thead {
@@ -798,33 +814,33 @@
             }
 
             thead th {
-                background: #1e40af !important;
-                color: white !important;
+                background: white !important;
+                color: black !important;
                 padding: 6px 4px !important;
                 font-size: 8px !important;
-                border: 1px solid #1e3a8a !important;
+                border: 1px solid black !important;
                 position: static !important;
+                font-weight: 800 !important;
             }
 
             tbody tr {
                 page-break-inside: avoid;
-                border-bottom: 1px solid #ddd !important;
             }
 
             tbody tr:nth-child(even) {
-                background: #f0f4ff !important;
+                background: white !important;
             }
 
             tbody td {
                 padding: 4px !important;
                 color: black !important;
-                border: 1px solid #ddd !important;
+                border: 1px solid black !important;
                 font-size: 9px !important;
                 white-space: nowrap !important;
             }
 
             tbody tr.buyer-row {
-                background: #dbeafe !important;
+                background: white !important;
                 page-break-before: always;
             }
 
@@ -833,33 +849,44 @@
             }
 
             tbody tr.buyer-row td {
-                background: #1e40af !important;
-                color: white !important;
-                font-size: 11px !important;
+                background: white !important;
+                color: black !important;
+                font-size: 12px !important;
                 padding: 8px !important;
+                font-weight: 900 !important;
+                border: 1.5px solid black !important;
+                border-top: 2px solid black !important;
+            }
+
+            tbody tr.col-header-row td {
+                background: white !important;
+                color: black !important;
+                font-size: 8px !important;
                 font-weight: 800 !important;
-                border: 1px solid #1e3a8a !important;
+                border: 1px solid black !important;
+                padding: 5px 4px !important;
             }
 
             tbody tr[style*="background:rgba(59, 130, 246, 0.1)"] {
-                background: #e0e7ff !important;
+                background: white !important;
             }
 
             tbody tr[style*="background:rgba(59, 130, 246, 0.1)"] td {
-                font-weight: 700 !important;
-                color: #1e40af !important;
-                border-top: 2px solid #1e40af !important;
+                font-weight: 800 !important;
+                color: black !important;
+                border: 1.5px solid black !important;
+                border-top: 2px solid black !important;
             }
 
             tr.total-row {
-                background: #1e40af !important;
+                background: white !important;
             }
 
             tr.total-row td {
-                color: white !important;
-                font-weight: 800 !important;
+                color: black !important;
+                font-weight: 900 !important;
                 font-size: 11px !important;
-                border: 1px solid #1e3a8a !important;
+                border: 2px solid black !important;
             }
 
             /* Print Header */
@@ -868,18 +895,18 @@
                 text-align: center;
                 margin-bottom: 15px;
                 padding-bottom: 10px;
-                border-bottom: 3px solid #1e40af;
+                border-bottom: 3px solid black;
             }
 
             .print-header h1 {
                 font-size: 18px;
-                color: #1e40af;
+                color: black;
                 margin-bottom: 4px;
             }
 
             .print-header p {
                 font-size: 11px;
-                color: #666;
+                color: #444;
             }
         }
 
@@ -1470,6 +1497,12 @@
                 html += `<tr class="buyer-row">
                     <td colspan="12"><i class="fas fa-building"></i> ${buyerName}</td>
                 </tr>`;
+
+                html += `<tr class="col-header-row">`;
+                columns.forEach(col => {
+                    html += `<td>${col}</td>`;
+                });
+                html += `</tr>`;
 
                 rows.forEach(row => {
                     const item = row.item;
