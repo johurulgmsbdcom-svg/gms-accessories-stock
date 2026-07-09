@@ -2303,8 +2303,19 @@
         // Called when user confirms deletion in the modal. Calls the
         // delete_transaction() RPC (created in Supabase) which reverses the
         // stock/value on the related item and removes the transaction row.
+        //
+        // NOTE: If your Supabase delete_transaction() RPC does NOT already
+        // update items.current_stock / items.current_value itself, deleting
+        // a transaction can cause the same "Entry/Ledger stock out of sync"
+        // symptom that recalcItemStock() below fixes for edits. To guard
+        // against that, we grab the item_id BEFORE calling the RPC and run
+        // the same recalcItemStock() afterwards, so current_stock / current_value
+        // are always correct no matter what the RPC itself does internally.
         async function confirmDeleteTransaction() {
             if (!pendingDeleteId) return;
+
+            const txn = filteredData.find(t => t.id === pendingDeleteId);
+            const affectedItemId = txn?.items?.id || null;
 
             const btn = document.getElementById('confirmDeleteBtn');
             const originalHtml = btn.innerHTML;
@@ -2315,6 +2326,12 @@
                 const { error } = await db.rpc('delete_transaction', { txn_id: pendingDeleteId });
 
                 if (error) throw error;
+
+                // Re-sync items.current_stock / current_value for the affected
+                // item so Index/Entry pages immediately reflect the deletion too.
+                if (affectedItemId) {
+                    await recalcItemStock(affectedItemId);
+                }
 
                 showToast('Entry deleted, stock adjusted!', 'success');
                 closeConfirmModal();
@@ -2366,28 +2383,41 @@
 
         // Recalculates the running present_stock_after / stock_value_after /
         // line_value for EVERY transaction of a given item, in chronological
-        // order. This has to be redone from scratch whenever a transaction's
-        // qty, type, or price changes, because present_stock_after is a
-        // running balance — editing one row shifts the balance of every
+        // (insert) order. This has to be redone from scratch whenever a
+        // transaction's qty, type, or price changes, because present_stock_after
+        // is a running balance — editing one row shifts the balance of every
         // later row for that same item, not just the edited row itself.
         // PRVS and RCVD both ADD to stock, DLVD SUBTRACTS (same rule used
-        // everywhere else on this page).
+        // everywhere else on this page, and in pivot.html).
+        //
+        // ★ FIX: sorted by `id` (insert order) instead of txn_date/created_at —
+        // this matches the exact rule pivot.html uses to identify the true
+        // "genesis" transaction, so a backdated entry (txn_date earlier than
+        // rows already in the ledger) can no longer produce a different running
+        // balance here than what Pivot calculates.
+        //
+        // ★ FIX: after recalculating every transaction row, this now ALSO
+        // writes the final running balance back onto items.current_stock /
+        // items.current_value / items.last_txn_date. Previously only the
+        // transactions table was updated, so Index.html / Entry.html (which
+        // read items.current_stock via v_scan_lookup) kept showing the stock
+        // value from BEFORE the edit, while Pivot.html (which recalculates
+        // from transaction history itself) already showed the correct number.
         async function recalcItemStock(itemId) {
             const { data: rows, error } = await db
                 .from('transactions')
                 .select('id, type, qty, unit_price_snapshot, txn_date, created_at')
                 .eq('item_id', itemId)
-                .order('txn_date', { ascending: true })
-                .order('created_at', { ascending: true });
+                .order('id', { ascending: true });
 
             if (error) throw error;
-            if (!rows || rows.length === 0) return;
 
             let runningStock = 0;
             let runningValue = 0;
+            let lastTxnDate = null;
             const updates = [];
 
-            rows.forEach(r => {
+            (rows || []).forEach(r => {
                 const qty = parseFloat(r.qty) || 0;
                 const price = parseFloat(r.unit_price_snapshot) || 0;
                 const lineValue = qty * price;
@@ -2398,6 +2428,10 @@
                 } else if (r.type === 'DLVD') {
                     runningStock -= qty;
                     runningValue -= lineValue;
+                }
+
+                if (r.txn_date && (!lastTxnDate || r.txn_date >= lastTxnDate)) {
+                    lastTxnDate = r.txn_date;
                 }
 
                 updates.push({
@@ -2421,12 +2455,27 @@
                     .eq('id', u.id);
                 if (upErr) throw upErr;
             }
+
+            // ★ Sync the item's own running totals — this is what Index.html,
+            // Entry.html, and the v_scan_lookup view actually read from.
+            // Without this, editing/deleting a transaction updates the ledger
+            // rows correctly but leaves Entry/Index showing stale stock.
+            const { error: itemUpdateErr } = await db
+                .from('items')
+                .update({
+                    current_stock: runningStock,
+                    current_value: runningValue,
+                    last_txn_date: lastTxnDate
+                })
+                .eq('id', itemId);
+            if (itemUpdateErr) throw itemUpdateErr;
         }
 
         // Saves the edit form back to Supabase: updates the transaction's own
         // fields, updates the linked item's supplier if changed, then re-runs
         // the running-stock recalculation for that item so present_stock_after
-        // / stock_value_after stay correct for every transaction of that item.
+        // / stock_value_after (and now items.current_stock / current_value too)
+        // stay correct for every transaction of that item.
         async function saveEditTransaction() {
             if (!pendingEditId) return;
             const txn = filteredData.find(t => t.id === pendingEditId);
@@ -2490,7 +2539,9 @@
 
                 // 3) Recalculate the running stock/value chain for this item,
                 // since qty/type/price may have changed and every later
-                // transaction's running balance depends on this row.
+                // transaction's running balance depends on this row. This also
+                // writes the final balance onto items.current_stock/current_value
+                // so Entry.html / Index.html immediately reflect the edit.
                 if (txn.items?.id) {
                     await recalcItemStock(txn.items.id);
                 }
