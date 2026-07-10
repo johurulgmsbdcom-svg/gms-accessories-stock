@@ -29,6 +29,11 @@
             --accent-purple: #8b5cf6;
             --accent-pink: #ec4899;
             --accent-cyan: #06b6d4;
+            --header-h: 67px;
+            /* Bold, high-contrast grid line color for the table — like Excel's
+               visible cell borders, rather than the faint translucent
+               --glass-border used elsewhere in the UI. */
+            --table-border-strong: rgba(255, 255, 255, 0.45);
         }
 
         [data-theme="light"] {
@@ -39,6 +44,7 @@
             --text-primary: #1e293b;
             --text-secondary: #475569;
             --text-muted: #94a3b8;
+            --table-border-strong: rgba(30, 41, 59, 0.45);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -550,8 +556,14 @@
 
         .table-wrapper {
             overflow-x: auto;
+            overflow-y: auto;
             border-radius: 12px;
             margin: 0 -4px;
+            /* Vertical scroll happens INSIDE this wrapper (not the whole page)
+               so the sticky header below has a well-defined scroll container
+               and stays pinned right under the page header while the body
+               rows scroll underneath it — Excel-style freeze panes. */
+            max-height: calc(100vh - var(--header-h) - 20px);
         }
 
         table {
@@ -559,7 +571,8 @@
             border-collapse: collapse;
             font-size: 12px;
             min-width: 1200px;
-            border: 1px solid var(--glass-border);
+            /* Bold outer border, like an Excel sheet's frame */
+            border: 2px solid var(--table-border-strong);
         }
 
         thead th {
@@ -570,23 +583,25 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-muted);
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--glass-border);
+            background: #0f1c30;
+            border: 1.5px solid var(--table-border-strong);
             white-space: nowrap;
             cursor: pointer;
             user-select: none;
             transition: all 0.2s;
             position: sticky;
-            top: 0;
+            top: var(--header-h);
+            z-index: 40;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
         }
 
         [data-theme="light"] thead th {
-            background: rgba(255, 255, 255, 0.5);
+            background: #eef2ff;
         }
 
         thead th:hover {
             color: var(--accent-blue);
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(59, 130, 246, 0.25);
         }
 
         tbody tr {
@@ -610,7 +625,9 @@
             color: var(--text-secondary);
             white-space: nowrap;
             font-size: 12px;
-            border: 1px solid var(--glass-border);
+            /* Bold, clearly-visible grid lines around every cell — like Excel's
+               default cell borders — instead of the previous faint outline. */
+            border: 1.5px solid var(--table-border-strong);
         }
 
         tbody tr.buyer-row {
@@ -622,7 +639,8 @@
             color: var(--text-primary);
             font-size: 13px;
             padding: 12px 10px;
-            border-top: 2px solid var(--accent-blue);
+            border: 1.5px solid var(--table-border-strong);
+            border-top: 3px solid var(--accent-blue);
         }
 
         tbody tr.col-header-row td {
@@ -632,7 +650,7 @@
             letter-spacing: 0.5px;
             color: var(--text-muted);
             background: rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--glass-border);
+            border: 1.5px solid var(--table-border-strong);
             padding: 10px;
         }
 
@@ -649,6 +667,7 @@
             color: var(--text-primary);
             font-size: 14px;
             padding: 14px 10px;
+            border: 1.5px solid var(--table-border-strong);
             border-top: 3px solid var(--accent-blue);
         }
 
@@ -755,6 +774,21 @@
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
+        /* Full-width layout for large PC screens so more columns are visible at once */
+        @media screen and (min-width: 1600px) {
+            .main {
+                max-width: 98%;
+                padding: 22px 34px;
+            }
+        }
+
+        @media screen and (min-width: 2000px) {
+            .main {
+                max-width: 99%;
+                padding: 24px 44px;
+            }
+        }
+
         /* ============================================ */
         /* PRINT STYLES - A4 LANDSCAPE (BLACK & WHITE FRIENDLY) */
         /* ============================================ */
@@ -799,6 +833,7 @@
 
             .table-wrapper {
                 overflow: visible !important;
+                max-height: none !important;
                 border-radius: 0 !important;
             }
 
@@ -1084,6 +1119,22 @@
         let pivotRows = [];      // one computed row per item: {item, prevQty, prevValue, rcvdQty, rcvdValue, dlvdQty, dlvdValue, presentQty, presentValue}
         let allBuyers = [];
         let selectedBuyerIds = [];
+
+        // ============ HEADER HEIGHT (for table freeze/sticky offset) ============
+        // The page header is sticky at top:0. The table's thead is ALSO sticky,
+        // but it must stick right below the page header instead of underneath
+        // it (which would hide it). This measures the real rendered header
+        // height and exposes it as a CSS variable (--header-h) so
+        // thead th { top: var(--header-h) } always lines up correctly, even
+        // if the header wraps taller on small screens.
+        function setHeaderHeightVar() {
+            const header = document.querySelector('.header');
+            if (header) {
+                document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
+            }
+        }
+        window.addEventListener('resize', setHeaderHeightVar);
+        window.addEventListener('load', setHeaderHeightVar);
 
         // ============ THEME ============
         function toggleTheme() {
@@ -1555,6 +1606,12 @@
             document.getElementById('statPrevValue').textContent = '$' + fmt(grandTotal.prevValue);
             document.getElementById('statPresentStock').textContent = fmt(grandTotal.presentStock);
             document.getElementById('statStockValue').textContent = '$' + fmt(grandTotal.stockValue);
+
+            // The header row's sticky position depends on the current page-header
+            // height, which can change (theme toggle wrapping text, window resize,
+            // etc) — recompute it every time the table is (re)rendered so the
+            // freeze offset never drifts out of sync.
+            setHeaderHeightVar();
         }
 
         function resetFilters() {
@@ -1703,6 +1760,7 @@
 
         // ============ INIT ============
         document.addEventListener('DOMContentLoaded', async () => {
+            setHeaderHeightVar();
             await loadFilters();
             await loadItems();
         });
