@@ -600,6 +600,21 @@
             border: 1px solid rgba(30, 41, 59, 0.18);
         }
 
+        /* Freeze the ENTIRE <thead> (column-label row + filter row) as ONE
+           sticky unit instead of sticking each <tr> separately. Sticking two
+           rows independently (each with its own computed top offset) is
+           fragile — tiny sub-pixel rounding differences between the
+           measured header height and the actual rendered row height leave a
+           hairline gap, through which a sliver of the scrolling row
+           underneath becomes visible (exactly the bug in the screenshot).
+           A single sticky <thead> has no such gap because both rows move
+           together as one solid block. */
+        thead {
+            position: sticky;
+            top: var(--header-height, 68px);
+            z-index: 60;
+        }
+
         thead tr.filter-row th {
             padding: 6px 6px;
             /* Pale yellow "filter row" — matches classic Excel-style search
@@ -608,9 +623,6 @@
             background: #fffbcc;
             border: 1px solid #c9c2a0;
             cursor: default;
-            position: sticky;
-            top: var(--filterrow-top, 108px);
-            z-index: 55;
         }
 
         [data-theme="light"] thead tr.filter-row th {
@@ -667,14 +679,6 @@
             cursor: pointer;
             user-select: none;
             transition: all 0.2s;
-            position: sticky;
-            /* Sticks just below the fixed top nav bar (its real height is
-               measured in JS and stored in --header-height) instead of
-               top:0, which would tuck the column headers UNDER the nav bar.
-               This is what makes the header row freeze like Excel's "Freeze
-               Panes" while the data rows underneath keep scrolling. */
-            top: var(--header-height, 68px);
-            z-index: 60;
         }
 
         [data-theme="light"] thead th {
