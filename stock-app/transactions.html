@@ -30,6 +30,7 @@
             --accent-purple: #8b5cf6;
             --accent-pink: #ec4899;
             --accent-cyan: #06b6d4;
+            --header-h: 67px;
         }
         [data-theme="light"] {
             --glass-bg: rgba(255, 255, 255, 0.6);
@@ -570,8 +571,10 @@
 
         .table-wrapper {
             overflow-x: auto;
+            overflow-y: auto;
             border-radius: 12px;
             margin: 0 -4px;
+            max-height: calc(100vh - var(--header-h) - 20px);
         }
 
         table {
@@ -594,7 +597,7 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-muted);
-            background: rgba(0, 0, 0, 0.2);
+            background: #0f1c30;
             border: 1px solid rgba(255, 255, 255, 0.18);
             white-space: nowrap;
             cursor: pointer;
@@ -602,19 +605,18 @@
             transition: all 0.2s;
             position: sticky;
             top: 0;
+            z-index: 40;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
         }
 
         [data-theme="light"] thead th {
             border: 1px solid rgba(30, 41, 59, 0.18);
-        }
-
-        [data-theme="light"] thead th {
-            background: rgba(255, 255, 255, 0.5);
+            background: #eef2ff;
         }
 
         thead th:hover {
             color: var(--accent-blue);
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(59, 130, 246, 0.25);
         }
 
         thead th .sort-icon {
@@ -1268,6 +1270,21 @@
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
+        /* Full-width layout for large PC screens so more columns are visible at once */
+        @media screen and (min-width: 1600px) {
+            .main {
+                max-width: 98%;
+                padding: 22px 34px;
+            }
+        }
+
+        @media screen and (min-width: 2000px) {
+            .main {
+                max-width: 99%;
+                padding: 24px 44px;
+            }
+        }
+
         /* Responsive */
         @media screen and (max-width: 768px) {
             .main { padding: 16px; }
@@ -1658,6 +1675,23 @@
         // Each QR prints at 38mm x 38mm — big enough for an instant camera scan
         // from normal rack-labeling distance, small enough that 15 fit per sheet.
         const QR_PER_PAGE = 15;
+
+        // ============ HEADER HEIGHT (for table freeze/sticky offset) ============
+        // The page header is sticky at top:0. The table's thead is ALSO sticky,
+        // but it must stick right below the page header instead of underneath
+        // it (which would hide it) or at the very top of the viewport. This
+        // measures the real rendered header height and exposes it as a CSS
+        // variable (--header-h) so thead th { top: var(--header-h) } always
+        // lines up correctly, including when the header wraps taller on small
+        // screens.
+        function setHeaderHeightVar() {
+            const header = document.querySelector('.header');
+            if (header) {
+                document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
+            }
+        }
+        window.addEventListener('resize', setHeaderHeightVar);
+        window.addEventListener('load', setHeaderHeightVar);
 
         // ============ THEME ============
         function toggleTheme() {
@@ -2655,6 +2689,12 @@
             </div>`;
 
             tableContent.innerHTML = html;
+
+            // The header row's sticky position depends on the current header
+            // height, which can change (e.g. theme toggle wrapping text, window
+            // resize) — recompute it every time the table is (re)rendered so
+            // the freeze offset never drifts out of sync.
+            setHeaderHeightVar();
         }
 
         function buildPageNumbers(current, total) {
@@ -2743,6 +2783,7 @@
 
         // ============ INIT ============
         document.addEventListener('DOMContentLoaded', async () => {
+            setHeaderHeightVar();
             await loadFilters();
             await loadTransactions();
         });
