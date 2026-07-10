@@ -30,6 +30,7 @@
             --accent-purple: #8b5cf6;
             --accent-pink: #ec4899;
             --accent-cyan: #06b6d4;
+            --header-h: 67px;
         }
         [data-theme="light"] {
             --glass-bg: rgba(255, 255, 255, 0.6);
@@ -204,20 +205,6 @@
             padding: 20px;
             max-width: 1400px;
             margin: 0 auto;
-        }
-
-        /* On wide desktop screens, use most of the available width instead of
-           capping at 1400px, so more table columns are visible at once
-           without horizontal scrolling. */
-        @media screen and (min-width: 1500px) {
-            .main {
-                max-width: 96vw;
-            }
-        }
-        @media screen and (min-width: 1900px) {
-            .main {
-                max-width: 1820px;
-            }
         }
 
         /* Page Title */
@@ -584,8 +571,10 @@
 
         .table-wrapper {
             overflow-x: auto;
+            overflow-y: auto;
             border-radius: 12px;
             margin: 0 -4px;
+            max-height: calc(100vh - var(--header-h) - 20px);
         }
 
         table {
@@ -600,99 +589,34 @@
             border: 1px solid rgba(30, 41, 59, 0.18);
         }
 
-        /* Freeze the ENTIRE <thead> (column-label row + filter row) as ONE
-           sticky unit instead of sticking each <tr> separately. Sticking two
-           rows independently (each with its own computed top offset) is
-           fragile — tiny sub-pixel rounding differences between the
-           measured header height and the actual rendered row height leave a
-           hairline gap, through which a sliver of the scrolling row
-           underneath becomes visible (exactly the bug in the screenshot).
-           A single sticky <thead> has no such gap because both rows move
-           together as one solid block. */
-        thead {
-            position: sticky;
-            top: var(--header-height, 68px);
-            z-index: 60;
-        }
-
-        thead tr.filter-row th {
-            padding: 6px 6px;
-            /* Pale yellow "filter row" — matches classic Excel-style search
-               row look (steel-blue header above, soft yellow search row
-               below it). */
-            background: #fffbcc;
-            border: 1px solid #c9c2a0;
-            cursor: default;
-        }
-
-        [data-theme="light"] thead tr.filter-row th {
-            background: #fffbcc;
-            border: 1px solid #c9c2a0;
-        }
-
-        .col-filter-input {
-            width: 100%;
-            min-width: 60px;
-            padding: 5px 7px;
-            border-radius: 4px;
-            border: 1px solid #c9c2a0;
-            background: #fffbcc;
-            color: #3a3a2a;
-            font-family: 'Poppins', sans-serif;
-            font-size: 10.5px;
-            font-weight: 500;
-            font-style: italic;
-            text-align: center;
-            outline: none;
-            text-transform: none;
-        }
-
-        [data-theme="light"] .col-filter-input {
-            background: #fffbcc;
-        }
-
-        .col-filter-input:focus {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-            font-style: normal;
-        }
-
-        .col-filter-input::placeholder {
-            color: #8a8a6a;
-            font-style: italic;
-        }
-
         thead th {
             padding: 12px 10px;
             text-align: center;
-            font-weight: 800;
-            font-size: 12.5px;
-            text-transform: none;
-            letter-spacing: 0.2px;
-            /* Steel-blue header row, dark navy text — classic Excel-style
-               column header look (reference: light steel-blue #a9bcd6 with
-               near-black bold text). */
-            color: #0f1b33;
-            background: #a9bcd6;
-            border: 1px solid #7e93b3;
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            background: #0f1c30;
+            border: 1px solid rgba(255, 255, 255, 0.18);
             white-space: nowrap;
             cursor: pointer;
             user-select: none;
             transition: all 0.2s;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
         }
 
         [data-theme="light"] thead th {
-            border: 1px solid #7e93b3;
-        }
-
-        [data-theme="light"] thead th {
-            background: #a9bcd6;
-            color: #0f1b33;
+            border: 1px solid rgba(30, 41, 59, 0.18);
+            background: #eef2ff;
         }
 
         thead th:hover {
-            color: #0f1b33;
-            background: #93a9c9;
+            color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.25);
         }
 
         thead th .sort-icon {
@@ -1346,6 +1270,21 @@
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
+        /* Full-width layout for large PC screens so more columns are visible at once */
+        @media screen and (min-width: 1600px) {
+            .main {
+                max-width: 98%;
+                padding: 22px 34px;
+            }
+        }
+
+        @media screen and (min-width: 2000px) {
+            .main {
+                max-width: 99%;
+                padding: 24px 44px;
+            }
+        }
+
         /* Responsive */
         @media screen and (max-width: 768px) {
             .main { padding: 16px; }
@@ -1723,12 +1662,6 @@
         let allItemsList = [];
         let pendingDeleteId = null;
         let pendingEditId = null;
-        // Per-column "Excel style" quick filters typed directly into the
-        // table header (separate from the big Filters card above). Keyed by
-        // the same column keys used in getSortValue(), e.g.
-        // columnFilters.buyer = "bestseller". Applied client-side on top of
-        // whatever the server-side Filters card already narrowed down to.
-        let columnFilters = {};
         // Bumped every time loadTransactions() starts a new request. If an
         // older, slower request's response comes back AFTER a newer one
         // (very possible if the user changes Date From, then Date To, then
@@ -1742,6 +1675,23 @@
         // Each QR prints at 38mm x 38mm — big enough for an instant camera scan
         // from normal rack-labeling distance, small enough that 15 fit per sheet.
         const QR_PER_PAGE = 15;
+
+        // ============ HEADER HEIGHT (for table freeze/sticky offset) ============
+        // The page header is sticky at top:0. The table's thead is ALSO sticky,
+        // but it must stick right below the page header instead of underneath
+        // it (which would hide it) or at the very top of the viewport. This
+        // measures the real rendered header height and exposes it as a CSS
+        // variable (--header-h) so thead th { top: var(--header-h) } always
+        // lines up correctly, including when the header wraps taller on small
+        // screens.
+        function setHeaderHeightVar() {
+            const header = document.querySelector('.header');
+            if (header) {
+                document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
+            }
+        }
+        window.addEventListener('resize', setHeaderHeightVar);
+        window.addEventListener('load', setHeaderHeightVar);
 
         // ============ THEME ============
         function toggleTheme() {
@@ -1789,31 +1739,6 @@
             if (Math.abs(n) >= 1000) return (n / 1000).toFixed(1) + 'K';
             return n.toFixed(0);
         }
-
-        // ============ FREEZE TABLE HEADER (Excel-style) ============
-        // The table's <thead> uses position:sticky with top:var(--header-height)
-        // so it freezes just below the site's own sticky nav bar while the
-        // data rows scroll underneath it — same idea as Excel's "Freeze
-        // Panes". The nav bar's height can vary slightly (font loading,
-        // theme, screen size), so this measures it for real instead of
-        // hardcoding a guessed pixel value.
-        function updateHeaderHeightVar() {
-            const headerEl = document.querySelector('.header');
-            if (!headerEl) return;
-            const h = headerEl.offsetHeight;
-            document.documentElement.style.setProperty('--header-height', h + 'px');
-
-            // The filter-input row sits sticky right below the column-label
-            // row, so its "top" offset = nav bar height + label row height.
-            const labelRow = document.querySelector('thead tr.col-labels');
-            if (labelRow) {
-                const labelRowH = labelRow.offsetHeight;
-                document.documentElement.style.setProperty('--filterrow-top', (h + labelRowH) + 'px');
-            }
-        }
-        window.addEventListener('resize', updateHeaderHeightVar);
-        window.addEventListener('load', updateHeaderHeightVar);
-        updateHeaderHeightVar();
 
         // ============ LOAD FILTERS ============
         async function loadFilters() {
@@ -2030,9 +1955,8 @@
                 if (teamId) query = query.eq('team_member_id', teamId);
                 if (supplier) query = query.ilike('items.supplier', `%${supplier}%`);
 
-                // Fetch all (limit raised well above realistic ledger size so
-                // no transactions get silently cut off)
-                const { data, error } = await query.limit(50000);
+                // Fetch all (with limit for safety)
+                const { data, error } = await query.limit(5000);
 
                 if (error) throw error;
 
@@ -2111,7 +2035,6 @@
                 case 'supplier': return row.items?.supplier || '';
                 case 'team': return row.team_members?.name || '';
                 case 'item_code': return row.items?.item_code || '';
-                case 'remarks': return row.remarks || '';
                 default: return '';
             }
         }
@@ -2348,7 +2271,7 @@
                     query = query.eq('buyer_id', buyerId);
                 }
 
-                const { data, error } = await query.limit(50000);
+                const { data, error } = await query.limit(5000);
 
                 if (error) throw error;
 
@@ -2620,155 +2543,16 @@
         }
 
         // ============ RENDER TABLE ============
-        // Column definitions used to build both the sortable label row and
-        // the per-column "Excel style" quick-filter row underneath it.
-        const TABLE_COLUMNS = [
-            { key: 'no', label: '#', sortable: false, filterable: false },
-            { key: 'txn_date', label: 'Date', sortable: true, filterable: true },
-            { key: 'buyer', label: 'Buyer', sortable: true, filterable: true },
-            { key: 'item', label: 'Item', sortable: true, filterable: true },
-            { key: 'item_code', label: 'Item Code', sortable: true, filterable: true },
-            { key: 'unit', label: 'Unit', sortable: true, filterable: true },
-            { key: 'type', label: 'Type', sortable: true, filterable: true },
-            { key: 'challan_no', label: 'Challan', sortable: true, filterable: true },
-            { key: 'mrr_no', label: 'MRR', sortable: true, filterable: true },
-            { key: 'order_no', label: 'Order', sortable: true, filterable: true },
-            { key: 'style_no', label: 'Style', sortable: true, filterable: true },
-            { key: 'qty', label: 'Qty', sortable: true, filterable: true },
-            { key: 'unit_price', label: 'Price', sortable: true, filterable: true },
-            { key: 'line_value', label: 'Value', sortable: true, filterable: true },
-            { key: 'present_stock', label: 'Stock', sortable: true, filterable: true },
-            { key: 'stock_value', label: 'Stock Val', sortable: true, filterable: true },
-            { key: 'supplier', label: 'Supplier', sortable: true, filterable: true },
-            { key: 'team', label: 'Team', sortable: true, filterable: true },
-            { key: 'remarks', label: 'Remarks', sortable: false, filterable: true },
-            { key: 'actions', label: 'Actions', sortable: false, filterable: false }
-        ];
-
-        // Applies the per-column quick filters (columnFilters) on top of
-        // allTransactions. Called whenever fresh data is loaded from the
-        // server, or whenever a column filter box changes.
-        function applyColumnFilters() {
-            const keys = Object.keys(columnFilters);
-            if (keys.length === 0) {
-                filteredData = [...allTransactions];
-                return;
-            }
-            filteredData = allTransactions.filter(txn => {
-                return keys.every(key => {
-                    const q = columnFilters[key];
-                    if (!q) return true;
-                    const cellVal = String(getSortValue(txn, key) ?? '').toLowerCase();
-                    return cellVal.includes(q);
-                });
-            });
-        }
-
-        // Called on every keystroke in a column filter box. Deliberately
-        // does NOT rebuild the thead (that would recreate the <input> and
-        // kick focus out after every character) — only the tbody/tfoot/
-        // pagination get replaced.
-        function onColumnFilterInput(el) {
-            const key = el.dataset.col;
-            const val = el.value.trim().toLowerCase();
-            if (val) columnFilters[key] = val; else delete columnFilters[key];
-            currentPage = 1;
-            applyColumnFilters();
-            applySorting();
-            updateStats();
-            updateBuyerTotal();
-            renderBody();
-        }
-
-        function clearColumnFilters() {
-            columnFilters = {};
-            document.querySelectorAll('.col-filter-input').forEach(i => i.value = '');
-            currentPage = 1;
-            applyColumnFilters();
-            applySorting();
-            updateStats();
-            updateBuyerTotal();
-            renderBody();
-        }
-
-        function buildTheadHtml() {
-            let row1 = '<tr class="col-labels">';
-            TABLE_COLUMNS.forEach(col => {
-                const isSorted = sortColumn === col.key;
-                const sortIcon = isSorted
-                    ? (sortDirection === 'asc' ? '<i class="fas fa-sort-up sort-icon"></i>' : '<i class="fas fa-sort-down sort-icon"></i>')
-                    : '<i class="fas fa-sort sort-icon"></i>';
-                const sortable = col.sortable ? `onclick="sortBy('${col.key}')"` : '';
-                const sortedClass = isSorted ? 'sorted' : '';
-                row1 += `<th class="${sortedClass}" ${sortable}>${col.label} ${col.sortable ? sortIcon : ''}</th>`;
-            });
-            row1 += '</tr>';
-
-            let row2 = '<tr class="filter-row">';
-            TABLE_COLUMNS.forEach(col => {
-                if (!col.filterable) {
-                    row2 += '<th></th>';
-                    return;
-                }
-                const val = (columnFilters[col.key] || '').replace(/"/g, '&quot;');
-                row2 += `<th><input type="text" class="col-filter-input" data-col="${col.key}" placeholder="Search" value="${val}" oninput="onColumnFilterInput(this)"></th>`;
-            });
-            row2 += '</tr>';
-
-            return row1 + row2;
-        }
-
-        // Full render: rebuilds the thead (column labels + filter-input row)
-        // AND the body. Call this after loading fresh data or after sorting
-        // — situations where the header itself needs to change (sort
-        // arrows) or a full reset is appropriate.
         function renderTable() {
             const tableContent = document.getElementById('tableContent');
 
-            if (allTransactions.length === 0) {
+            if (filteredData.length === 0) {
                 tableContent.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
                         <p>No transactions found</p>
                     </div>
                 `;
-                return;
-            }
-
-            tableContent.innerHTML = `
-                <div class="table-wrapper">
-                    <table>
-                        <thead>${buildTheadHtml()}</thead>
-                        <tbody id="tbodyRows"></tbody>
-                        <tfoot id="tfootRows"></tfoot>
-                    </table>
-                </div>
-                <div id="paginationWrap"></div>
-            `;
-
-            renderBody();
-            updateHeaderHeightVar();
-        }
-
-        // Lightweight render: only replaces tbody/tfoot/pagination, leaving
-        // the thead (and any focused filter <input> inside it) completely
-        // untouched. This is what makes typing in a column filter box feel
-        // normal instead of losing focus after every keystroke.
-        function renderBody() {
-            const tbodyEl = document.getElementById('tbodyRows');
-            const tfootEl = document.getElementById('tfootRows');
-            const paginationEl = document.getElementById('paginationWrap');
-            if (!tbodyEl) return;
-
-            if (filteredData.length === 0) {
-                const hasColFilters = Object.keys(columnFilters).length > 0;
-                tbodyEl.innerHTML = `<tr><td colspan="20" style="padding:40px 20px;text-align:center;color:var(--text-muted);border:1px solid rgba(255,255,255,0.1);">
-                    <i class="fas fa-inbox" style="font-size:28px;display:block;margin-bottom:8px;opacity:0.6;"></i>
-                    No matching rows
-                    ${hasColFilters ? ' — <a href="#" onclick="clearColumnFilters();return false;" style="color:var(--accent-blue);text-decoration:underline;">clear column filters</a>' : ''}
-                </td></tr>`;
-                tfootEl.innerHTML = '';
-                paginationEl.innerHTML = '';
                 return;
             }
 
@@ -2779,7 +2563,42 @@
             const endIdx = Math.min(startIdx + perPage, filteredData.length);
             const pageData = filteredData.slice(startIdx, endIdx);
 
-            let bodyHtml = '';
+            // Build table
+            const columns = [
+                { key: 'no', label: '#', sortable: false },
+                { key: 'txn_date', label: 'Date', sortable: true },
+                { key: 'buyer', label: 'Buyer', sortable: true },
+                { key: 'item', label: 'Item', sortable: true },
+                { key: 'item_code', label: 'Item Code', sortable: true },
+                { key: 'unit', label: 'Unit', sortable: true },
+                { key: 'type', label: 'Type', sortable: true },
+                { key: 'challan_no', label: 'Challan', sortable: true },
+                { key: 'mrr_no', label: 'MRR', sortable: true },
+                { key: 'order_no', label: 'Order', sortable: true },
+                { key: 'style_no', label: 'Style', sortable: true },
+                { key: 'qty', label: 'Qty', sortable: true },
+                { key: 'unit_price', label: 'Price', sortable: true },
+                { key: 'line_value', label: 'Value', sortable: true },
+                { key: 'present_stock', label: 'Stock', sortable: true },
+                { key: 'stock_value', label: 'Stock Val', sortable: true },
+                { key: 'supplier', label: 'Supplier', sortable: true },
+                { key: 'team', label: 'Team', sortable: true },
+                { key: 'remarks', label: 'Remarks', sortable: false },
+                { key: 'actions', label: 'Actions', sortable: false }
+            ];
+
+            let html = '<div class="table-wrapper"><table><thead><tr>';
+            columns.forEach(col => {
+                const isSorted = sortColumn === col.key;
+                const sortIcon = isSorted
+                    ? (sortDirection === 'asc' ? '<i class="fas fa-sort-up sort-icon"></i>' : '<i class="fas fa-sort-down sort-icon"></i>')
+                    : '<i class="fas fa-sort sort-icon"></i>';
+                const sortable = col.sortable ? `onclick="sortBy('${col.key}')"` : '';
+                const sortedClass = isSorted ? 'sorted' : '';
+                html += `<th class="${sortedClass}" ${sortable}>${col.label} ${col.sortable ? sortIcon : ''}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
             pageData.forEach((txn, idx) => {
                 const typeClass = txn.type === 'RCVD' ? 'rcvd' : (txn.type === 'DLVD' ? 'dlvd' : 'prvs');
                 const qtyClass = txn.type === 'RCVD' ? 'qty-positive' : (txn.type === 'DLVD' ? 'qty-negative' : 'qty-neutral');
@@ -2788,7 +2607,7 @@
                 // PRVS (opening stock) entries usually shouldn't be deleted casually,
                 // but we still allow it since the RPC reverses PRVS-type safely as
                 // "no-op" on stock (only RCVD/DLVD adjust stock in delete_transaction).
-                bodyHtml += `<tr>
+                html += `<tr>
                     <td>${startIdx + idx + 1}</td>
                     <td>${txn.txn_date || ''}</td>
                     <td>${txn.items?.buyers?.name || ''}</td>
@@ -2815,7 +2634,8 @@
                     </td>
                 </tr>`;
             });
-            tbodyEl.innerHTML = bodyHtml;
+
+            html += '</tbody>';
 
             // Grand total footer row (based on ALL filtered data, not just this page)
             // Qty/Value: PRVS (opening) and RCVD both ADD to stock, DLVD SUBTRACTS —
@@ -2836,18 +2656,20 @@
             // transaction id, which reflects insert order.
             const stockTotals = computeStockTotals(filteredData);
 
-            tfootEl.innerHTML = `<tr>
-                <td colspan="11" style="text-align:right;">GRAND TOTAL (${filteredData.length} filtered rows):</td>
+            html += `<tfoot><tr>
+                <td colspan="11" style="text-align:right;">GRAND TOTAL (all filtered rows):</td>
                 <td>${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
                 <td>—</td>
                 <td>${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
                 <td>${fmt(stockTotals.stock)}</td>
                 <td>$${fmt(stockTotals.stockVal)}</td>
                 <td colspan="4"></td>
-            </tr>`;
+            </tr></tfoot>`;
+
+            html += '</table></div>';
 
             // Pagination controls
-            paginationEl.innerHTML = `<div class="pagination">
+            html += `<div class="pagination">
                 <div class="pagination-info">
                     Showing ${startIdx + 1}-${endIdx} of ${filteredData.length} transactions
                 </div>
@@ -2865,6 +2687,14 @@
                     <button class="page-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-angle-double-right"></i></button>
                 </div>
             </div>`;
+
+            tableContent.innerHTML = html;
+
+            // The header row's sticky position depends on the current header
+            // height, which can change (e.g. theme toggle wrapping text, window
+            // resize) — recompute it every time the table is (re)rendered so
+            // the freeze offset never drifts out of sync.
+            setHeaderHeightVar();
         }
 
         function buildPageNumbers(current, total) {
@@ -2953,10 +2783,7 @@
 
         // ============ INIT ============
         document.addEventListener('DOMContentLoaded', async () => {
-            updateHeaderHeightVar();
-            if (document.fonts && document.fonts.ready) {
-                document.fonts.ready.then(updateHeaderHeightVar);
-            }
+            setHeaderHeightVar();
             await loadFilters();
             await loadTransactions();
         });
