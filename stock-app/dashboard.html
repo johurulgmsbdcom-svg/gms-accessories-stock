@@ -150,10 +150,52 @@
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
         }
 
+        .header-title-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
         .header-title {
             font-size: 18px;
             font-weight: 700;
             color: var(--text-primary);
+            line-height: 1.1;
+        }
+
+        /* Live status badge */
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.3px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+        }
+
+        .live-dot.connected {
+            background: var(--accent-green);
+            animation: pulseDot 1.6s ease-out infinite;
+        }
+
+        .live-dot.syncing {
+            background: var(--accent-yellow);
+            animation: pulseDot 0.8s ease-out infinite;
+        }
+
+        @keyframes pulseDot {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+            70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
         .header-actions {
@@ -179,6 +221,15 @@
         .header-btn:hover {
             transform: translateY(-2px);
             background: rgba(255, 255, 255, 0.15);
+        }
+
+        .header-btn.spinning i {
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         /* Main Content */
@@ -286,6 +337,12 @@
             color: var(--text-primary);
             line-height: 1.2;
             word-break: break-all;
+            transition: transform 0.25s ease, color 0.25s ease;
+        }
+
+        .summary-value.bump {
+            transform: scale(1.15);
+            color: var(--accent-green);
         }
 
         /* Charts Grid */
@@ -298,6 +355,11 @@
 
         .chart-card {
             padding: 20px;
+            transition: box-shadow 0.4s ease;
+        }
+
+        .chart-card.flash {
+            box-shadow: 0 0 0 2px var(--accent-green), var(--glass-shadow);
         }
 
         .chart-header {
@@ -330,6 +392,11 @@
         .table-card {
             padding: 20px;
             margin-bottom: 24px;
+            transition: box-shadow 0.4s ease;
+        }
+
+        .table-card.flash {
+            box-shadow: 0 0 0 2px var(--accent-green), var(--glass-shadow);
         }
 
         .table-header {
@@ -402,6 +469,15 @@
 
         tbody tr:hover {
             background: rgba(255, 255, 255, 0.05);
+        }
+
+        tbody tr.new-row {
+            animation: rowHighlight 2.5s ease;
+        }
+
+        @keyframes rowHighlight {
+            0% { background: rgba(16, 185, 129, 0.25); }
+            100% { background: transparent; }
         }
 
         tbody td {
@@ -482,6 +558,7 @@
             align-items: center;
             gap: 10px;
             transition: transform 0.4s ease;
+            max-width: 90vw;
         }
 
         .toast.show {
@@ -490,6 +567,7 @@
 
         .toast.error { border-left: 4px solid var(--accent-red); }
         .toast.success { border-left: 4px solid var(--accent-green); }
+        .toast.live { border-left: 4px solid var(--accent-cyan); }
 
         /* Responsive - Tablet */
         @media (max-width: 1200px) {
@@ -586,10 +664,16 @@
     <header class="header">
         <div class="header-logo">
             <div class="logo-icon">G</div>
-            <div class="header-title">GMS Dashboard</div>
+            <div class="header-title-wrap">
+                <div class="header-title">GMS Dashboard</div>
+                <div class="live-badge">
+                    <span class="live-dot" id="liveDot"></span>
+                    <span id="liveText">Connecting...</span>
+                </div>
+            </div>
         </div>
         <div class="header-actions">
-            <button class="header-btn" onclick="refreshData()" title="Refresh">
+            <button class="header-btn" onclick="refreshData()" id="refreshBtn" title="Refresh">
                 <i class="fas fa-sync-alt"></i>
             </button>
             <button class="header-btn" onclick="toggleTheme()" id="themeBtn" title="Theme">
@@ -654,7 +738,7 @@
 
         <!-- Charts Row 1 -->
         <div class="charts-grid">
-            <div class="chart-card glass">
+            <div class="chart-card glass" id="cardBuyerChart">
                 <div class="chart-header">
                     <div class="chart-title">
                         <i class="fas fa-chart-bar"></i>
@@ -665,7 +749,7 @@
                     <canvas id="buyerChart"></canvas>
                 </div>
             </div>
-            <div class="chart-card glass">
+            <div class="chart-card glass" id="cardMonthlyChart">
                 <div class="chart-header">
                     <div class="chart-title">
                         <i class="fas fa-chart-pie"></i>
@@ -680,7 +764,7 @@
 
         <!-- Charts Row 2 -->
         <div class="charts-grid">
-            <div class="chart-card glass">
+            <div class="chart-card glass" id="cardDateWiseChart">
                 <div class="chart-header">
                     <div class="chart-title">
                         <i class="fas fa-calendar-day"></i>
@@ -691,7 +775,7 @@
                     <canvas id="dateWiseChart"></canvas>
                 </div>
             </div>
-            <div class="chart-card glass">
+            <div class="chart-card glass" id="cardTeamChart">
                 <div class="chart-header">
                     <div class="chart-title">
                         <i class="fas fa-user-tie"></i>
@@ -706,7 +790,7 @@
 
         <!-- Charts Row 3 -->
         <div class="charts-grid">
-            <div class="chart-card glass" style="grid-column: 1 / -1;">
+            <div class="chart-card glass" id="cardStockValueChart" style="grid-column: 1 / -1;">
                 <div class="chart-header">
                     <div class="chart-title">
                         <i class="fas fa-chart-line"></i>
@@ -720,7 +804,7 @@
         </div>
 
         <!-- Balance Table -->
-        <div class="table-card glass">
+        <div class="table-card glass" id="cardBalanceTable">
             <div class="table-header">
                 <div class="table-title">
                     <i class="fas fa-table"></i>
@@ -806,6 +890,9 @@
         // ============ STATE ============
         let charts = {};
         let buyers = [];
+        let realtimeChannel = null;
+        let reloadTimer = null;
+        let statsCache = {}; // to detect which stat bumped
 
         // ============ THEME ============
         function toggleTheme() {
@@ -836,10 +923,13 @@
             const icon = document.getElementById('toastIcon');
             const msg = document.getElementById('toastMsg');
             toast.className = 'toast ' + type;
-            icon.className = type === 'error' ? 'fas fa-times-circle' : 'fas fa-check-circle';
+            icon.className = type === 'error' ? 'fas fa-times-circle'
+                : type === 'live' ? 'fas fa-bolt'
+                : 'fas fa-check-circle';
             msg.textContent = message;
             toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
+            clearTimeout(showToast._t);
+            showToast._t = setTimeout(() => toast.classList.remove('show'), 3500);
         }
 
         // ============ UTILS ============
@@ -868,10 +958,33 @@
             };
         }
 
+        // Briefly flashes a border around a card so user notices which widget updated
+        function flashCard(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.add('flash');
+            setTimeout(() => el.classList.remove('flash'), 1200);
+        }
+
+        // Animates a summary number bumping when it changes
+        function setStatValue(id, newText) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (el.textContent !== newText) {
+                el.textContent = newText;
+                el.classList.remove('bump');
+                void el.offsetWidth; // restart animation
+                el.classList.add('bump');
+                setTimeout(() => el.classList.remove('bump'), 500);
+            }
+        }
+
         // ============ REFRESH ============
         function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.classList.add('spinning');
             showToast('Refreshing data...', 'success');
-            loadDashboard();
+            loadDashboard().finally(() => btn.classList.remove('spinning'));
         }
 
         // ============ LOAD DASHBOARD ============
@@ -893,27 +1006,27 @@
         async function loadStats() {
             try {
                 const { count: itemCount } = await db.from('items').select('*', { count: 'exact', head: true });
-                document.getElementById('statItems').textContent = fmt(itemCount || 0);
+                setStatValue('statItems', fmt(itemCount || 0));
 
                 const { count: buyerCount } = await db.from('buyers').select('*', { count: 'exact', head: true });
-                document.getElementById('statBuyers').textContent = fmt(buyerCount || 0);
+                setStatValue('statBuyers', fmt(buyerCount || 0));
 
                 const { data: stockData } = await db.from('items').select('current_stock');
                 const totalStockQty = (stockData || []).reduce((sum, i) => sum + (parseFloat(i.current_stock) || 0), 0);
-                document.getElementById('statStockQty').textContent = fmt(totalStockQty);
+                setStatValue('statStockQty', fmt(totalStockQty));
 
                 const { data: valueData } = await db.from('items').select('current_value');
                 const totalValue = (valueData || []).reduce((s, i) => s + (parseFloat(i.current_value) || 0), 0);
-                document.getElementById('statValue').textContent = '$' + fmt(totalValue);
+                setStatValue('statValue', '$' + fmt(totalValue));
 
                 const month = document.getElementById('monthPicker').value;
                 const [year, mon] = month.split('-');
 
                 const { count: rcvdCount } = await db.from('transactions').select('*', { count: 'exact', head: true }).eq('type', 'RCVD').gte('txn_date', `${year}-${mon}-01`).lte('txn_date', `${year}-${mon}-31`);
-                document.getElementById('statRcvd').textContent = fmt(rcvdCount || 0);
+                setStatValue('statRcvd', fmt(rcvdCount || 0));
 
                 const { count: dlvdCount } = await db.from('transactions').select('*', { count: 'exact', head: true }).eq('type', 'DLVD').gte('txn_date', `${year}-${mon}-01`).lte('txn_date', `${year}-${mon}-31`);
-                document.getElementById('statDlvd').textContent = fmt(dlvdCount || 0);
+                setStatValue('statDlvd', fmt(dlvdCount || 0));
 
             } catch (err) {
                 console.error('Stats error:', err);
@@ -927,10 +1040,12 @@
                 if (error) throw error;
                 buyers = data || [];
                 const select = document.getElementById('buyerFilter');
+                const currentVal = select.value;
                 select.innerHTML = '<option value="">All Buyers</option>';
                 buyers.forEach(b => {
                     select.innerHTML += `<option value="${b.id}">${b.name}</option>`;
                 });
+                select.value = currentVal;
             } catch (err) {
                 console.error('Buyers error:', err);
             }
@@ -1425,9 +1540,128 @@
             }
         }
 
+        // ============ LIVE STATUS UI ============
+        function setLiveStatus(state) {
+            // state: 'connecting' | 'connected' | 'syncing' | 'disconnected'
+            const dot = document.getElementById('liveDot');
+            const text = document.getElementById('liveText');
+            dot.className = 'live-dot';
+            if (state === 'connected') {
+                dot.classList.add('connected');
+                text.textContent = 'Live';
+            } else if (state === 'syncing') {
+                dot.classList.add('syncing');
+                text.textContent = 'Syncing...';
+            } else if (state === 'disconnected') {
+                text.textContent = 'Offline — retrying';
+            } else {
+                text.textContent = 'Connecting...';
+            }
+        }
+
+        // ============ REAL-TIME SYSTEM ============
+        // Kono table e (transactions / items / buyers) INSERT, UPDATE বা DELETE হলে
+        // Supabase Realtime সেটা push করবে, আর ড্যাশবোর্ড নিজে থেকেই refresh হবে —
+        // কোনো page reload লাগবে না।
+
+        function describeChange(table, payload) {
+            const row = payload.new || payload.old || {};
+            if (table === 'transactions') {
+                const type = row.type || 'Entry';
+                const qty = row.qty ? fmt(row.qty) : '';
+                const action = payload.eventType === 'DELETE' ? 'removed' : payload.eventType === 'UPDATE' ? 'updated' : 'posted';
+                return `New ${type} ${action}${qty ? ': ' + qty + ' qty' : ''}`;
+            }
+            if (table === 'items') {
+                const action = payload.eventType === 'DELETE' ? 'removed' : payload.eventType === 'UPDATE' ? 'updated' : 'added';
+                return `Item ${action}${row.description ? ': ' + row.description : ''}`;
+            }
+            if (table === 'buyers') {
+                const action = payload.eventType === 'DELETE' ? 'removed' : payload.eventType === 'UPDATE' ? 'updated' : 'added';
+                return `Buyer ${action}${row.name ? ': ' + row.name : ''}`;
+            }
+            return 'Data updated';
+        }
+
+        // Multiple rapid changes ekসাথে আসলে বার বার reload না করে,
+        // একটু wait করে (debounce) একবারে সব update করবে — এটাই "smart" অংশ
+        function scheduleReload(table, payload) {
+            setLiveStatus('syncing');
+            showToast(describeChange(table, payload), 'live');
+
+            // Relevant widgets highlight করি যাতে বোঝা যায় ঠিক কোথায় নতুন ডেটা এলো
+            if (table === 'transactions') {
+                flashCard('cardBuyerChart');
+                flashCard('cardMonthlyChart');
+                flashCard('cardDateWiseChart');
+                flashCard('cardTeamChart');
+                flashCard('cardBalanceTable');
+            } else if (table === 'items') {
+                flashCard('cardStockValueChart');
+                flashCard('cardBalanceTable');
+            } else if (table === 'buyers') {
+                flashCard('cardBuyerChart');
+                flashCard('cardStockValueChart');
+            }
+
+            clearTimeout(reloadTimer);
+            reloadTimer = setTimeout(async () => {
+                await loadDashboard();
+                setLiveStatus('connected');
+            }, 600); // 600ms debounce — একসাথে অনেক entry আসলেও একবারেই refresh হবে
+        }
+
+        function setupRealtime() {
+            setLiveStatus('connecting');
+
+            if (realtimeChannel) {
+                db.removeChannel(realtimeChannel);
+            }
+
+            realtimeChannel = db
+                .channel('gms-dashboard-live')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' },
+                    (payload) => scheduleReload('transactions', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'items' },
+                    (payload) => scheduleReload('items', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'buyers' },
+                    (payload) => scheduleReload('buyers', payload))
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        setLiveStatus('connected');
+                    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        setLiveStatus('disconnected');
+                        // Auto retry after few seconds
+                        setTimeout(setupRealtime, 4000);
+                    } else if (status === 'CLOSED') {
+                        setLiveStatus('disconnected');
+                    }
+                });
+        }
+
+        // Browser tab আবার active হলে (background থেকে ফিরে আসলে) একবার fresh sync করে নেয়,
+        // কারণ background-এ থাকা অবস্থায় realtime socket মাঝেমধ্যে ঘুমিয়ে যেতে পারে
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                loadDashboard();
+                setLiveStatus('connected');
+            }
+        });
+
+        // Internet reconnect হলে realtime reconnect করি
+        window.addEventListener('online', () => {
+            showToast('Back online — resyncing', 'success');
+            setupRealtime();
+            loadDashboard();
+        });
+        window.addEventListener('offline', () => {
+            setLiveStatus('disconnected');
+        });
+
         // ============ INIT ============
         document.addEventListener('DOMContentLoaded', () => {
             loadDashboard();
+            setupRealtime();
         });
 
         if ('serviceWorker' in navigator) {
