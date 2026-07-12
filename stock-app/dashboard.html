@@ -245,8 +245,106 @@
             margin: 0 auto;
         }
 
-        /* Month Selector */
-        .month-selector {
+        /* Live Activity Feed */
+        .activity-feed {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 18px;
+            margin-bottom: 18px;
+            overflow: hidden;
+        }
+
+        .activity-feed-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            padding-right: 14px;
+            border-right: 1px solid var(--glass-border);
+        }
+
+        .live-dot.small {
+            width: 7px;
+            height: 7px;
+        }
+
+        .activity-track {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            flex: 1;
+        }
+
+        .activity-track::-webkit-scrollbar { display: none; }
+
+        .activity-empty {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-style: italic;
+            white-space: nowrap;
+        }
+
+        .activity-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+            animation: chipSlideIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid transparent;
+        }
+
+        .activity-chip.rcvd {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.35);
+            color: var(--accent-green);
+        }
+
+        .activity-chip.dlvd {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.35);
+            color: var(--accent-red);
+        }
+
+        .activity-chip .chip-icon {
+            font-size: 11px;
+        }
+
+        .activity-chip .chip-meta {
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 11px;
+        }
+
+        .activity-chip.fading {
+            opacity: 0.45;
+        }
+
+        @keyframes chipSlideIn {
+            0% { opacity: 0; transform: translateX(-24px) scale(0.85); }
+            100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+
+        @media (max-width: 768px) {
+            .activity-feed { padding: 10px 14px; gap: 10px; }
+            .activity-feed-label { font-size: 10px; padding-right: 10px; }
+            .activity-chip { font-size: 11px; padding: 6px 11px; }
+        }
+
+
             display: flex;
             align-items: center;
             justify-content: center;
@@ -753,11 +851,23 @@
 
     <!-- Main Content -->
     <main class="main">
+        <!-- Live Activity Feed - notun RCVD/DLVD entry asle ekhane real-time dekhabe -->
+        <div class="activity-feed glass" id="activityFeed">
+            <div class="activity-feed-label">
+                <span class="live-dot connected small"></span>
+                Live Entries
+            </div>
+            <div class="activity-track" id="activityTrack">
+                <span class="activity-empty" id="activityEmpty">Waiting for new entries…</span>
+            </div>
+        </div>
+
         <!-- Month Selector -->
         <div class="month-selector">
             <label><i class="fas fa-calendar"></i> Month</label>
             <input type="month" id="monthPicker" value="2026-07" onchange="loadDashboard()">
         </div>
+
 
         <!-- Summary Cards - 6 cards in one row on desktop -->
         <div class="summary-grid">
@@ -1609,7 +1719,63 @@
             }
         }
 
-        // ============ LIVE STATUS UI ============
+        // ============ LIVE ACTIVITY FEED ============
+        // Notun RCVD/DLVD entry post hoile ekhane real-time chip hishebe dekhabe,
+        // buyer o item name shoho — page reload chara-i.
+        let activityList = [];
+        const ACTIVITY_MAX = 12;
+
+        function renderActivityFeed() {
+            const track = document.getElementById('activityTrack');
+            if (!track) return;
+            if (activityList.length === 0) {
+                track.innerHTML = '<span class="activity-empty" id="activityEmpty">Waiting for new entries…</span>';
+                return;
+            }
+            track.innerHTML = activityList.map((a, i) => `
+                <span class="activity-chip ${a.type === 'RCVD' ? 'rcvd' : 'dlvd'} ${i > 2 ? 'fading' : ''}">
+                    <i class="fas ${a.type === 'RCVD' ? 'fa-arrow-down' : 'fa-arrow-up'} chip-icon"></i>
+                    ${a.type} +${fmt(a.qty)} · ${a.itemName}${a.buyerName ? ' — ' + a.buyerName : ''}
+                    <span class="chip-meta">${a.time}</span>
+                </span>
+            `).join('');
+        }
+
+        async function addActivityEntry(payload) {
+            if (payload.eventType !== 'INSERT') return; // শুধু নতুন entry-তেই feed-এ দেখাবো
+            const row = payload.new;
+            if (!row || !row.type) return;
+
+            let itemName = 'Item';
+            let buyerName = '';
+            try {
+                if (row.item_id) {
+                    const { data: itemRow } = await db
+                        .from('items')
+                        .select('description, buyers:buyer_id (name)')
+                        .eq('id', row.item_id)
+                        .single();
+                    if (itemRow) {
+                        itemName = itemRow.description || 'Item';
+                        buyerName = itemRow.buyers?.name || '';
+                    }
+                }
+            } catch (e) {
+                // item lookup fail hole shudhu qty/type dekhabo, feed thambe na
+            }
+
+            activityList.unshift({
+                type: row.type,
+                qty: row.qty || 0,
+                itemName,
+                buyerName,
+                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            });
+            if (activityList.length > ACTIVITY_MAX) activityList.length = ACTIVITY_MAX;
+            renderActivityFeed();
+        }
+
+
         function setLiveStatus(state) {
             // state: 'connecting' | 'connected' | 'syncing' | 'disconnected'
             const dot = document.getElementById('liveDot');
@@ -1665,6 +1831,7 @@
                 flashCard('cardDateWiseChart');
                 flashCard('cardTeamChart');
                 flashCard('cardBalanceTable');
+                addActivityEntry(payload); // upore live-entry chip hishebe dekhabe
             } else if (table === 'items') {
                 flashCard('cardStockValueChart');
                 flashCard('cardBalanceTable');
