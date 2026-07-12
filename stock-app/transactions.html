@@ -391,173 +391,6 @@
             color: var(--accent-blue);
         }
 
-        /* Multi-select "bar search" filter (Buyer / Team) — checkbox popup
-           with its own search box, Select All / Clear All, and OK / Clear
-           footer buttons, matching the Order Close report's Buyer filter. */
-        .multiselect-group {
-            position: relative;
-        }
-
-        .multiselect-btn {
-            width: 100%;
-            text-align: left;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid var(--glass-border);
-            background: rgba(0, 0, 0, 0.2);
-            color: var(--text-primary);
-            font-family: 'Poppins', sans-serif;
-            font-size: 13px;
-            outline: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            transition: all 0.3s;
-        }
-
-        [data-theme="light"] .multiselect-btn {
-            background: rgba(255, 255, 255, 0.7);
-        }
-
-        .multiselect-btn:hover,
-        .multiselect-btn.open {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-        }
-
-        .multiselect-btn span {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .multiselect-btn i {
-            font-size: 11px;
-            color: var(--text-muted);
-            flex-shrink: 0;
-            transition: transform 0.2s;
-        }
-
-        .multiselect-btn.open i {
-            transform: rotate(180deg);
-            color: var(--accent-blue);
-        }
-
-        .multiselect-dropdown {
-            display: none;
-            position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
-            min-width: 240px;
-            width: max-content;
-            max-width: 320px;
-            background: rgba(15, 25, 45, 0.98);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-            z-index: 60;
-            padding: 10px;
-        }
-
-        [data-theme="light"] .multiselect-dropdown {
-            background: rgba(255, 255, 255, 0.98);
-        }
-
-        .multiselect-dropdown.show {
-            display: block;
-        }
-
-        .ms-search input {
-            width: 100%;
-            padding: 8px 10px;
-            border-radius: 8px;
-            border: 1px solid var(--glass-border);
-            background: rgba(0, 0, 0, 0.25);
-            color: var(--text-primary);
-            font-family: 'Poppins', sans-serif;
-            font-size: 12.5px;
-            outline: none;
-            margin-bottom: 8px;
-        }
-
-        [data-theme="light"] .ms-search input {
-            background: rgba(255, 255, 255, 0.7);
-        }
-
-        .ms-search input:focus {
-            border-color: var(--accent-blue);
-        }
-
-        .ms-actions {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            font-weight: 700;
-            margin-bottom: 6px;
-            padding: 0 2px;
-        }
-
-        .ms-actions span {
-            color: var(--accent-blue);
-            cursor: pointer;
-        }
-
-        .ms-actions span:hover {
-            text-decoration: underline;
-        }
-
-        .ms-options {
-            max-height: 210px;
-            overflow-y: auto;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 4px 0;
-        }
-
-        .ms-option {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 7px 6px;
-            font-size: 12.5px;
-            color: var(--text-primary);
-            cursor: pointer;
-            border-radius: 6px;
-        }
-
-        .ms-option:hover {
-            background: rgba(59, 130, 246, 0.15);
-        }
-
-        .ms-option input[type="checkbox"] {
-            accent-color: var(--accent-blue);
-            width: 15px;
-            height: 15px;
-            flex-shrink: 0;
-            cursor: pointer;
-        }
-
-        .ms-empty {
-            padding: 12px;
-            font-size: 12px;
-            color: var(--text-muted);
-            text-align: center;
-        }
-
-        .ms-footer {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .ms-footer .btn {
-            flex: 1;
-            justify-content: center;
-            padding: 8px 10px;
-        }
-
         .filter-group input,
         .filter-group select {
             padding: 10px 12px;
@@ -1531,26 +1364,11 @@
                     <input type="date" id="fDateTo" onchange="applyFiltersDebounced(); updateDateReadable()">
                     <div id="fDateToReadable" style="font-size:10.5px;color:var(--accent-blue);font-weight:600;margin-top:2px;"></div>
                 </div>
-                <div class="filter-group multiselect-group" id="buyerFilterGroup">
+                <div class="filter-group">
                     <label>Buyer</label>
-                    <button type="button" class="multiselect-btn" id="buyerMsBtn" onclick="toggleMultiSelect('buyer')">
-                        <span id="buyerMsLabel">All Buyers</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="multiselect-dropdown" id="buyerMsDropdown">
-                        <div class="ms-search">
-                            <input type="text" id="buyerMsSearch" placeholder="খুঁজুন..." autocomplete="off" oninput="renderMsOptions('buyer')">
-                        </div>
-                        <div class="ms-actions">
-                            <span onclick="msSelectAll('buyer')">Select All</span>
-                            <span onclick="msClearAll('buyer')">Clear All</span>
-                        </div>
-                        <div class="ms-options" id="buyerMsOptions"></div>
-                        <div class="ms-footer">
-                            <button type="button" class="btn btn-search btn-small" onclick="applyMsSelection('buyer')"><i class="fas fa-check"></i> OK</button>
-                            <button type="button" class="btn btn-reset btn-small" onclick="msClearAll('buyer'); applyMsSelection('buyer')"><i class="fas fa-times"></i> Clear</button>
-                        </div>
-                    </div>
+                    <select id="fBuyer" onchange="applyFilters()">
+                        <option value="">All Buyers</option>
+                    </select>
                 </div>
                 <div class="filter-group item-filter-group">
                     <label>Item</label>
@@ -1583,26 +1401,11 @@
                     <label>SR/Style No</label>
                     <input type="text" id="fStyle" placeholder="Style...">
                 </div>
-                <div class="filter-group multiselect-group" id="teamFilterGroup">
+                <div class="filter-group">
                     <label>Team Member</label>
-                    <button type="button" class="multiselect-btn" id="teamMsBtn" onclick="toggleMultiSelect('team')">
-                        <span id="teamMsLabel">All Members</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="multiselect-dropdown" id="teamMsDropdown">
-                        <div class="ms-search">
-                            <input type="text" id="teamMsSearch" placeholder="খুঁজুন..." autocomplete="off" oninput="renderMsOptions('team')">
-                        </div>
-                        <div class="ms-actions">
-                            <span onclick="msSelectAll('team')">Select All</span>
-                            <span onclick="msClearAll('team')">Clear All</span>
-                        </div>
-                        <div class="ms-options" id="teamMsOptions"></div>
-                        <div class="ms-footer">
-                            <button type="button" class="btn btn-search btn-small" onclick="applyMsSelection('team')"><i class="fas fa-check"></i> OK</button>
-                            <button type="button" class="btn btn-reset btn-small" onclick="msClearAll('team'); applyMsSelection('team')"><i class="fas fa-times"></i> Clear</button>
-                        </div>
-                    </div>
+                    <select id="fTeam">
+                        <option value="">All Members</option>
+                    </select>
                 </div>
                 <div class="filter-group">
                     <label>Supplier</label>
@@ -1868,125 +1671,6 @@
         // them overwrite the correct, more recent filtered data.
         let loadRequestId = 0;
 
-        // ============ MULTI-SELECT "BAR SEARCH" FILTERS (Buyer / Team) ============
-        // Each multi-select filter (Buyer, Team Member) keeps:
-        //  - a full options list ({id, name}) loaded once from Supabase
-        //  - a "committed" Set of selected ids actually used by the query
-        //  - a "pending" Set that the checkboxes edit live inside the open
-        //    popup, only copied into the committed Set when OK is clicked
-        //    (Clear resets pending to empty then commits immediately).
-        const msState = {
-            buyer: { options: [], committed: new Set(), pending: new Set() },
-            team: { options: [], committed: new Set(), pending: new Set() }
-        };
-
-        function msEls(type) {
-            return {
-                btn: document.getElementById(type + 'MsBtn'),
-                label: document.getElementById(type + 'MsLabel'),
-                dropdown: document.getElementById(type + 'MsDropdown'),
-                search: document.getElementById(type + 'MsSearch'),
-                options: document.getElementById(type + 'MsOptions')
-            };
-        }
-
-        function toggleMultiSelect(type) {
-            const { dropdown, btn, search } = msEls(type);
-            const isOpen = dropdown.classList.contains('show');
-            closeAllMultiSelects();
-            if (!isOpen) {
-                // Start editing from whatever is currently committed.
-                msState[type].pending = new Set(msState[type].committed);
-                search.value = '';
-                renderMsOptions(type);
-                dropdown.classList.add('show');
-                btn.classList.add('open');
-                setTimeout(() => search.focus(), 0);
-            }
-        }
-
-        function closeAllMultiSelects() {
-            ['buyer', 'team'].forEach(type => {
-                const { dropdown, btn } = msEls(type);
-                dropdown.classList.remove('show');
-                btn.classList.remove('open');
-            });
-        }
-
-        document.addEventListener('click', (e) => {
-            ['buyer', 'team'].forEach(type => {
-                const group = document.getElementById(type + 'FilterGroup');
-                if (group && !group.contains(e.target)) {
-                    const { dropdown, btn } = msEls(type);
-                    dropdown.classList.remove('show');
-                    btn.classList.remove('open');
-                }
-            });
-        });
-
-        function renderMsOptions(type) {
-            const { options, search } = msEls(type);
-            const q = (search.value || '').trim().toLowerCase();
-            const list = msState[type].options.filter(o => !q || o.name.toLowerCase().includes(q));
-
-            if (list.length === 0) {
-                options.innerHTML = `<div class="ms-empty">No matches</div>`;
-                return;
-            }
-
-            options.innerHTML = list.map(o => {
-                const checked = msState[type].pending.has(String(o.id)) ? 'checked' : '';
-                return `<label class="ms-option">
-                    <input type="checkbox" value="${o.id}" ${checked} onchange="msToggleOption('${type}', '${o.id}', this.checked)">
-                    <span>${o.name}</span>
-                </label>`;
-            }).join('');
-        }
-
-        function msToggleOption(type, id, checked) {
-            if (checked) msState[type].pending.add(String(id));
-            else msState[type].pending.delete(String(id));
-        }
-
-        function msSelectAll(type) {
-            const { search } = msEls(type);
-            const q = (search.value || '').trim().toLowerCase();
-            const list = msState[type].options.filter(o => !q || o.name.toLowerCase().includes(q));
-            list.forEach(o => msState[type].pending.add(String(o.id)));
-            renderMsOptions(type);
-        }
-
-        function msClearAll(type) {
-            msState[type].pending = new Set();
-            renderMsOptions(type);
-        }
-
-        function applyMsSelection(type) {
-            msState[type].committed = new Set(msState[type].pending);
-            updateMsLabel(type);
-            closeAllMultiSelects();
-            applyFilters();
-        }
-
-        function updateMsLabel(type) {
-            const { label } = msEls(type);
-            const count = msState[type].committed.size;
-            const defaultText = type === 'buyer' ? 'All Buyers' : 'All Members';
-            if (count === 0) {
-                label.textContent = defaultText;
-            } else if (count === 1) {
-                const id = [...msState[type].committed][0];
-                const opt = msState[type].options.find(o => String(o.id) === id);
-                label.textContent = opt ? opt.name : '1 selected';
-            } else {
-                label.textContent = `${count} selected`;
-            }
-        }
-
-        function msIdsArray(type) {
-            return [...msState[type].committed];
-        }
-
         // How many QR labels per printed A4 landscape page (5 cols x 3 rows).
         // Each QR prints at 38mm x 38mm — big enough for an instant camera scan
         // from normal rack-labeling distance, small enough that 15 fit per sheet.
@@ -2061,9 +1745,10 @@
             try {
                 // Load buyers
                 const { data: buyers } = await db.from('buyers').select('id, name').order('name');
-                msState.buyer.options = (buyers || []).map(b => ({ id: b.id, name: b.name }));
-                renderMsOptions('buyer');
-                updateMsLabel('buyer');
+                const buyerSelect = document.getElementById('fBuyer');
+                (buyers || []).forEach(b => {
+                    buyerSelect.innerHTML += `<option value="${b.id}">${b.name}</option>`;
+                });
 
                 // Load items
                 const { data: items } = await db.from('items').select('id, description').order('description');
@@ -2075,9 +1760,10 @@
 
                 // Load team members
                 const { data: teams } = await db.from('team_members').select('id, name').order('name');
-                msState.team.options = (teams || []).map(t => ({ id: t.id, name: t.name }));
-                renderMsOptions('team');
-                updateMsLabel('team');
+                const teamSelect = document.getElementById('fTeam');
+                (teams || []).forEach(t => {
+                    teamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+                });
 
                 // Also populate the Edit Modal's team dropdown
                 const editTeamSelect = document.getElementById('eTeam');
@@ -2228,14 +1914,14 @@
                     showToast('Date From ও Date To উল্টো ছিল, ঠিক করে দেওয়া হয়েছে', 'warning');
                 }
 
-                const buyerIds = msIdsArray('buyer');
-                const teamIds = msIdsArray('team');
+                const buyerId = document.getElementById('fBuyer').value;
                 const itemText = document.getElementById('fItem').value.trim();
                 const type = document.getElementById('fType').value;
                 const challan = document.getElementById('fChallan').value.trim();
                 const mrr = document.getElementById('fMrr').value.trim();
                 const order = document.getElementById('fOrder').value.trim();
                 const style = document.getElementById('fStyle').value.trim();
+                const teamId = document.getElementById('fTeam').value;
                 const supplier = document.getElementById('fSupplier').value.trim();
 
                 if (dateFrom) query = query.gte('txn_date', dateFrom);
@@ -2252,7 +1938,7 @@
                         debugEl.innerHTML = `<i class="fas fa-filter"></i> No date filter applied — showing ALL dates`;
                     }
                 }
-                if (buyerIds.length > 0) query = query.in('items.buyer_id', buyerIds);
+                if (buyerId) query = query.eq('items.buyer_id', buyerId);
                 if (itemText) {
                     const matchedItemId = itemNameToId[itemText];
                     if (matchedItemId) {
@@ -2266,7 +1952,7 @@
                 if (mrr) query = query.ilike('mrr_no', `%${mrr}%`);
                 if (order) query = query.ilike('order_no', `%${order}%`);
                 if (style) query = query.ilike('style_no', `%${style}%`);
-                if (teamIds.length > 0) query = query.in('team_member_id', teamIds);
+                if (teamId) query = query.eq('team_member_id', teamId);
                 if (supplier) query = query.ilike('items.supplier', `%${supplier}%`);
 
                 // Fetch all (with limit for safety)
@@ -2421,7 +2107,8 @@
         function updateBuyerTotal() {
             const card = document.getElementById('buyerTotalCard');
             const titleEl = document.getElementById('buyerTotalTitle');
-            const selectedBuyerIds = msIdsArray('buyer');
+            const buyerSelect = document.getElementById('fBuyer');
+            const buyerId = buyerSelect.value;
 
             if (filteredData.length === 0) {
                 card.style.display = 'none';
@@ -2459,11 +2146,9 @@
             document.getElementById('btStock').textContent = fmt(stockTotals.stock);
             document.getElementById('btStockVal').textContent = '$' + fmt(stockTotals.stockVal);
 
-            if (selectedBuyerIds.length === 1) {
-                const opt = msState.buyer.options.find(o => String(o.id) === selectedBuyerIds[0]);
-                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${opt ? opt.name : 'Selected Buyer'}`;
-            } else if (selectedBuyerIds.length > 1) {
-                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${selectedBuyerIds.length} Buyers Selected`;
+            if (buyerId) {
+                const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
+                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerName}`;
             } else {
                 titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — All Buyers (filtered)`;
             }
@@ -2563,20 +2248,15 @@
             window.print();
         }
 
-        // Prints QR codes for ALL items belonging to the selected buyer(s) (or
-        // all buyers if none selected). This is independent of the date-range /
+        // Prints QR codes for ALL items belonging to the selected buyer (or all
+        // buyers if none selected). This is independent of the date-range /
         // other transaction filters — it pulls straight from the items table so
         // every item for that buyer gets a label, even ones with no recent
         // transactions.
         async function printFilteredQRCodes() {
-            const buyerIds = msIdsArray('buyer');
-            let buyerLabel = 'All Buyers';
-            if (buyerIds.length === 1) {
-                const opt = msState.buyer.options.find(o => String(o.id) === buyerIds[0]);
-                buyerLabel = opt ? opt.name : 'Selected Buyer';
-            } else if (buyerIds.length > 1) {
-                buyerLabel = `${buyerIds.length} Buyers`;
-            }
+            const buyerId = document.getElementById('fBuyer').value;
+            const buyerSelect = document.getElementById('fBuyer');
+            const buyerLabel = buyerId ? buyerSelect.options[buyerSelect.selectedIndex].text : 'All Buyers';
 
             showToast(`Loading items for ${buyerLabel}...`, 'success');
 
@@ -2587,8 +2267,8 @@
                     .order('buyer_id', { ascending: true })
                     .order('description', { ascending: true });
 
-                if (buyerIds.length > 0) {
-                    query = query.in('buyer_id', buyerIds);
+                if (buyerId) {
+                    query = query.eq('buyer_id', buyerId);
                 }
 
                 const { data, error } = await query.limit(5000);
@@ -3044,20 +2724,14 @@
 
         // ============ RESET FILTERS ============
         function resetFilters() {
-            msState.buyer.committed = new Set();
-            msState.buyer.pending = new Set();
-            msState.team.committed = new Set();
-            msState.team.pending = new Set();
-            updateMsLabel('buyer');
-            updateMsLabel('team');
-            closeAllMultiSelects();
-
+            document.getElementById('fBuyer').value = '';
             document.getElementById('fItem').value = '';
             document.getElementById('fType').value = '';
             document.getElementById('fChallan').value = '';
             document.getElementById('fMrr').value = '';
             document.getElementById('fOrder').value = '';
             document.getElementById('fStyle').value = '';
+            document.getElementById('fTeam').value = '';
             document.getElementById('fSupplier').value = '';
 
             const today = new Date();
