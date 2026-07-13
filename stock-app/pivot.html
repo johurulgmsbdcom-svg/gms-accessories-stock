@@ -340,7 +340,6 @@
             color: var(--text-muted);
         }
 
-        /* Multiple Select Styling */
         .multi-select-wrapper {
             position: relative;
         }
@@ -755,9 +754,6 @@
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
-        /* ============================================ */
-        /* PRINT STYLES - A4 LANDSCAPE (BLACK & WHITE FRIENDLY) */
-        /* ============================================ */
         @media print {
             @page {
                 size: A4 landscape;
@@ -889,7 +885,6 @@
                 border: 2px solid black !important;
             }
 
-            /* Print Header */
             .print-header {
                 display: block !important;
                 text-align: center;
@@ -937,7 +932,6 @@
     <div class="orb orb-3"></div>
     <div class="orb orb-4"></div>
 
-    <!-- Print Header (Only visible during print) -->
     <div class="print-header">
         <h1>GMS Accessories Stock</h1>
         <p>Buyer Wise Balance Value Report | Generated: <span id="printDate"></span></p>
@@ -1068,13 +1062,11 @@
             <i class="fas fa-plus-circle nav-icon"></i> New
         </a>
         <a href="challan-report.html" class="nav-item">
-    <i class="fas fa-file-invoice nav-icon"></i>
-    Challan
-</a>
+            <i class="fas fa-file-invoice nav-icon"></i> Challan
+        </a>
         <a href="daybook.html" class="nav-item">
-    <i class="fas fa-book nav-icon"></i>
-    Day Book
-</a>
+            <i class="fas fa-book nav-icon"></i> Day Book
+        </a>
     </nav>
 
     <div class="toast" id="toast">
@@ -1089,11 +1081,10 @@
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let allItems = [];
-        let pivotRows = [];      // one computed row per item: {item, prevQty, prevValue, rcvdQty, rcvdValue, dlvdQty, dlvdValue, presentQty, presentValue}
+        let pivotRows = [];
         let allBuyers = [];
         let selectedBuyerIds = [];
 
-        // ============ THEME ============
         function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -1114,7 +1105,6 @@
             updateThemeIcon(saved);
         })();
 
-        // ============ TOAST ============
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toastIcon');
@@ -1126,7 +1116,6 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // ============ FORMAT ============
         function fmt(n) {
             if (n === null || n === undefined || isNaN(n)) return '0';
             return parseFloat(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -1140,13 +1129,11 @@
             return n.toFixed(0);
         }
 
-        // ============ MULTI-SELECT BUYER ============
         function toggleBuyerDropdown() {
             const dropdown = document.getElementById('buyerDropdown');
             dropdown.classList.toggle('show');
         }
 
-        // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
             const wrapper = document.getElementById('buyerMultiSelect');
             if (wrapper && !wrapper.contains(e.target)) {
@@ -1219,7 +1206,6 @@
             }
         }
 
-        // ============ LOAD FILTERS ============
         async function loadFilters() {
             try {
                 await loadBuyerOptions();
@@ -1239,29 +1225,18 @@
             await loadItems();
         }
 
-        // ============ FETCH TRANSACTIONS FOR A SET OF ITEM IDS ============
-        // Pulls the FULL transaction history (all dates) for the given items —
-        // not just the selected date range — because "Previous" needs to know
-        // the running balance from BEFORE the range started. Filtering by date
-        // happens afterwards in JS (computePivotForItem), not in this query.
         async function fetchTransactionsForItems(itemIds) {
             if (!itemIds.length) return {};
 
-            const CHUNK = 200; // avoid overly long .in() filters
+            const CHUNK = 200;
             const byItem = {};
             itemIds.forEach(id => { byItem[id] = []; });
 
             for (let i = 0; i < itemIds.length; i += CHUNK) {
                 const chunkIds = itemIds.slice(i, i + CHUNK);
-                // Ordered by id (insert order), NOT txn_date. present_stock_after is a
-                // running balance calculated in the order rows were INSERTED — if a
-                // transaction is later backdated (entered with an earlier txn_date
-                // after other rows already exist), sorting by date would misidentify
-                // which row is the true "genesis" entry for reversing the opening
-                // balance. Sorting by id always reflects the real calculation chain.
                 const { data, error } = await db
                     .from('transactions')
-                    .select('id, item_id, type, txn_date, qty, line_value, present_stock_after, stock_value_after')
+                    .select('id, item_id, type, txn_date, qty, line_value')
                     .in('item_id', chunkIds)
                     .order('id', { ascending: true })
                     .limit(20000);
@@ -1277,87 +1252,38 @@
             return byItem;
         }
 
-        // ============ COMPUTE ONE PIVOT ROW FOR AN ITEM ============
-        // previous  = FIXED baseline — the item's very first-ever recorded stock,
-        //             derived by reversing the earliest-ever transaction. This does
-        //             NOT change with the Date From/To filter — it always shows the
-        //             original opening balance for the item, exactly as first entered:
-        //               - if earliest is RCVD or PRVS (both ADD to stock):
-        //                     previous = earliest.present_stock_after - earliest.qty
-        //               - if earliest is DLVD (SUBTRACTS from stock):
-        //                     previous = earliest.present_stock_after + earliest.qty
-        //             Falls back to the item's stored current_stock/current_value only
-        //             if the item has no transaction history at all.
-        // received  = sum of qty/value for RCVD-type transactions inside [dateFrom, dateTo]
-        // delivered = sum of qty/value for DLVD-type transactions inside [dateFrom, dateTo]
-        //             (PRVS is never counted as Received/Delivered — it's the one-time
-        //             opening snapshot that's already captured in "Previous" above.)
-        // present   = previous + received - delivered   (same rule for value)
+        // FIXED: Present Stock comes DIRECTLY from items.current_stock
+        // Previous = Present Stock - RCVD + DLVD (within date range)
         function computePivotForItem(item, txns, dateFrom, dateTo) {
-            let prevQty = 0, prevValue = 0;
             let rcvdQty = 0, rcvdValue = 0;
             let dlvdQty = 0, dlvdValue = 0;
 
-            if (!txns || txns.length === 0) {
-                // No ledger history yet — use the item's own stored stock as the baseline.
-                prevQty = parseFloat(item.current_stock) || 0;
-                prevValue = parseFloat(item.current_value) || 0;
-            } else {
-                // txns is already sorted ascending by id / insert order (see
-                // fetchTransactionsForItems), so txns[0] is the genesis entry — the
-                // very first transaction ever recorded for this item, in the actual
-                // order the running balance was built. "Previous" is always derived
-                // from this — the date filter never affects it.
-                const earliest = txns[0];
-                const eQty = parseFloat(earliest.qty) || 0;
-                const eVal = parseFloat(earliest.line_value) || 0;
-                const eStockAfter = parseFloat(earliest.present_stock_after) || 0;
-                const eValueAfter = parseFloat(earliest.stock_value_after) || 0;
+            // Sum RCVD and DLVD transactions that fall inside the selected range
+            txns.forEach(txn => {
+                if (txn.type === 'PRVS') return;
 
-                if (earliest.type === 'PRVS') {
-                    // PRVS *is* the opening balance statement itself — it should be
-                    // used directly as "Previous", not reversed. Reversing it would
-                    // ask "what came before the opening balance?", which is always
-                    // (and meaninglessly) zero.
-                    prevQty = eStockAfter;
-                    prevValue = eValueAfter;
-                } else if (earliest.type === 'DLVD') {
-                    // Ledger started directly with a delivery (no PRVS was ever
-                    // entered) — reverse it to find what stock must have existed
-                    // right before that delivery happened.
-                    prevQty = eStockAfter + eQty;
-                    prevValue = eValueAfter + eVal;
-                } else {
-                    // Ledger started directly with a receipt (no PRVS was ever
-                    // entered) — reverse it to find what stock existed before it.
-                    prevQty = eStockAfter - eQty;
-                    prevValue = eValueAfter - eVal;
+                const inRange = (!dateFrom || txn.txn_date >= dateFrom) && (!dateTo || txn.txn_date <= dateTo);
+                if (!inRange) return;
+
+                const qty = parseFloat(txn.qty) || 0;
+                const val = parseFloat(txn.line_value) || 0;
+
+                if (txn.type === 'RCVD') {
+                    rcvdQty += qty;
+                    rcvdValue += val;
+                } else if (txn.type === 'DLVD') {
+                    dlvdQty += qty;
+                    dlvdValue += val;
                 }
+            });
 
-                // Sum RCVD and DLVD transactions that fall inside the selected range.
-                // PRVS is intentionally excluded — it's the one-time opening snapshot,
-                // already accounted for above as "Previous", never a period movement.
-                txns.forEach(txn => {
-                    if (txn.type === 'PRVS') return;
+            // Present Stock comes DIRECTLY from items table (matches Dashboard & Ledger)
+            const presentQty = parseFloat(item.current_stock) || 0;
+            const presentValue = parseFloat(item.current_value) || 0;
 
-                    const inRange = (!dateFrom || txn.txn_date >= dateFrom) && (!dateTo || txn.txn_date <= dateTo);
-                    if (!inRange) return;
-
-                    const qty = parseFloat(txn.qty) || 0;
-                    const val = parseFloat(txn.line_value) || 0;
-
-                    if (txn.type === 'RCVD') {
-                        rcvdQty += qty;
-                        rcvdValue += val;
-                    } else if (txn.type === 'DLVD') {
-                        dlvdQty += qty;
-                        dlvdValue += val;
-                    }
-                });
-            }
-
-            const presentQty = prevQty + rcvdQty - dlvdQty;
-            const presentValue = prevValue + rcvdValue - dlvdValue;
+            // Previous = Present Stock - RCVD + DLVD (what stock was before the date range)
+            const prevQty = presentQty - rcvdQty + dlvdQty;
+            const prevValue = presentValue - rcvdValue + dlvdValue;
 
             return {
                 item,
@@ -1390,7 +1316,6 @@
 
                 const itemSearch = document.getElementById('fItem').value.trim();
 
-                // Apply buyer filter (multiple)
                 if (selectedBuyerIds.length > 0 && selectedBuyerIds.length < allBuyers.length) {
                     query = query.in('buyer_id', selectedBuyerIds);
                 }
@@ -1410,8 +1335,6 @@
                     });
                 }
 
-                // Pull transaction history for exactly these items, then compute
-                // Previous / Received / Delivery / Present per item.
                 const dateFrom = document.getElementById('fDateFrom').value || '';
                 const dateTo = document.getElementById('fDateTo').value || '';
 
@@ -1574,14 +1497,12 @@
             showToast('Filters reset', 'success');
         }
 
-        // ============ PRINT REPORT ============
         function printReport() {
             if (pivotRows.length === 0) {
                 showToast('No data to print', 'error');
                 return;
             }
 
-            // Set print date
             const now = new Date();
             document.getElementById('printDate').textContent = 
                 now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + 
@@ -1594,7 +1515,6 @@
             }, 300);
         }
 
-        // ============ DOWNLOAD EXCEL ============
         function downloadExcel() {
             if (pivotRows.length === 0) {
                 showToast('No data to download', 'error');
@@ -1709,7 +1629,6 @@
             showToast(`Downloaded: ${fileName}`, 'success');
         }
 
-        // ============ INIT ============
         document.addEventListener('DOMContentLoaded', async () => {
             await loadFilters();
             await loadItems();
