@@ -607,8 +607,8 @@
         let sortDirection = 'desc'; // default: newest first
         let viewMode = 'daily';     // 'daily' | 'monthly'
         let buyerMap = {};          // buyer_id -> buyer name, used in drilldown modal
-        let openingQty = 0;         // stock qty carried forward from BEFORE the filtered date range
-        let openingVal = 0;         // stock value carried forward from BEFORE the filtered date range
+        let closingAnchorQty = 0;   // TRUE present stock qty as of the visible range's last day (anchored to items.current_stock)
+        let closingAnchorVal = 0;   // TRUE present stock value as of the visible range's last day (anchored to items.current_value)
 
         // ============ THEME ============
         function toggleTheme() {
@@ -738,18 +738,43 @@
             loadData();
         }
 
-        // ============ OPENING BALANCE (stock carried forward BEFORE the filtered range) ============
-        // This makes "Previous Stock" on the first visible row, and therefore every
-        // "Present Stock" row after it, equal to the REAL running stock (same number
-        // as the dashboard total) instead of restarting from 0 at the filter's edge.
-        async function getOpeningBalance(dateFrom, buyerId) {
-            if (!dateFrom) return { qty: 0, val: 0 };
+        // ============ LIVE STOCK ANCHOR ============
+        // The dashboard's "Total Stock Qty / Total Value" comes straight from the
+        // items table (current_stock / current_value columns) — it is NOT simply
+        // "sum of all RCVD minus all DLVD ever posted" (there can be manual edits,
+        // opening entries, adjustments etc. that never went through the transactions
+        // log). So instead of recomputing history from scratch, we anchor the Day
+        // Book to that SAME live source, and only use RCVD/DLVD deltas to walk
+        // backwards/forwards day by day from that anchor.
+        async function getLiveStockTotals(buyerId) {
+            try {
+                let q = db.from('items').select('current_stock, current_value');
+                if (buyerId) q = q.eq('buyer_id', buyerId);
+                const { data, error } = await q.limit(200000);
+                if (error) throw error;
+                let qty = 0, val = 0;
+                (data || []).forEach(i => {
+                    qty += parseFloat(i.current_stock) || 0;
+                    val += parseFloat(i.current_value) || 0;
+                });
+                return { qty, val };
+            } catch (err) {
+                console.error('Live stock totals error:', err);
+                return { qty: 0, val: 0 };
+            }
+        }
+
+        // Net RCVD-DLVD activity posted AFTER the visible range's last day — needed to
+        // roll the RIGHT-NOW live stock total back to what it was as of dateTo, so the
+        // last visible row anchors correctly (usually 0 when dateTo = today).
+        async function getFutureNet(dateTo, buyerId) {
+            if (!dateTo) return { qty: 0, val: 0 };
             try {
                 let q = db
                     .from('transactions')
                     .select(`type, qty, line_value, items:item_id!inner ( buyer_id )`)
                     .in('type', ['RCVD', 'DLVD'])
-                    .lt('txn_date', dateFrom);
+                    .gt('txn_date', dateTo);
                 if (buyerId) q = q.eq('items.buyer_id', buyerId);
 
                 const { data, error } = await q.limit(200000);
@@ -764,7 +789,7 @@
                 });
                 return { qty, val };
             } catch (err) {
-                console.error('Opening balance error:', err);
+                console.error('Future net error:', err);
                 return { qty: 0, val: 0 };
             }
         }
@@ -797,14 +822,18 @@
                 if (dateTo) query = query.lte('txn_date', dateTo);
                 if (buyerId) query = query.eq('items.buyer_id', buyerId);
 
-                const [{ data, error }, opening] = await Promise.all([
+                const [{ data, error }, live, futureNet] = await Promise.all([
                     query.limit(20000),
-                    getOpeningBalance(dateFrom, buyerId)
+                    getLiveStockTotals(buyerId),
+                    getFutureNet(dateTo, buyerId)
                 ]);
                 if (error) throw error;
 
-                openingQty = opening.qty;
-                openingVal = opening.val;
+                // Present Stock of the LAST visible day/month = live stock right now,
+                // minus whatever has already been posted after that day (if dateTo is
+                // today, futureNet is normally 0, so this equals the live total exactly).
+                closingAnchorQty = live.qty - futureNet.qty;
+                closingAnchorVal = live.val - futureNet.val;
 
                 rawTxns = data || [];
                 buildSummary();
@@ -895,16 +924,36 @@
             // once gap-filled keys are added, so sort explicitly by period key (YYYY-MM-DD
             // or YYYY-MM both sort correctly as plain strings).
             const sortedKeys = Array.from(map.keys()).sort();
-            let cumQty = openingQty, cumVal = openingVal;
-            summaryRows = sortedKeys.map(key => {
+
+            // Pass 1: compute each row's own net (RCVD - DLVD), and the total net across
+            // the whole visible range.
+            let totalNetQty = 0, totalNetVal = 0;
+            const netRows = sortedKeys.map(key => {
                 const row = map.get(key);
                 const netQty = row.rcvdQty - row.dlvdQty;
                 const netVal = row.rcvdVal - row.dlvdVal;
+                totalNetQty += netQty;
+                totalNetVal += netVal;
+                return { ...row, netQty, netVal };
+            });
+
+            // Work out the TRUE opening point (stock just before the first visible row)
+            // by starting from the live-anchored closing total (last visible row's Present
+            // Stock) and subtracting all the net activity in between. This guarantees the
+            // last row's Present Stock lands exactly on closingAnchorQty/Val — i.e. matches
+            // the dashboard's live "Total Stock Qty / Total Value" — instead of drifting
+            // off if we tried to rebuild everything purely from transaction history.
+            const openingQty = closingAnchorQty - totalNetQty;
+            const openingVal = closingAnchorVal - totalNetVal;
+
+            // Pass 2: walk forward from that true opening point.
+            let cumQty = openingQty, cumVal = openingVal;
+            summaryRows = netRows.map(row => {
                 const prevQty = cumQty;   // stock brought forward from before this period
                 const prevVal = cumVal;
-                cumQty += netQty;         // Present Stock = Previous Stock + RCVD - DLVD
-                cumVal += netVal;
-                return { ...row, netQty, netVal, prevQty, prevVal, cumQty, cumVal };
+                cumQty += row.netQty;     // Present Stock = Previous Stock + RCVD - DLVD
+                cumVal += row.netVal;
+                return { ...row, prevQty, prevVal, cumQty, cumVal };
             });
         }
 
