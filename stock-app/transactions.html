@@ -999,13 +999,6 @@
             grid-column: 1 / -1;
         }
 
-        /*
-          QR Pages — 15 items per printed A4 landscape page (5 cols x 3 rows).
-          QR codes need far less footprint than a barcode's wide rectangle, so
-          more labels fit per sheet while still printing each QR at 38mm x 38mm,
-          which scans instantly with a phone camera from normal rack-labeling
-          distance on a plain black & white printer.
-        */
         .qr-page {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -1419,11 +1412,6 @@
             </div>
         </div>
 
-        <!-- Debug: shows the EXACT date values being sent to Supabase for the
-             current search, so date-filter issues can be diagnosed at a
-             glance (native date inputs display locale-formatted text like
-             06/04/2026 to the user, but the real underlying value sent to
-             the query is always ISO — this line shows that real value). -->
         <div id="activeRangeDebug" style="font-size:11px;color:var(--text-muted);margin:-8px 0 14px;padding:0 4px;"></div>
 
         <!-- Stats Row -->
@@ -1450,7 +1438,7 @@
             </div>
         </div>
 
-        <!-- Buyer Grand Total Card (shown when a buyer is selected, or as overall total) -->
+        <!-- Buyer Grand Total Card -->
         <div class="buyer-total-card glass" id="buyerTotalCard" style="display:none;">
             <div class="buyer-total-title" id="buyerTotalTitle">
                 <i class="fas fa-calculator"></i> Grand Total
@@ -1511,9 +1499,7 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div id="qrContainer">
-                <!-- QR pages will be inserted here -->
-            </div>
+            <div id="qrContainer"></div>
             <div class="print-actions">
                 <button class="btn btn-print" onclick="printQRCodes()">
                     <i class="fas fa-print"></i> Print QR Codes (A4 Landscape)
@@ -1636,13 +1622,11 @@
             <i class="fas fa-plus-circle nav-icon"></i> New
         </a>
         <a href="challan-report.html" class="nav-item">
-    <i class="fas fa-file-invoice nav-icon"></i>
-    Challan
-</a>
+            <i class="fas fa-file-invoice nav-icon"></i> Challan
+        </a>
         <a href="daybook.html" class="nav-item">
-    <i class="fas fa-book nav-icon"></i>
-    Day Book
-</a>
+            <i class="fas fa-book nav-icon"></i> Day Book
+        </a>
     </nav>
 
     <!-- Toast -->
@@ -1670,28 +1654,10 @@
         let allItemsList = [];
         let pendingDeleteId = null;
         let pendingEditId = null;
-        // Bumped every time loadTransactions() starts a new request. If an
-        // older, slower request's response comes back AFTER a newer one
-        // (very possible if the user changes Date From, then Date To, then
-        // clicks Search in quick succession — 3 overlapping network calls),
-        // we compare this against the id captured at the start of that
-        // specific call and simply discard stale results instead of letting
-        // them overwrite the correct, more recent filtered data.
         let loadRequestId = 0;
-
-        // How many QR labels per printed A4 landscape page (5 cols x 3 rows).
-        // Each QR prints at 38mm x 38mm — big enough for an instant camera scan
-        // from normal rack-labeling distance, small enough that 15 fit per sheet.
         const QR_PER_PAGE = 15;
 
-        // ============ HEADER HEIGHT (for table freeze/sticky offset) ============
-        // The page header is sticky at top:0. The table's thead is ALSO sticky,
-        // but it must stick right below the page header instead of underneath
-        // it (which would hide it) or at the very top of the viewport. This
-        // measures the real rendered header height and exposes it as a CSS
-        // variable (--header-h) so thead th { top: var(--header-h) } always
-        // lines up correctly, including when the header wraps taller on small
-        // screens.
+        // ============ HEADER HEIGHT ============
         function setHeaderHeightVar() {
             const header = document.querySelector('.header');
             if (header) {
@@ -1751,14 +1717,12 @@
         // ============ LOAD FILTERS ============
         async function loadFilters() {
             try {
-                // Load buyers
                 const { data: buyers } = await db.from('buyers').select('id, name').order('name');
                 const buyerSelect = document.getElementById('fBuyer');
                 (buyers || []).forEach(b => {
                     buyerSelect.innerHTML += `<option value="${b.id}">${b.name}</option>`;
                 });
 
-                // Load items
                 const { data: items } = await db.from('items').select('id, description').order('description');
                 allItemsList = items || [];
                 itemNameToId = {};
@@ -1766,20 +1730,17 @@
                     itemNameToId[i.description] = i.id;
                 });
 
-                // Load team members
                 const { data: teams } = await db.from('team_members').select('id, name').order('name');
                 const teamSelect = document.getElementById('fTeam');
                 (teams || []).forEach(t => {
                     teamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
                 });
 
-                // Also populate the Edit Modal's team dropdown
                 const editTeamSelect = document.getElementById('eTeam');
                 (teams || []).forEach(t => {
                     editTeamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
                 });
 
-                // Set default date range (last 30 days to today)
                 const today = new Date();
                 const thirtyDaysAgo = new Date(today);
                 thirtyDaysAgo.setDate(today.getDate() - 30);
@@ -1793,8 +1754,6 @@
         }
 
         // ============ ITEM SEARCH DROPDOWN ============
-        // Combobox-style Item filter: click the field to browse the full item
-        // list (like a dropdown), or type to filter it live (like a search box).
         function renderItemDropdown(query) {
             const dropdown = document.getElementById('itemDropdown');
             const q = (query || '').trim().toLowerCase();
@@ -1833,16 +1792,10 @@
         });
 
         // ============ DATE READABLE LABEL ============
-        // Native <input type="date"> displays a locale-formatted string like
-        // "06/04/2026" to the user, which is genuinely ambiguous — it could
-        // mean 6 April (DD/MM, common in Bangladesh) or June 4 (MM/DD, US
-        // format the browser is actually using). This writes an unambiguous
-        // "04 June 2026" style label under each field using the field's real
-        // ISO value, so there's never any doubt about which date is selected.
         function updateDateReadable() {
             const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
             ['fDateFrom', 'fDateTo'].forEach(id => {
-                const val = document.getElementById(id).value; // "YYYY-MM-DD"
+                const val = document.getElementById(id).value;
                 const labelEl = document.getElementById(id + 'Readable');
                 if (!val) { labelEl.textContent = ''; return; }
                 const [y, m, d] = val.split('-').map(Number);
@@ -1856,12 +1809,6 @@
             await loadTransactions();
         }
 
-        // Debounced version used by the date inputs specifically: if the user
-        // picks Date From and Date To back-to-back, this waits a moment so
-        // only ONE request goes out (using both new values) instead of firing
-        // twice in a row. The requestId guard in loadTransactions() already
-        // protects against incorrect results either way, but this avoids the
-        // extra network round-trip entirely.
         let dateFilterDebounce = null;
         function applyFiltersDebounced() {
             if (dateFilterDebounce) clearTimeout(dateFilterDebounce);
@@ -1882,14 +1829,6 @@
             `;
 
             try {
-                // Build query
-                // NOTE: items:item_id!inner(...) uses an INNER JOIN hint.
-                // Without "!inner", PostgREST applies .eq('items.buyer_id', ...)
-                // or .ilike('items.description', ...) as a LEFT-join filter that
-                // does NOT restrict the top-level transaction rows (it just nulls
-                // out the embedded item on non-matching rows) — that's why Buyer
-                // filtering was previously showing every buyer's data. "!inner"
-                // makes it a real filter that actually excludes non-matching rows.
                 let query = db
                     .from('transactions')
                     .select(`
@@ -1906,13 +1845,9 @@
                     .order('txn_date', { ascending: false })
                     .order('created_at', { ascending: false });
 
-                // Apply filters
                 let dateFrom = document.getElementById('fDateFrom').value;
                 let dateTo = document.getElementById('fDateTo').value;
 
-                // If someone picks Date From later than Date To, swap them so the
-                // filter still makes sense instead of silently returning nothing
-                // (an empty gte/lte range would otherwise look like "showing all").
                 if (dateFrom && dateTo && dateFrom > dateTo) {
                     const tmp = dateFrom;
                     dateFrom = dateTo;
@@ -1935,9 +1870,6 @@
                 if (dateFrom) query = query.gte('txn_date', dateFrom);
                 if (dateTo) query = query.lte('txn_date', dateTo);
 
-                // Show exactly what's being sent to the database, in plain ISO
-                // form, so it's obvious whether the filter itself is wrong or
-                // whether the date fields simply don't contain what was intended.
                 const debugEl = document.getElementById('activeRangeDebug');
                 if (debugEl) {
                     if (dateFrom || dateTo) {
@@ -1963,30 +1895,20 @@
                 if (teamId) query = query.eq('team_member_id', teamId);
                 if (supplier) query = query.ilike('items.supplier', `%${supplier}%`);
 
-                // Fetch all (with limit for safety)
                 const { data, error } = await query.limit(30000);
 
                 if (error) throw error;
-
-                // If a newer loadTransactions() call has started since this one
-                // began (user changed another filter while this was in flight),
-                // this response is stale — drop it so it can't overwrite the
-                // more recent, correct filtered results.
                 if (requestId !== loadRequestId) return;
 
                 allTransactions = data || [];
                 filteredData = [...allTransactions];
 
-                // Apply sorting
                 applySorting();
-
-                // Update stats
                 updateStats();
+                
+                // UPDATED: Added 'await' here so it fetches exact stock from 'items' table
+                await updateBuyerTotal();
 
-                // Update buyer grand total card
-                updateBuyerTotal();
-
-                // Render table
                 renderTable();
 
             } catch (err) {
@@ -2083,13 +2005,6 @@
         }
 
         // ============ STOCK TOTAL HELPER ============
-        // Present Stock / Stock Value are RUNNING BALANCES stored on every
-        // transaction row for that item. If an item has multiple transactions
-        // in the filtered set, summing present_stock_after across all of them
-        // would massively over-count. So instead: group by item, keep only the
-        // most recent transaction (highest transaction id = latest insert),
-        // and sum THOSE values — giving the true current stock across the
-        // filtered items.
         function computeStockTotals(data) {
             const latestByItem = {};
             data.forEach(txn => {
@@ -2107,24 +2022,14 @@
             return { stock, stockVal };
         }
 
-        // ============ BUYER GRAND TOTAL ============
-        // Computes RCVD/DLVD/PRVS qty & value totals plus current stock totals
-        // from the currently filtered data (which, after the !inner join fix,
-        // correctly reflects only the selected buyer's transactions when a
-        // buyer filter is applied).
-        function updateBuyerTotal() {
+        // ============ BUYER GRAND TOTAL (UPDATED FOR 100% DASHBOARD MATCH) ============
+        async function updateBuyerTotal() {
             const card = document.getElementById('buyerTotalCard');
             const titleEl = document.getElementById('buyerTotalTitle');
             const buyerSelect = document.getElementById('fBuyer');
             const buyerId = buyerSelect.value;
 
-            if (filteredData.length === 0) {
-                card.style.display = 'none';
-                return;
-            }
-
-            // PRVS (opening stock) counts the same as RCVD for the "adds to
-            // stock" side of the equation: Present Stock = Previous + Received - Delivery.
+            // 1. Calculate RCVD/DLVD/PRVS from filtered transactions (Period-specific)
             let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
@@ -2143,33 +2048,52 @@
 
             const netQty = (prvsQty + rcvdQty) - dlvdQty;
             const netVal = (prvsVal + rcvdVal) - dlvdVal;
-            const stockTotals = computeStockTotals(filteredData);
 
-            document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
-            document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
-            document.getElementById('btNetQty').textContent = fmt(netQty);
-            document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
-            document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
-            document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
-            document.getElementById('btStock').textContent = fmt(stockTotals.stock);
-            document.getElementById('btStockVal').textContent = '$' + fmt(stockTotals.stockVal);
+            // 2. Fetch Stock and Stock Value DIRECTLY from 'items' table 
+            // This guarantees a 100% EXACT MATCH with dashboard.html's Total Stock Qty
+            try {
+                let query = db.from('items').select('current_stock, current_value');
+                if (buyerId) {
+                    query = query.eq('buyer_id', buyerId); // If a specific buyer is selected
+                }
+                
+                const { data: itemsData, error } = await query;
+                if (error) throw error;
 
-            if (buyerId) {
-                const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
-                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerName}`;
-            } else {
-                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — All Buyers (filtered)`;
+                let totalStock = 0;
+                let totalStockVal = 0;
+                if (itemsData) {
+                    totalStock = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_stock) || 0), 0);
+                    totalStockVal = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_value) || 0), 0);
+                }
+
+                // 3. Update UI
+                document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
+                document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
+                document.getElementById('btNetQty').textContent = fmt(netQty);
+                document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
+                document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
+                document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
+                
+                // THESE TWO NOW MATCH DASHBOARD EXACTLY
+                document.getElementById('btStock').textContent = fmt(totalStock);
+                document.getElementById('btStockVal').textContent = '$' + fmt(totalStockVal);
+
+                if (buyerId) {
+                    const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
+                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerName}`;
+                } else {
+                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — All Buyers`;
+                }
+
+                card.style.display = 'block';
+            } catch (err) {
+                console.error('updateBuyerTotal error:', err);
+                card.style.display = 'none';
             }
-
-            card.style.display = 'block';
         }
 
         // ============ QR CODE FUNCTIONS ============
-        // Generates a QR code as an inline SVG string, synchronously (no
-        // canvas, no async timing to race against DOM insertion — this is
-        // what was causing the codes to render blank before). scalable:true
-        // makes the SVG size purely with CSS, so the same markup looks right
-        // both on screen (px) and on the printed page (mm).
         function generateQRSvg(text) {
             try {
                 const qr = qrcode(0, 'M');
@@ -2182,10 +2106,6 @@
             }
         }
 
-        // Renders `items` as a series of "pages", each holding QR_PER_PAGE
-        // QR labels laid out in a 5x3 grid. In print mode each page becomes
-        // exactly one A4 landscape sheet (page-break-after), so e.g. 34 items
-        // => 3 pages: 15, 15, 4.
         function showQRModal(items) {
             currentQRItems = items;
             const modal = document.getElementById('qrModal');
@@ -2205,7 +2125,6 @@
                 return;
             }
 
-            // Split into pages of QR_PER_PAGE
             const pages = [];
             for (let i = 0; i < items.length; i += QR_PER_PAGE) {
                 pages.push(items.slice(i, i + QR_PER_PAGE));
@@ -2256,11 +2175,6 @@
             window.print();
         }
 
-        // Prints QR codes for ALL items belonging to the selected buyer (or all
-        // buyers if none selected). This is independent of the date-range /
-        // other transaction filters — it pulls straight from the items table so
-        // every item for that buyer gets a label, even ones with no recent
-        // transactions.
         async function printFilteredQRCodes() {
             const buyerId = document.getElementById('fBuyer').value;
             const buyerSelect = document.getElementById('fBuyer');
@@ -2297,8 +2211,6 @@
             }
         }
 
-        // Shows the QR code for a single item (called from the "View" button
-        // on a transaction row).
         async function showItemQR(itemId) {
             showToast('Loading QR code...', 'success');
             try {
@@ -2321,7 +2233,6 @@
         }
 
         // ============ DELETE TRANSACTION ============
-        // Opens the confirm modal for a given transaction row.
         function openDeleteConfirm(txnId) {
             const txn = filteredData.find(t => t.id === txnId);
             pendingDeleteId = txnId;
@@ -2342,9 +2253,6 @@
             pendingDeleteId = null;
         }
 
-        // Called when user confirms deletion in the modal. Calls the
-        // delete_transaction() RPC (created in Supabase) which reverses the
-        // stock/value on the related item and removes the transaction row.
         async function confirmDeleteTransaction() {
             if (!pendingDeleteId) return;
 
@@ -2372,9 +2280,6 @@
         }
 
         // ============ EDIT TRANSACTION ============
-        // Opens the edit modal and pre-fills it with the selected transaction's
-        // current values, pulled straight from the already-loaded filteredData
-        // (no extra round-trip needed).
         function openEditModal(txnId) {
             const txn = filteredData.find(t => t.id === txnId);
             if (!txn) {
@@ -2406,14 +2311,6 @@
             pendingEditId = null;
         }
 
-        // Recalculates the running present_stock_after / stock_value_after /
-        // line_value for EVERY transaction of a given item, in chronological
-        // order. This has to be redone from scratch whenever a transaction's
-        // qty, type, or price changes, because present_stock_after is a
-        // running balance — editing one row shifts the balance of every
-        // later row for that same item, not just the edited row itself.
-        // PRVS and RCVD both ADD to stock, DLVD SUBTRACTS (same rule used
-        // everywhere else on this page).
         async function recalcItemStock(itemId) {
             const { data: rows, error } = await db
                 .from('transactions')
@@ -2450,8 +2347,6 @@
                 });
             });
 
-            // Apply updates sequentially (safe & simple; ledgers are rarely
-            // long enough per item for this to be slow).
             for (const u of updates) {
                 const { error: upErr } = await db
                     .from('transactions')
@@ -2465,10 +2360,6 @@
             }
         }
 
-        // Saves the edit form back to Supabase: updates the transaction's own
-        // fields, updates the linked item's supplier if changed, then re-runs
-        // the running-stock recalculation for that item so present_stock_after
-        // / stock_value_after stay correct for every transaction of that item.
         async function saveEditTransaction() {
             if (!pendingEditId) return;
             const txn = filteredData.find(t => t.id === pendingEditId);
@@ -2502,7 +2393,6 @@
                     return;
                 }
 
-                // 1) Update the transaction's own editable fields.
                 const { error: txnErr } = await db
                     .from('transactions')
                     .update({
@@ -2521,7 +2411,6 @@
 
                 if (txnErr) throw txnErr;
 
-                // 2) Update supplier on the linked item, if it changed.
                 if (txn.items?.id && newSupplier !== (txn.items?.supplier || '')) {
                     const { error: itemErr } = await db
                         .from('items')
@@ -2530,9 +2419,6 @@
                     if (itemErr) throw itemErr;
                 }
 
-                // 3) Recalculate the running stock/value chain for this item,
-                // since qty/type/price may have changed and every later
-                // transaction's running balance depends on this row.
                 if (txn.items?.id) {
                     await recalcItemStock(txn.items.id);
                 }
@@ -2564,14 +2450,12 @@
                 return;
             }
 
-            // Pagination
             const totalPages = Math.ceil(filteredData.length / perPage);
             if (currentPage > totalPages) currentPage = totalPages;
             const startIdx = (currentPage - 1) * perPage;
             const endIdx = Math.min(startIdx + perPage, filteredData.length);
             const pageData = filteredData.slice(startIdx, endIdx);
 
-            // Build table
             const columns = [
                 { key: 'no', label: '#', sortable: false },
                 { key: 'txn_date', label: 'Date', sortable: true },
@@ -2612,9 +2496,6 @@
                 const qtyClass = txn.type === 'RCVD' ? 'qty-positive' : (txn.type === 'DLVD' ? 'qty-negative' : 'qty-neutral');
                 const qtyPrefix = txn.type === 'RCVD' ? '+' : (txn.type === 'DLVD' ? '-' : '');
                 const itemCode = txn.items?.item_code || txn.items?.qr_payload || '';
-                // PRVS (opening stock) entries usually shouldn't be deleted casually,
-                // but we still allow it since the RPC reverses PRVS-type safely as
-                // "no-op" on stock (only RCVD/DLVD adjust stock in delete_transaction).
                 html += `<tr>
                     <td>${startIdx + idx + 1}</td>
                     <td>${txn.txn_date || ''}</td>
@@ -2645,9 +2526,6 @@
 
             html += '</tbody>';
 
-            // Grand total footer row (based on ALL filtered data, not just this page)
-            // Qty/Value: PRVS (opening) and RCVD both ADD to stock, DLVD SUBTRACTS —
-            // this matches the "Present Stock = Previous + Received - Delivery" rule.
             let footAddQty = 0, footDlvdQty = 0, footAddVal = 0, footDlvdVal = 0;
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
@@ -2658,10 +2536,6 @@
             const footNetQty = footAddQty - footDlvdQty;
             const footNetVal = footAddVal - footDlvdVal;
 
-            // Stock / Stock Value: sum the LATEST transaction's present_stock_after
-            // and stock_value_after per item (not every row), otherwise an item
-            // with 5 transactions would get counted 5x. "Latest" = highest
-            // transaction id, which reflects insert order.
             const stockTotals = computeStockTotals(filteredData);
 
             html += `<tfoot><tr>
@@ -2676,7 +2550,6 @@
 
             html += '</table></div>';
 
-            // Pagination controls
             html += `<div class="pagination">
                 <div class="pagination-info">
                     Showing ${startIdx + 1}-${endIdx} of ${filteredData.length} transactions
@@ -2697,11 +2570,6 @@
             </div>`;
 
             tableContent.innerHTML = html;
-
-            // The header row's sticky position depends on the current header
-            // height, which can change (e.g. theme toggle wrapping text, window
-            // resize) — recompute it every time the table is (re)rendered so
-            // the freeze offset never drifts out of sync.
             setHeaderHeightVar();
         }
 
