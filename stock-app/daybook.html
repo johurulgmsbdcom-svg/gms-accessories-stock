@@ -311,6 +311,9 @@
         td.net-pos { color: var(--accent-blue); font-weight: 700; }
         td.net-neg { color: var(--accent-red); font-weight: 700; }
 
+        td.clickable { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+        td.clickable:hover { background: rgba(59, 130, 246, 0.18) !important; color: var(--accent-blue) !important; }
+
         tfoot td {
             padding: 12px 10px; font-weight: 800; font-size: 12px;
             color: var(--text-primary); background: rgba(59, 130, 246, 0.15);
@@ -381,6 +384,46 @@
         .toast.error { border-left: 4px solid var(--accent-red); }
         .toast.success { border-left: 4px solid var(--accent-green); }
 
+        /* ===== Drilldown Modal ===== */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+            z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: var(--glass-bg-strong); backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); border-radius: 16px;
+            max-width: 720px; width: 100%; max-height: 82vh; overflow-y: auto;
+            padding: 20px; box-shadow: var(--glass-shadow);
+            animation: fadeInUp 0.25s ease;
+        }
+        .modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 14px; gap: 10px;
+        }
+        .modal-header h3 { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+        .modal-close {
+            width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+            border: 1px solid var(--glass-border); background: var(--glass-bg);
+            color: var(--text-primary); cursor: pointer; font-size: 13px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .modal-close:hover { background: var(--accent-red); border-color: var(--accent-red); color: #fff; }
+        table.modal-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 0; }
+        table.modal-table th, table.modal-table td {
+            padding: 8px 10px; border: 1px solid var(--glass-border); text-align: center;
+            color: var(--text-secondary); white-space: nowrap;
+        }
+        table.modal-table th {
+            background: rgba(0,0,0,0.25); color: var(--text-muted); font-size: 10px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .modal-total {
+            margin-top: 12px; font-weight: 800; color: var(--text-primary);
+            text-align: right; font-size: 13px;
+        }
+
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
@@ -390,7 +433,7 @@
             @page { size: A4 landscape; margin: 10mm; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             body { background: white !important; color: black !important; padding: 0 !important; }
-            .bg-3d, .orb, .header, .bottom-nav, .filter-card, .page-title, .stats-row, .toast, .title-actions { display: none !important; }
+            .bg-3d, .orb, .header, .bottom-nav, .filter-card, .page-title, .stats-row, .toast, .title-actions, .modal-overlay { display: none !important; }
             .main { padding: 0 !important; max-width: 100% !important; }
             .table-card { background: white !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
             table { border: 1.5px solid black !important; font-size: 9px !important; }
@@ -537,6 +580,17 @@
         <span id="toastMsg">Success!</span>
     </div>
 
+    <!-- Drilldown Modal: shows individual RCVD / DLVD entries for a clicked day/month -->
+    <div class="modal-overlay" id="drilldownModal" onclick="if(event.target===this) closeDrilldown()">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="drilldownTitle">Details</h3>
+                <button class="modal-close" onclick="closeDrilldown()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="drilldownContent"></div>
+        </div>
+    </div>
+
     <script>
         // ============ SUPABASE ============
         const SUPABASE_URL = 'https://qwtourjspllhiiryqewf.supabase.co';
@@ -552,6 +606,7 @@
         let sortColumn = 'period';
         let sortDirection = 'desc'; // default: newest first
         let viewMode = 'daily';     // 'daily' | 'monthly'
+        let buyerMap = {};          // buyer_id -> buyer name, used in drilldown modal
 
         // ============ THEME ============
         function toggleTheme() {
@@ -650,6 +705,7 @@
                 const { data: buyers } = await db.from('buyers').select('id, name').order('name');
                 const buyerSelect = document.getElementById('fBuyer');
                 (buyers || []).forEach(b => {
+                    buyerMap[b.id] = b.name;
                     buyerSelect.innerHTML += `<option value="${b.id}">${b.name}</option>`;
                 });
 
@@ -719,7 +775,12 @@
         // ============ BUILD SUMMARY (group by day or month) ============
         // rawTxns is already sorted ascending by txn_date from the query, so
         // grouping via a Map preserves chronological order automatically —
-        // that's what makes the running cumulative total below correct.
+        // that's what makes "Previous Stock" / "Present Stock" correct below.
+        //
+        // Previous Stock (prevQty/prevVal) = running stock carried in from
+        //   before this day/month started.
+        // Present Stock (cumQty/cumVal)    = Previous Stock + RCVD - DLVD
+        //   for this day/month (i.e. the stock balance as of this period).
         function buildSummary() {
             const map = new Map();
 
@@ -741,15 +802,16 @@
                 row.entries += 1;
             });
 
-            // Compute running cumulative (chronological order, since map insertion
-            // follows the ascending-sorted query result).
+            // Walk chronologically (map insertion order == ascending date order).
             let cumQty = 0, cumVal = 0;
             summaryRows = Array.from(map.values()).map(row => {
                 const netQty = row.rcvdQty - row.dlvdQty;
                 const netVal = row.rcvdVal - row.dlvdVal;
-                cumQty += netQty;
+                const prevQty = cumQty;   // stock brought forward from before this period
+                const prevVal = cumVal;
+                cumQty += netQty;         // Present Stock = Previous Stock + RCVD - DLVD
                 cumVal += netVal;
-                return { ...row, netQty, netVal, cumQty, cumVal };
+                return { ...row, netQty, netVal, prevQty, prevVal, cumQty, cumVal };
             });
         }
 
@@ -805,6 +867,49 @@
             document.getElementById('statEntries').textContent = fmt(totalEntries);
         }
 
+        // ============ DRILLDOWN MODAL (click RCVD/DLVD cell to see entries) ============
+        function showDrilldown(period, type) {
+            const filtered = rawTxns.filter(t => {
+                const key = viewMode === 'daily' ? t.txn_date : t.txn_date.slice(0, 7);
+                return key === period && t.type === type;
+            });
+            const label = viewMode === 'daily' ? period : monthLabel(period);
+            document.getElementById('drilldownTitle').textContent = `${type} Entries — ${label}`;
+
+            let totalQty = 0, totalVal = 0;
+            let rowsHtml = filtered.map((t, i) => {
+                totalQty += parseFloat(t.qty) || 0;
+                totalVal += parseFloat(t.line_value) || 0;
+                const buyerName = (t.items && buyerMap[t.items.buyer_id]) || '—';
+                return `<tr>
+                    <td>${i + 1}</td>
+                    <td>${buyerName}</td>
+                    <td>${fmt(t.qty)}</td>
+                    <td>$${fmt(t.line_value)}</td>
+                </tr>`;
+            }).join('');
+
+            if (filtered.length === 0) {
+                rowsHtml = `<tr><td colspan="4">No ${type} entries found for this period</td></tr>`;
+            }
+
+            document.getElementById('drilldownContent').innerHTML = `
+                <div class="table-wrapper">
+                    <table class="modal-table">
+                        <thead><tr><th>#</th><th>Buyer</th><th>Qty</th><th>Value</th></tr></thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
+                <div class="modal-total">Total: ${fmt(totalQty)} qty &middot; $${fmt(totalVal)}</div>
+            `;
+
+            document.getElementById('drilldownModal').classList.add('show');
+        }
+
+        function closeDrilldown() {
+            document.getElementById('drilldownModal').classList.remove('show');
+        }
+
         // ============ RENDER TABLE ============
         function renderTable() {
             const tableContent = document.getElementById('tableContent');
@@ -838,8 +943,10 @@
                 { key: 'dlvdVal', label: 'DLVD Value', sortable: true },
                 { key: 'netQty', label: 'Net Qty', sortable: true },
                 { key: 'netVal', label: 'Net Value', sortable: true },
-                { key: 'cumQty', label: 'Cumulative Qty', sortable: false },
-                { key: 'cumVal', label: 'Cumulative Value', sortable: false },
+                { key: 'prevQty', label: 'Previous Stock Qty', sortable: false },
+                { key: 'prevVal', label: 'Previous Stock Value', sortable: false },
+                { key: 'cumQty', label: 'Present Stock Qty', sortable: false },
+                { key: 'cumVal', label: 'Present Stock Value', sortable: false },
                 { key: 'entries', label: 'Entries', sortable: true }
             ];
 
@@ -860,12 +967,14 @@
                 html += `<tr>
                     <td>${startIdx + idx + 1}</td>
                     <td class="date-cell">${label}</td>
-                    <td>${r.rcvdQty > 0 ? fmt(r.rcvdQty) : '—'}</td>
-                    <td class="rcvd-val">${r.rcvdVal > 0 ? '$' + fmt(r.rcvdVal) : '—'}</td>
-                    <td>${r.dlvdQty > 0 ? fmt(r.dlvdQty) : '—'}</td>
-                    <td class="dlvd-val">${r.dlvdVal > 0 ? '$' + fmt(r.dlvdVal) : '—'}</td>
+                    <td class="clickable" onclick="showDrilldown('${r.period}','RCVD')">${r.rcvdQty > 0 ? fmt(r.rcvdQty) : '—'}</td>
+                    <td class="rcvd-val clickable" onclick="showDrilldown('${r.period}','RCVD')">${r.rcvdVal > 0 ? '$' + fmt(r.rcvdVal) : '—'}</td>
+                    <td class="clickable" onclick="showDrilldown('${r.period}','DLVD')">${r.dlvdQty > 0 ? fmt(r.dlvdQty) : '—'}</td>
+                    <td class="dlvd-val clickable" onclick="showDrilldown('${r.period}','DLVD')">${r.dlvdVal > 0 ? '$' + fmt(r.dlvdVal) : '—'}</td>
                     <td class="${r.netQty >= 0 ? 'net-pos' : 'net-neg'}">${fmt(r.netQty)}</td>
                     <td class="${r.netVal >= 0 ? 'net-pos' : 'net-neg'}">$${fmt(r.netVal)}</td>
+                    <td>${fmt(r.prevQty)}</td>
+                    <td>$${fmt(r.prevVal)}</td>
                     <td>${fmt(r.cumQty)}</td>
                     <td>$${fmt(r.cumVal)}</td>
                     <td>${fmt(r.entries)}</td>
@@ -892,6 +1001,8 @@
                 <td>$${fmt(gDlvdVal)}</td>
                 <td>${fmt(gNetQty)}</td>
                 <td>$${fmt(gNetVal)}</td>
+                <td>—</td>
+                <td>—</td>
                 <td>—</td>
                 <td>—</td>
                 <td>${fmt(gEntries)}</td>
@@ -1001,8 +1112,10 @@
                 'DLVD Value': r.dlvdVal,
                 'Net Qty': r.netQty,
                 'Net Value': r.netVal,
-                'Cumulative Qty': r.cumQty,
-                'Cumulative Value': r.cumVal,
+                'Previous Stock Qty': r.prevQty,
+                'Previous Stock Value': r.prevVal,
+                'Present Stock Qty': r.cumQty,
+                'Present Stock Value': r.cumVal,
                 'Entries': r.entries
             }));
 
@@ -1017,14 +1130,16 @@
                 'RCVD Qty': gRcvdQty, 'RCVD Value': gRcvdVal,
                 'DLVD Qty': gDlvdQty, 'DLVD Value': gDlvdVal,
                 'Net Qty': gRcvdQty - gDlvdQty, 'Net Value': gRcvdVal - gDlvdVal,
-                'Cumulative Qty': '', 'Cumulative Value': '',
+                'Previous Stock Qty': '', 'Previous Stock Value': '',
+                'Present Stock Qty': '', 'Present Stock Value': '',
                 'Entries': gEntries
             });
 
             const ws = XLSX.utils.json_to_sheet(excelData);
             ws['!cols'] = [
                 { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
-                { wch: 12 }, { wch: 14 }, { wch: 15 }, { wch: 16 }, { wch: 10 }
+                { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 16 },
+                { wch: 18 }, { wch: 10 }
             ];
 
             const wb = XLSX.utils.book_new();
@@ -1045,6 +1160,10 @@
             input.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') applyFilters();
             });
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeDrilldown();
         });
 
         if ('serviceWorker' in navigator) {
