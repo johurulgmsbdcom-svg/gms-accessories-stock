@@ -1198,11 +1198,11 @@
                 const { count: buyerCount } = await db.from('buyers').select('*', { count: 'exact', head: true });
                 setStatValue('statBuyers', fmt(buyerCount || 0));
 
-                const { data: stockData } = await db.from('items').select('current_stock');
+                const { data: stockData } = await db.from('items').select('current_stock').limit(300000);
                 const totalStockQty = (stockData || []).reduce((sum, i) => sum + (parseFloat(i.current_stock) || 0), 0);
                 setStatValue('statStockQty', fmt(totalStockQty));
 
-                const { data: valueData } = await db.from('items').select('current_value');
+                const { data: valueData } = await db.from('items').select('current_value').limit(300000);
                 const totalValue = (valueData || []).reduce((s, i) => s + (parseFloat(i.current_value) || 0), 0);
                 setStatValue('statValue', '$' + fmt(totalValue));
 
@@ -1301,7 +1301,7 @@
                 renderTeamChart(teamNames, teamRcvd, teamDlvd);
 
                 // Stock value by buyer
-                const { data: stockBuyerData } = await db.from('items').select(`current_value, buyers:buyer_id (name)`);
+                const { data: stockBuyerData } = await db.from('items').select(`current_value, buyers:buyer_id (name)`).limit(300000);
 
                 const stockByBuyer = {};
                 (stockBuyerData || []).forEach(item => {
