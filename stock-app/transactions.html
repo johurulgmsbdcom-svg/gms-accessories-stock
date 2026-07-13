@@ -1964,7 +1964,7 @@
                 if (supplier) query = query.ilike('items.supplier', `%${supplier}%`);
 
                 // Fetch all (with limit for safety)
-                const { data, error } = await query.limit(5000);
+                const { data, error } = await query.limit(30000);
 
                 if (error) throw error;
 
@@ -2279,7 +2279,7 @@
                     query = query.eq('buyer_id', buyerId);
                 }
 
-                const { data, error } = await query.limit(5000);
+                const { data, error } = await query.limit(30000);
 
                 if (error) throw error;
 
