@@ -822,11 +822,37 @@
             }
         }
 
+        // ============ PERIOD KEYS (fill every day/month in range, even with zero postings) ============
+        // Without this, a day/month with NO RCVD/DLVD entries simply never appears —
+        // which is why "today" can vanish from the table until something is posted.
+        // We instead always list every day (or month) between Date From and Date To,
+        // defaulting to zero activity, so today's row always shows its carried-forward
+        // Present Stock even before anything is posted for it.
+        function generatePeriodKeys(dateFrom, dateTo, mode) {
+            if (!dateFrom || !dateTo) return null;
+            const keys = [];
+            if (mode === 'daily') {
+                let cur = new Date(dateFrom + 'T00:00:00');
+                const end = new Date(dateTo + 'T00:00:00');
+                if (isNaN(cur) || isNaN(end)) return null;
+                while (cur <= end) {
+                    keys.push(toLocalISODate(cur));
+                    cur.setDate(cur.getDate() + 1);
+                }
+            } else {
+                let [y, m] = dateFrom.split('-').map(Number);
+                const [ey, em] = dateTo.split('-').map(Number);
+                if (!y || !m || !ey || !em) return null;
+                while (y < ey || (y === ey && m <= em)) {
+                    keys.push(`${y}-${pad2(m)}`);
+                    m++;
+                    if (m > 12) { m = 1; y++; }
+                }
+            }
+            return keys;
+        }
+
         // ============ BUILD SUMMARY (group by day or month) ============
-        // rawTxns is already sorted ascending by txn_date from the query, so
-        // grouping via a Map preserves chronological order automatically —
-        // that's what makes "Previous Stock" / "Present Stock" correct below.
-        //
         // Previous Stock (prevQty/prevVal) = running stock carried in from
         //   before this day/month started.
         // Present Stock (cumQty/cumVal)    = Previous Stock + RCVD - DLVD
@@ -852,11 +878,26 @@
                 row.entries += 1;
             });
 
-            // Walk chronologically (map insertion order == ascending date order),
-            // starting from the opening balance so Present Stock matches the real
-            // running total (same as the dashboard), not just the filtered window.
+            // Fill in zero-activity days/months across the selected range (e.g. today,
+            // before anything has been posted for it) so they still show up as rows.
+            const dateFrom = document.getElementById('fDateFrom').value;
+            const dateTo = document.getElementById('fDateTo').value;
+            const allKeys = generatePeriodKeys(dateFrom, dateTo, viewMode);
+            if (allKeys) {
+                allKeys.forEach(key => {
+                    if (!map.has(key)) {
+                        map.set(key, { period: key, rcvdQty: 0, rcvdVal: 0, dlvdQty: 0, dlvdVal: 0, entries: 0 });
+                    }
+                });
+            }
+
+            // Walk chronologically. Map insertion order is no longer guaranteed ascending
+            // once gap-filled keys are added, so sort explicitly by period key (YYYY-MM-DD
+            // or YYYY-MM both sort correctly as plain strings).
+            const sortedKeys = Array.from(map.keys()).sort();
             let cumQty = openingQty, cumVal = openingVal;
-            summaryRows = Array.from(map.values()).map(row => {
+            summaryRows = sortedKeys.map(key => {
+                const row = map.get(key);
                 const netQty = row.rcvdQty - row.dlvdQty;
                 const netVal = row.rcvdVal - row.dlvdVal;
                 const prevQty = cumQty;   // stock brought forward from before this period
