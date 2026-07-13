@@ -607,6 +607,8 @@
         let sortDirection = 'desc'; // default: newest first
         let viewMode = 'daily';     // 'daily' | 'monthly'
         let buyerMap = {};          // buyer_id -> buyer name, used in drilldown modal
+        let openingQty = 0;         // stock qty carried forward from BEFORE the filtered date range
+        let openingVal = 0;         // stock value carried forward from BEFORE the filtered date range
 
         // ============ THEME ============
         function toggleTheme() {
@@ -646,6 +648,17 @@
         }
         function pad2(n) { return String(n).padStart(2, '0'); }
 
+        // IMPORTANT: never use Date.toISOString().split('T')[0] for "today"/local dates —
+        // toISOString() converts to UTC, which in UTC+6 (Dhaka) shifts the date back by
+        // one day between midnight and 6 AM local time (e.g. today's postings would be
+        // missing). This formats using the LOCAL calendar date instead.
+        function toLocalISODate(d) {
+            const yyyy = d.getFullYear();
+            const mm = pad2(d.getMonth() + 1);
+            const dd = pad2(d.getDate());
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
         const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
         function monthLabel(ym) {
@@ -683,8 +696,8 @@
                 event.target.closest('.btn-sm').classList.add('active');
             }
 
-            document.getElementById('fDateFrom').value = from.toISOString().split('T')[0];
-            document.getElementById('fDateTo').value = to.toISOString().split('T')[0];
+            document.getElementById('fDateFrom').value = toLocalISODate(from);
+            document.getElementById('fDateTo').value = toLocalISODate(to);
             applyFilters();
         }
 
@@ -712,8 +725,8 @@
                 const today = new Date();
                 const thirtyDaysAgo = new Date(today);
                 thirtyDaysAgo.setDate(today.getDate() - 29);
-                document.getElementById('fDateTo').value = today.toISOString().split('T')[0];
-                document.getElementById('fDateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
+                document.getElementById('fDateTo').value = toLocalISODate(today);
+                document.getElementById('fDateFrom').value = toLocalISODate(thirtyDaysAgo);
             } catch (err) {
                 console.error('Load filters error:', err);
             }
@@ -723,6 +736,37 @@
         function applyFilters() {
             currentPage = 1;
             loadData();
+        }
+
+        // ============ OPENING BALANCE (stock carried forward BEFORE the filtered range) ============
+        // This makes "Previous Stock" on the first visible row, and therefore every
+        // "Present Stock" row after it, equal to the REAL running stock (same number
+        // as the dashboard total) instead of restarting from 0 at the filter's edge.
+        async function getOpeningBalance(dateFrom, buyerId) {
+            if (!dateFrom) return { qty: 0, val: 0 };
+            try {
+                let q = db
+                    .from('transactions')
+                    .select(`type, qty, line_value, items:item_id!inner ( buyer_id )`)
+                    .in('type', ['RCVD', 'DLVD'])
+                    .lt('txn_date', dateFrom);
+                if (buyerId) q = q.eq('items.buyer_id', buyerId);
+
+                const { data, error } = await q.limit(200000);
+                if (error) throw error;
+
+                let qty = 0, val = 0;
+                (data || []).forEach(t => {
+                    const qy = parseFloat(t.qty) || 0;
+                    const vl = parseFloat(t.line_value) || 0;
+                    if (t.type === 'RCVD') { qty += qy; val += vl; }
+                    else { qty -= qy; val -= vl; }
+                });
+                return { qty, val };
+            } catch (err) {
+                console.error('Opening balance error:', err);
+                return { qty: 0, val: 0 };
+            }
         }
 
         // ============ LOAD DATA ============
@@ -753,8 +797,14 @@
                 if (dateTo) query = query.lte('txn_date', dateTo);
                 if (buyerId) query = query.eq('items.buyer_id', buyerId);
 
-                const { data, error } = await query.limit(20000);
+                const [{ data, error }, opening] = await Promise.all([
+                    query.limit(20000),
+                    getOpeningBalance(dateFrom, buyerId)
+                ]);
                 if (error) throw error;
+
+                openingQty = opening.qty;
+                openingVal = opening.val;
 
                 rawTxns = data || [];
                 buildSummary();
@@ -802,8 +852,10 @@
                 row.entries += 1;
             });
 
-            // Walk chronologically (map insertion order == ascending date order).
-            let cumQty = 0, cumVal = 0;
+            // Walk chronologically (map insertion order == ascending date order),
+            // starting from the opening balance so Present Stock matches the real
+            // running total (same as the dashboard), not just the filtered window.
+            let cumQty = openingQty, cumVal = openingVal;
             summaryRows = Array.from(map.values()).map(row => {
                 const netQty = row.rcvdQty - row.dlvdQty;
                 const netVal = row.rcvdVal - row.dlvdVal;
@@ -836,8 +888,6 @@
                     case 'rcvdVal': av = a.rcvdVal; bv = b.rcvdVal; break;
                     case 'dlvdQty': av = a.dlvdQty; bv = b.dlvdQty; break;
                     case 'dlvdVal': av = a.dlvdVal; bv = b.dlvdVal; break;
-                    case 'netQty': av = a.netQty; bv = b.netQty; break;
-                    case 'netVal': av = a.netVal; bv = b.netVal; break;
                     case 'entries': av = a.entries; bv = b.entries; break;
                     default: av = a.period; bv = b.period;
                 }
@@ -937,14 +987,12 @@
             const columns = [
                 { key: 'no', label: '#', sortable: false },
                 { key: 'period', label: periodLabel, sortable: true },
+                { key: 'prevQty', label: 'Previous Stock Qty', sortable: false },
+                { key: 'prevVal', label: 'Previous Stock Value', sortable: false },
                 { key: 'rcvdQty', label: 'RCVD Qty', sortable: true },
                 { key: 'rcvdVal', label: 'RCVD Value', sortable: true },
                 { key: 'dlvdQty', label: 'DLVD Qty', sortable: true },
                 { key: 'dlvdVal', label: 'DLVD Value', sortable: true },
-                { key: 'netQty', label: 'Net Qty', sortable: true },
-                { key: 'netVal', label: 'Net Value', sortable: true },
-                { key: 'prevQty', label: 'Previous Stock Qty', sortable: false },
-                { key: 'prevVal', label: 'Previous Stock Value', sortable: false },
                 { key: 'cumQty', label: 'Present Stock Qty', sortable: false },
                 { key: 'cumVal', label: 'Present Stock Value', sortable: false },
                 { key: 'entries', label: 'Entries', sortable: true }
@@ -967,14 +1015,12 @@
                 html += `<tr>
                     <td>${startIdx + idx + 1}</td>
                     <td class="date-cell">${label}</td>
+                    <td>${fmt(r.prevQty)}</td>
+                    <td>$${fmt(r.prevVal)}</td>
                     <td class="clickable" onclick="showDrilldown('${r.period}','RCVD')">${r.rcvdQty > 0 ? fmt(r.rcvdQty) : '—'}</td>
                     <td class="rcvd-val clickable" onclick="showDrilldown('${r.period}','RCVD')">${r.rcvdVal > 0 ? '$' + fmt(r.rcvdVal) : '—'}</td>
                     <td class="clickable" onclick="showDrilldown('${r.period}','DLVD')">${r.dlvdQty > 0 ? fmt(r.dlvdQty) : '—'}</td>
                     <td class="dlvd-val clickable" onclick="showDrilldown('${r.period}','DLVD')">${r.dlvdVal > 0 ? '$' + fmt(r.dlvdVal) : '—'}</td>
-                    <td class="${r.netQty >= 0 ? 'net-pos' : 'net-neg'}">${fmt(r.netQty)}</td>
-                    <td class="${r.netVal >= 0 ? 'net-pos' : 'net-neg'}">$${fmt(r.netVal)}</td>
-                    <td>${fmt(r.prevQty)}</td>
-                    <td>$${fmt(r.prevVal)}</td>
                     <td>${fmt(r.cumQty)}</td>
                     <td>$${fmt(r.cumVal)}</td>
                     <td>${fmt(r.entries)}</td>
@@ -984,27 +1030,30 @@
             html += '</tbody>';
 
             // Grand total footer — based on ALL filtered rows (not just current page).
+            // Previous Stock (first row's) and Present Stock (last row's) are shown
+            // rather than summed, since summing a running stock balance across days
+            // isn't meaningful.
             let gRcvdQty = 0, gRcvdVal = 0, gDlvdQty = 0, gDlvdVal = 0, gEntries = 0;
             rows.forEach(r => {
                 gRcvdQty += r.rcvdQty; gRcvdVal += r.rcvdVal;
                 gDlvdQty += r.dlvdQty; gDlvdVal += r.dlvdVal;
                 gEntries += r.entries;
             });
-            const gNetQty = gRcvdQty - gDlvdQty;
-            const gNetVal = gRcvdVal - gDlvdVal;
+            // rows may be sorted asc/desc by period, so find true first/last chronologically
+            const chronoRows = [...rows].sort((a, b) => a.period < b.period ? -1 : (a.period > b.period ? 1 : 0));
+            const openingRow = chronoRows[0];
+            const closingRow = chronoRows[chronoRows.length - 1];
 
             html += `<tfoot><tr>
                 <td colspan="2" style="text-align:right;">GRAND TOTAL (all filtered ${viewMode === 'daily' ? 'days' : 'months'}):</td>
+                <td>${fmt(openingRow.prevQty)}</td>
+                <td>$${fmt(openingRow.prevVal)}</td>
                 <td>${fmt(gRcvdQty)}</td>
                 <td>$${fmt(gRcvdVal)}</td>
                 <td>${fmt(gDlvdQty)}</td>
                 <td>$${fmt(gDlvdVal)}</td>
-                <td>${fmt(gNetQty)}</td>
-                <td>$${fmt(gNetVal)}</td>
-                <td>—</td>
-                <td>—</td>
-                <td>—</td>
-                <td>—</td>
+                <td>${fmt(closingRow.cumQty)}</td>
+                <td>$${fmt(closingRow.cumVal)}</td>
                 <td>${fmt(gEntries)}</td>
             </tr></tfoot>`;
 
@@ -1072,8 +1121,8 @@
             const today = new Date();
             const thirtyDaysAgo = new Date(today);
             thirtyDaysAgo.setDate(today.getDate() - 29);
-            document.getElementById('fDateTo').value = today.toISOString().split('T')[0];
-            document.getElementById('fDateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
+            document.getElementById('fDateTo').value = toLocalISODate(today);
+            document.getElementById('fDateFrom').value = toLocalISODate(thirtyDaysAgo);
 
             applyFilters();
             showToast('Filters reset', 'success');
@@ -1106,14 +1155,12 @@
             const periodLabel = viewMode === 'daily' ? 'Date' : 'Month';
             const excelData = rows.map(r => ({
                 [periodLabel]: viewMode === 'daily' ? r.period : monthLabel(r.period),
+                'Previous Stock Qty': r.prevQty,
+                'Previous Stock Value': r.prevVal,
                 'RCVD Qty': r.rcvdQty,
                 'RCVD Value': r.rcvdVal,
                 'DLVD Qty': r.dlvdQty,
                 'DLVD Value': r.dlvdVal,
-                'Net Qty': r.netQty,
-                'Net Value': r.netVal,
-                'Previous Stock Qty': r.prevQty,
-                'Previous Stock Value': r.prevVal,
                 'Present Stock Qty': r.cumQty,
                 'Present Stock Value': r.cumVal,
                 'Entries': r.entries
@@ -1125,27 +1172,28 @@
                 gDlvdQty += r.dlvdQty; gDlvdVal += r.dlvdVal;
                 gEntries += r.entries;
             });
+            const chronoRows = [...rows].sort((a, b) => a.period < b.period ? -1 : (a.period > b.period ? 1 : 0));
+            const openingRow = chronoRows[0];
+            const closingRow = chronoRows[chronoRows.length - 1];
             excelData.push({
                 [periodLabel]: 'GRAND TOTAL',
+                'Previous Stock Qty': openingRow.prevQty, 'Previous Stock Value': openingRow.prevVal,
                 'RCVD Qty': gRcvdQty, 'RCVD Value': gRcvdVal,
                 'DLVD Qty': gDlvdQty, 'DLVD Value': gDlvdVal,
-                'Net Qty': gRcvdQty - gDlvdQty, 'Net Value': gRcvdVal - gDlvdVal,
-                'Previous Stock Qty': '', 'Previous Stock Value': '',
-                'Present Stock Qty': '', 'Present Stock Value': '',
+                'Present Stock Qty': closingRow.cumQty, 'Present Stock Value': closingRow.cumVal,
                 'Entries': gEntries
             });
 
             const ws = XLSX.utils.json_to_sheet(excelData);
             ws['!cols'] = [
-                { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
-                { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 16 },
-                { wch: 18 }, { wch: 10 }
+                { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 12 }, { wch: 14 },
+                { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 10 }
             ];
 
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, viewMode === 'daily' ? 'Day Book' : 'Month Book');
 
-            const dateStr = new Date().toISOString().split('T')[0];
+            const dateStr = toLocalISODate(new Date());
             XLSX.writeFile(wb, `GMS-DayBook-${viewMode}-${dateStr}.xlsx`);
             showToast('Excel file downloaded!', 'success');
         }
