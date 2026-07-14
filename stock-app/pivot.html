@@ -1225,7 +1225,8 @@
             await loadItems();
         }
 
-        async function fetchTransactionsForItems(itemIds) {
+        // Fetch transactions for items within date range
+        async function fetchTransactionsForItems(itemIds, dateFrom, dateTo) {
             if (!itemIds.length) return {};
 
             const CHUNK = 200;
@@ -1234,12 +1235,16 @@
 
             for (let i = 0; i < itemIds.length; i += CHUNK) {
                 const chunkIds = itemIds.slice(i, i + CHUNK);
-                const { data, error } = await db
+                let query = db
                     .from('transactions')
                     .select('id, item_id, type, txn_date, qty, line_value')
                     .in('item_id', chunkIds)
-                    .order('id', { ascending: true })
-                    .limit(20000);
+                    .order('txn_date', { ascending: true });
+
+                if (dateFrom) query = query.gte('txn_date', dateFrom);
+                if (dateTo) query = query.lte('txn_date', dateTo);
+
+                const { data, error } = await query.limit(20000);
 
                 if (error) throw error;
 
@@ -1252,19 +1257,15 @@
             return byItem;
         }
 
-        // FIXED: Present Stock comes DIRECTLY from items.current_stock
-        // Previous = Present Stock - RCVD + DLVD (within date range)
-        function computePivotForItem(item, txns, dateFrom, dateTo) {
+        // FIFO Logic: Previous + RCVD - DLVD = Present
+        // Present comes from items.current_stock (matches Dashboard)
+        // Previous = Present - RCVD + DLVD (calculated)
+        function computePivotForItem(item, txns) {
             let rcvdQty = 0, rcvdValue = 0;
             let dlvdQty = 0, dlvdValue = 0;
 
-            // Sum RCVD and DLVD transactions that fall inside the selected range
+            // Sum RCVD and DLVD within date range
             txns.forEach(txn => {
-                if (txn.type === 'PRVS') return;
-
-                const inRange = (!dateFrom || txn.txn_date >= dateFrom) && (!dateTo || txn.txn_date <= dateTo);
-                if (!inRange) return;
-
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
 
@@ -1281,7 +1282,8 @@
             const presentQty = parseFloat(item.current_stock) || 0;
             const presentValue = parseFloat(item.current_value) || 0;
 
-            // Previous = Present Stock - RCVD + DLVD (what stock was before the date range)
+            // FIFO: Previous = Present - RCVD + DLVD
+            // (What stock was before the date range started)
             const prevQty = presentQty - rcvdQty + dlvdQty;
             const prevValue = presentValue - rcvdValue + dlvdValue;
 
@@ -1339,10 +1341,10 @@
                 const dateTo = document.getElementById('fDateTo').value || '';
 
                 const itemIds = allItems.map(i => i.id);
-                const txnsByItem = await fetchTransactionsForItems(itemIds);
+                const txnsByItem = await fetchTransactionsForItems(itemIds, dateFrom, dateTo);
 
                 pivotRows = allItems.map(item =>
-                    computePivotForItem(item, txnsByItem[item.id] || [], dateFrom, dateTo)
+                    computePivotForItem(item, txnsByItem[item.id] || [])
                 );
 
                 renderPivotTable();
