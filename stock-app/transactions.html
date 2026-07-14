@@ -1691,12 +1691,9 @@
 
                 const { data: teams } = await db.from('team_members').select('id, name').order('name');
                 const teamSelect = document.getElementById('fTeam');
-                (teams || []).forEach(t => {
-                    teamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-                });
-
                 const editTeamSelect = document.getElementById('eTeam');
                 (teams || []).forEach(t => {
+                    teamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
                     editTeamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
                 });
 
@@ -1790,7 +1787,7 @@
                         id, type, txn_date, qty, unit_price_snapshot, line_value,
                         challan_no, mrr_no, order_no, style_no, remarks,
                         present_stock_after, stock_value_after, team_member_id, item_id,
-                        items:item_id!inner (
+                        items:item_id (
                             id, description, unit, goods_location, item_code, qr_payload,
                             buyer_id, supplier,
                             buyers:buyer_id (name)
@@ -1833,7 +1830,21 @@
                         debugEl.innerHTML = `<i class="fas fa-filter"></i> No date filter applied — showing ALL dates`;
                     }
                 }
-                if (buyerId) query = query.eq('items.buyer_id', buyerId);
+
+                // FIXED: Fetch item IDs first to avoid !inner join issues with buyer filter
+                if (buyerId) {
+                    const { data: buyerItems } = await db.from('items').select('id').eq('buyer_id', buyerId);
+                    if (buyerItems && buyerItems.length > 0) {
+                        const itemIds = buyerItems.map(i => i.id);
+                        query = query.in('item_id', itemIds);
+                    } else {
+                        allTransactions = [];
+                        filteredData = [];
+                        renderTable();
+                        return;
+                    }
+                }
+
                 if (itemText) {
                     const matchedItemId = itemNameToId[itemText];
                     if (matchedItemId) {
@@ -1952,6 +1963,23 @@
             document.getElementById('statDlvd').textContent = fmtCompact(dlvdQty);
             document.getElementById('statRcvdValue').textContent = '$' + fmtCompact(rcvdValue);
             document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
+        }
+
+        function computeStockTotals(data) {
+            const latestByItem = {};
+            data.forEach(txn => {
+                const itemId = txn.items?.id;
+                if (itemId === undefined || itemId === null) return;
+                if (!latestByItem[itemId] || txn.id > latestByItem[itemId].id) {
+                    latestByItem[itemId] = txn;
+                }
+            });
+            let stock = 0, stockVal = 0;
+            Object.values(latestByItem).forEach(t => {
+                stock += parseFloat(t.present_stock_after) || 0;
+                stockVal += parseFloat(t.stock_value_after) || 0;
+            });
+            return { stock, stockVal };
         }
 
         async function updateBuyerTotal() {
@@ -2366,7 +2394,7 @@
                 tableContent.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
-                        <p>No transactions found</p>
+                        <p>No transactions found for this filter.<br><small>Try expanding the date range or clicking "Reset"</small></p>
                     </div>
                 `;
                 return;
