@@ -49,7 +49,6 @@
             position: relative;
         }
 
-        /* 3D Animated Background */
         .bg-3d {
             position: fixed;
             top: 0; left: 0;
@@ -101,7 +100,6 @@
             box-shadow: var(--glass-shadow);
         }
 
-        /* Header */
         .header {
             padding: 14px 20px;
             display: flex;
@@ -184,14 +182,12 @@
             justify-content: center;
         }
 
-        /* Main */
         .main {
             padding: 20px;
             max-width: 600px;
             margin: 0 auto;
         }
 
-        /* Page Title */
         .page-title {
             margin-bottom: 20px;
         }
@@ -212,7 +208,6 @@
             -webkit-text-fill-color: var(--accent-blue);
         }
 
-        /* Tabs */
         .tabs {
             display: flex;
             gap: 10px;
@@ -257,7 +252,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Form Card */
         .form-card {
             padding: 24px;
             margin-bottom: 20px;
@@ -345,7 +339,6 @@
             color: #1e293b;
         }
 
-        /* QR Result Section */
         .qr-result {
             display: none;
             padding: 24px;
@@ -402,7 +395,6 @@
             gap: 10px;
         }
 
-        /* Toast */
         .toast {
             position: fixed;
             top: 20px;
@@ -431,7 +423,6 @@
         .toast.error { border-left: 4px solid var(--accent-red); }
         .toast.success { border-left: 4px solid var(--accent-green); }
 
-        /* Bottom Nav */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -472,7 +463,6 @@
             font-size: 18px;
         }
 
-        /* Spinner */
         .spinner {
             display: inline-block;
             width: 16px;
@@ -485,7 +475,6 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Responsive */
         @media (max-width: 480px) {
             .main { padding: 16px; }
             .qr-actions { grid-template-columns: 1fr; }
@@ -493,13 +482,11 @@
     </style>
 </head>
 <body>
-    <!-- 3D Background -->
     <div class="bg-3d"></div>
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
 
-    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <a href="index.html" class="back-btn">
@@ -513,14 +500,11 @@
         </button>
     </header>
 
-    <!-- Main -->
     <main class="main">
-        <!-- Page Title -->
         <div class="page-title">
             <h2><i class="fas fa-plus-circle"></i> Add New</h2>
         </div>
 
-        <!-- Tabs -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('buyer', this)">
                 <i class="fas fa-user-plus"></i> New Buyer
@@ -530,7 +514,6 @@
             </button>
         </div>
 
-        <!-- Tab 1: New Buyer -->
         <div id="tab-buyer" class="tab-content active">
             <div class="form-card glass">
                 <div class="form-group">
@@ -543,7 +526,6 @@
             </div>
         </div>
 
-        <!-- Tab 2: New Item -->
         <div id="tab-item" class="tab-content">
             <div class="form-card glass">
                 <div class="form-group">
@@ -593,7 +575,6 @@
             </div>
         </div>
 
-        <!-- QR Result Section -->
         <div id="qrResult" class="qr-result glass">
             <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--accent-green);">
                 <i class="fas fa-check-circle"></i> Item Created Successfully!
@@ -617,7 +598,6 @@
         </div>
     </main>
 
-    <!-- Bottom Nav -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item">
             <i class="fas fa-home nav-icon"></i> Home
@@ -638,29 +618,24 @@
             <i class="fas fa-plus-circle nav-icon"></i> New
         </a>
         <a href="challan-report.html" class="nav-item">
-    <i class="fas fa-file-invoice nav-icon"></i>
-    Challan
-</a>
+            <i class="fas fa-file-invoice nav-icon"></i> Challan
+        </a>
         <a href="daybook.html" class="nav-item">
-    <i class="fas fa-book nav-icon"></i>
-    Day Book
-</a>
+            <i class="fas fa-book nav-icon"></i> Day Book
+        </a>
     </nav>
 
-    <!-- Toast -->
     <div class="toast" id="toast">
         <i class="fas fa-check-circle" id="toastIcon"></i>
         <span id="toastMsg">Success!</span>
     </div>
 
     <script>
-        // ============ SUPABASE ============
         const SUPABASE_URL = 'https://qwtourjspllhiiryqewf.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_pcQFRFQWWAT1zTXfVfgdSw_43rcVr5S';
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ============ THEME ============
         function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -681,7 +656,6 @@
             updateThemeIcon(saved);
         })();
 
-        // ============ TOAST ============
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toastIcon');
@@ -693,7 +667,6 @@
             setTimeout(() => toast.classList.remove('show'), 3500);
         }
 
-        // ============ TABS ============
         function switchTab(tab, btn) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -702,7 +675,6 @@
             document.getElementById('qrResult').classList.remove('show');
         }
 
-        // ============ LOAD BUYERS ============
         async function loadBuyers() {
             try {
                 const { data, error } = await db.from('buyers').select('id, name').order('name');
@@ -718,7 +690,6 @@
             }
         }
 
-        // ============ SAVE BUYER ============
         async function saveBuyer() {
             const name = document.getElementById('buyerName').value.trim();
             if (!name) {
@@ -731,22 +702,16 @@
             btn.disabled = true;
 
             try {
-                const { data, error } = await db
-                    .from('buyers')
-                    .insert({ name: name })
-                    .select();
-
+                const { data, error } = await db.from('buyers').insert({ name: name }).select();
                 if (error) throw error;
 
                 showToast('✅ Buyer saved successfully!', 'success');
                 document.getElementById('buyerName').value = '';
                 await loadBuyers();
                 
-                // Auto switch to item tab
                 setTimeout(() => {
                     const itemTabBtn = document.querySelectorAll('.tab-btn')[1];
                     switchTab('item', itemTabBtn);
-                    // Select the newly added buyer
                     const select = document.getElementById('itemBuyer');
                     for (let i = 0; i < select.options.length; i++) {
                         if (select.options[i].text === name) {
@@ -765,9 +730,7 @@
             }
         }
 
-        // ============ HELPER: Generate Buyer Code ============
         function getBuyerCode(name) {
-            // Simple logic to generate 3-letter code from buyer name
             const words = name.replace(/[()]/g, '').split(/\s+/);
             let code = '';
             for (let word of words) {
@@ -779,7 +742,6 @@
             return code.padEnd(3, 'X').substring(0, 3);
         }
 
-        // ============ HELPER: Generate Item Short Code ============
         function getItemShortCode(desc) {
             const words = desc.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/);
             let code = '';
@@ -792,7 +754,6 @@
             return code.padEnd(3, 'X').substring(0, 3);
         }
 
-        // ============ HELPER: Get Next Sequence ============
         async function getNextSequence(buyerCode, itemCode) {
             try {
                 const prefix = `GMS-${buyerCode}-${itemCode}-`;
@@ -815,7 +776,6 @@
             }
         }
 
-        // ============ SAVE ITEM ============
         async function saveItem() {
             const buyerSelect = document.getElementById('itemBuyer');
             const buyerId = buyerSelect.value;
@@ -838,13 +798,12 @@
             btn.disabled = true;
 
             try {
-                // Generate codes
                 const buyerCode = getBuyerCode(buyerName);
                 const itemShort = getItemShortCode(desc);
                 const sequence = await getNextSequence(buyerCode, itemShort);
                 const itemCode = `GMS-${buyerCode}-${itemShort}-${sequence}`;
 
-                // Insert item
+                // 1. Insert Item (Sets the baseline for FIFO: Present = Previous)
                 const { data: itemData, error: itemError } = await db
                     .from('items')
                     .insert({
@@ -865,7 +824,7 @@
 
                 if (itemError) throw itemError;
 
-                // Insert PRVS transaction if prevQty > 0
+                // 2. Insert PRVS transaction to maintain ledger consistency
                 if (prevQty > 0 && prevDate) {
                     await db.from('transactions').insert({
                         item_id: itemData.id,
@@ -873,12 +832,12 @@
                         txn_date: prevDate,
                         qty: prevQty,
                         unit_price_snapshot: price,
-                        present_stock_after: prevQty,
-                        stock_value_after: prevQty * price
+                        line_value: prevQty * price,              // ADDED for Pivot/Ledger consistency
+                        present_stock_after: prevQty,             // ADDED for Pivot/Ledger consistency
+                        stock_value_after: prevQty * price        // ADDED for Pivot/Ledger consistency
                     });
                 }
 
-                // Show QR
                 showQR(itemCode, desc, buyerName);
                 showToast('✅ Item created successfully!', 'success');
 
@@ -891,17 +850,14 @@
             }
         }
 
-        // ============ SHOW QR ============
         function showQR(code, desc, buyer) {
             document.getElementById('qrCodeText').textContent = code;
             document.getElementById('qrDescText').textContent = desc;
             document.getElementById('qrBuyerText').textContent = buyer;
 
-            // Clear previous QR
             const qrContainer = document.getElementById('qrcode');
             qrContainer.innerHTML = '';
 
-            // Generate new QR
             new QRCode(qrContainer, {
                 text: code,
                 width: 150,
@@ -915,7 +871,6 @@
             document.getElementById('qrResult').scrollIntoView({ behavior: 'smooth' });
         }
 
-        // ============ PRINT LABEL ============
         function printLabel() {
             const content = document.getElementById('qrLabelContent').innerHTML;
             const win = window.open('', '', 'width=400,height=600');
@@ -924,44 +879,13 @@
                 <head>
                     <title>Print Label</title>
                     <style>
-                        body { 
-                            font-family: Arial, sans-serif; 
-                            text-align: center; 
-                            margin: 0; 
-                            padding: 20px; 
-                        }
-                        .label { 
-                            border: 2px solid #000; 
-                            padding: 20px; 
-                            margin: 20px auto; 
-                            max-width: 280px; 
-                            border-radius: 12px;
-                        }
-                        #qrcode { 
-                            display: flex; 
-                            justify-content: center; 
-                            margin-bottom: 12px; 
-                        }
-                        .qr-item-code { 
-                            font-size: 16px; 
-                            font-weight: 800; 
-                            margin-bottom: 4px; 
-                            font-family: monospace; 
-                        }
-                        .qr-desc { 
-                            font-size: 12px; 
-                            color: #666; 
-                            margin-bottom: 2px; 
-                        }
-                        .qr-buyer { 
-                            font-size: 11px; 
-                            color: #999; 
-                            text-transform: uppercase; 
-                        }
-                        @media print {
-                            body { margin: 0; padding: 10px; }
-                            .label { border: 2px solid #000; }
-                        }
+                        body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 20px; }
+                        .label { border: 2px solid #000; padding: 20px; margin: 20px auto; max-width: 280px; border-radius: 12px; }
+                        #qrcode { display: flex; justify-content: center; margin-bottom: 12px; }
+                        .qr-item-code { font-size: 16px; font-weight: 800; margin-bottom: 4px; font-family: monospace; }
+                        .qr-desc { font-size: 12px; color: #666; margin-bottom: 2px; }
+                        .qr-buyer { font-size: 11px; color: #999; text-transform: uppercase; }
+                        @media print { body { margin: 0; padding: 10px; } .label { border: 2px solid #000; } }
                     </style>
                 </head>
                 <body>
@@ -975,7 +899,6 @@
             win.document.close();
         }
 
-        // ============ RESET FORM ============
         function resetForm() {
             document.getElementById('itemDesc').value = '';
             document.getElementById('itemUnit').value = '';
@@ -983,21 +906,16 @@
             document.getElementById('itemLocation').value = '';
             document.getElementById('itemSupplier').value = '';
             document.getElementById('prevQty').value = '';
-            document.getElementById('prevDate').value = '';
             document.getElementById('qrResult').classList.remove('show');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // ============ INIT ============
         document.addEventListener('DOMContentLoaded', async () => {
             await loadBuyers();
-            
-            // Set default date to today
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('prevDate').value = today;
         });
 
-        // PWA Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('../sw.js').catch(() => {});
         }
