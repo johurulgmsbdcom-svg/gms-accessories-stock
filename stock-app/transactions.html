@@ -52,7 +52,6 @@
             position: relative;
         }
 
-        /* 3D Animated Background */
         .bg-3d {
             position: fixed;
             top: 0; left: 0;
@@ -96,7 +95,6 @@
             75% { transform: translate(20px, 10px) scale(1.05); }
         }
 
-        /* Glass Effect */
         .glass {
             background: var(--glass-bg);
             backdrop-filter: blur(20px);
@@ -106,7 +104,6 @@
             box-shadow: var(--glass-shadow);
         }
 
-        /* Header */
         .header {
             padding: 14px 20px;
             display: flex;
@@ -200,14 +197,12 @@
             transform: translateY(-2px);
         }
 
-        /* Main */
         .main {
             padding: 20px;
             max-width: 1400px;
             margin: 0 auto;
         }
 
-        /* Page Title */
         .page-title {
             display: flex;
             align-items: center;
@@ -281,7 +276,6 @@
             font-size: 11px;
         }
 
-        /* Filter Card */
         .filter-card {
             padding: 20px;
             margin-bottom: 20px;
@@ -419,7 +413,6 @@
             color: var(--text-muted);
         }
 
-        /* Stats Row */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -486,7 +479,6 @@
             background-clip: text;
         }
 
-        /* Buyer Grand Total Card */
         .buyer-total-card {
             padding: 18px 20px;
             margin-bottom: 20px;
@@ -546,7 +538,6 @@
         .buyer-total-item.dlvdval .bt-value { color: var(--accent-purple); }
         .buyer-total-item.netval .bt-value { color: var(--accent-cyan); }
 
-        /* Table footer (grand total row) */
         tfoot td {
             padding: 12px 10px;
             font-weight: 800;
@@ -562,7 +553,6 @@
             border: 1px solid rgba(30, 41, 59, 0.18);
         }
 
-        /* Table Card */
         .table-card {
             padding: 20px;
             margin-bottom: 20px;
@@ -770,7 +760,6 @@
             justify-content: center;
         }
 
-        /* Pagination */
         .pagination {
             display: flex;
             align-items: center;
@@ -840,7 +829,6 @@
             cursor: pointer;
         }
 
-        /* QR Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -909,7 +897,6 @@
             border-color: var(--accent-red);
         }
 
-        /* Simple Confirm Modal */
         .confirm-modal-content {
             background: var(--glass-bg-strong);
             backdrop-filter: blur(20px);
@@ -969,7 +956,6 @@
             background: linear-gradient(135deg, var(--accent-red), #dc2626);
         }
 
-        /* Edit Modal */
         .edit-modal-content {
             background: var(--glass-bg-strong);
             backdrop-filter: blur(20px);
@@ -1075,7 +1061,6 @@
             justify-content: center;
         }
 
-        /* Print Styles - A4 Landscape, 15 QR codes per page (5x3), each 38mm */
         @media print {
             @page {
                 size: A4 landscape;
@@ -1155,7 +1140,6 @@
             }
         }
 
-        /* Loading / Empty */
         .loading-state, .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -1182,7 +1166,6 @@
             to { transform: translateY(0); opacity: 1; }
         }
 
-        /* Bottom Nav */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -1227,7 +1210,6 @@
             font-size: 18px;
         }
 
-        /* Toast */
         .toast {
             position: fixed;
             top: 20px;
@@ -1257,13 +1239,11 @@
         .toast.success { border-left: 4px solid var(--accent-green); }
         .toast.warning { border-left: 4px solid var(--accent-yellow); }
 
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
-        /* Full-width layout for large PC screens so more columns are visible at once */
         @media screen and (min-width: 1600px) {
             .main {
                 max-width: 98%;
@@ -1278,7 +1258,6 @@
             }
         }
 
-        /* Responsive */
         @media screen and (max-width: 768px) {
             .main { padding: 16px; }
             .filter-grid { grid-template-columns: 1fr 1fr; }
@@ -1300,14 +1279,12 @@
     </style>
 </head>
 <body>
-    <!-- 3D Background -->
     <div class="bg-3d"></div>
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
     <div class="orb orb-4"></div>
 
-    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <a href="index.html" class="back-btn">
@@ -1323,9 +1300,7 @@
         </div>
     </header>
 
-    <!-- Main -->
     <main class="main">
-        <!-- Page Title -->
         <div class="page-title">
             <h2><i class="fas fa-list-alt"></i> Full Transaction Ledger</h2>
             <div class="title-actions">
@@ -1341,7 +1316,6 @@
             </div>
         </div>
 
-        <!-- Filter Card -->
         <div class="filter-card glass">
             <div class="filter-title">
                 <i class="fas fa-filter"></i> Filters
@@ -1414,7 +1388,6 @@
 
         <div id="activeRangeDebug" style="font-size:11px;color:var(--text-muted);margin:-8px 0 14px;padding:0 4px;"></div>
 
-        <!-- Stats Row -->
         <div class="stats-row">
             <div class="stat-card glass blue">
                 <div class="stat-value" id="statTotal">—</div>
@@ -1438,7 +1411,6 @@
             </div>
         </div>
 
-        <!-- Buyer Grand Total Card -->
         <div class="buyer-total-card glass" id="buyerTotalCard" style="display:none;">
             <div class="buyer-total-title" id="buyerTotalTitle">
                 <i class="fas fa-calculator"></i> Grand Total
@@ -1479,7 +1451,6 @@
             </div>
         </div>
 
-        <!-- Table Card -->
         <div class="table-card glass">
             <div id="tableContent">
                 <div class="loading-state">
@@ -1490,7 +1461,6 @@
         </div>
     </main>
 
-    <!-- QR Modal -->
     <div class="modal-overlay" id="qrModal">
         <div class="modal-content glass">
             <div class="modal-header">
@@ -1511,7 +1481,6 @@
         </div>
     </div>
 
-    <!-- Delete Confirm Modal -->
     <div class="modal-overlay" id="confirmModal">
         <div class="confirm-modal-content">
             <div class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
@@ -1528,7 +1497,6 @@
         </div>
     </div>
 
-    <!-- Edit Transaction Modal -->
     <div class="modal-overlay" id="editModal">
         <div class="edit-modal-content">
             <div class="modal-header">
@@ -1601,7 +1569,6 @@
         </div>
     </div>
 
-    <!-- Bottom Nav -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item">
             <i class="fas fa-home nav-icon"></i> Home
@@ -1629,20 +1596,17 @@
         </a>
     </nav>
 
-    <!-- Toast -->
     <div class="toast" id="toast">
         <i class="fas fa-check-circle" id="toastIcon"></i>
         <span id="toastMsg">Success!</span>
     </div>
 
     <script>
-        // ============ SUPABASE ============
         const SUPABASE_URL = 'https://qwtourjspllhiiryqewf.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_pcQFRFQWWAT1zTXfVfgdSw_43rcVr5S';
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ============ STATE ============
         let allTransactions = [];
         let filteredData = [];
         let currentPage = 1;
@@ -1657,7 +1621,6 @@
         let loadRequestId = 0;
         const QR_PER_PAGE = 15;
 
-        // ============ HEADER HEIGHT ============
         function setHeaderHeightVar() {
             const header = document.querySelector('.header');
             if (header) {
@@ -1667,7 +1630,6 @@
         window.addEventListener('resize', setHeaderHeightVar);
         window.addEventListener('load', setHeaderHeightVar);
 
-        // ============ THEME ============
         function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -1688,7 +1650,6 @@
             updateThemeIcon(saved);
         })();
 
-        // ============ TOAST ============
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toastIcon');
@@ -1700,7 +1661,6 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // ============ UTILS ============
         function fmt(n) {
             if (n === null || n === undefined || isNaN(n)) return '0';
             return parseFloat(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -1714,7 +1674,6 @@
             return n.toFixed(0);
         }
 
-        // ============ LOAD FILTERS ============
         async function loadFilters() {
             try {
                 const { data: buyers } = await db.from('buyers').select('id, name').order('name');
@@ -1753,7 +1712,6 @@
             }
         }
 
-        // ============ ITEM SEARCH DROPDOWN ============
         function renderItemDropdown(query) {
             const dropdown = document.getElementById('itemDropdown');
             const q = (query || '').trim().toLowerCase();
@@ -1791,7 +1749,6 @@
             }
         });
 
-        // ============ DATE READABLE LABEL ============
         function updateDateReadable() {
             const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
             ['fDateFrom', 'fDateTo'].forEach(id => {
@@ -1803,7 +1760,6 @@
             });
         }
 
-        // ============ APPLY FILTERS ============
         async function applyFilters() {
             currentPage = 1;
             await loadTransactions();
@@ -1817,7 +1773,6 @@
             }, 350);
         }
 
-        // ============ LOAD TRANSACTIONS ============
         async function loadTransactions() {
             const requestId = ++loadRequestId;
             const tableContent = document.getElementById('tableContent');
@@ -1905,10 +1860,7 @@
 
                 applySorting();
                 updateStats();
-                
-                // UPDATED: Added 'await' here so it fetches exact stock from 'items' table
                 await updateBuyerTotal();
-
                 renderTable();
 
             } catch (err) {
@@ -1924,7 +1876,6 @@
             }
         }
 
-        // ============ SORTING ============
         function applySorting() {
             filteredData.sort((a, b) => {
                 let aVal = getSortValue(a, sortColumn);
@@ -1980,7 +1931,6 @@
             renderTable();
         }
 
-        // ============ UPDATE STATS ============
         function updateStats() {
             const total = filteredData.length;
             let rcvdQty = 0, dlvdQty = 0, rcvdValue = 0, dlvdValue = 0;
@@ -2004,32 +1954,12 @@
             document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
         }
 
-        // ============ STOCK TOTAL HELPER ============
-        function computeStockTotals(data) {
-            const latestByItem = {};
-            data.forEach(txn => {
-                const itemId = txn.items?.id;
-                if (itemId === undefined || itemId === null) return;
-                if (!latestByItem[itemId] || txn.id > latestByItem[itemId].id) {
-                    latestByItem[itemId] = txn;
-                }
-            });
-            let stock = 0, stockVal = 0;
-            Object.values(latestByItem).forEach(t => {
-                stock += parseFloat(t.present_stock_after) || 0;
-                stockVal += parseFloat(t.stock_value_after) || 0;
-            });
-            return { stock, stockVal };
-        }
-
-        // ============ BUYER GRAND TOTAL (UPDATED FOR 100% DASHBOARD MATCH) ============
         async function updateBuyerTotal() {
             const card = document.getElementById('buyerTotalCard');
             const titleEl = document.getElementById('buyerTotalTitle');
             const buyerSelect = document.getElementById('fBuyer');
             const buyerId = buyerSelect.value;
 
-            // 1. Calculate RCVD/DLVD/PRVS from filtered transactions (Period-specific)
             let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
@@ -2049,12 +1979,10 @@
             const netQty = (prvsQty + rcvdQty) - dlvdQty;
             const netVal = (prvsVal + rcvdVal) - dlvdVal;
 
-            // 2. Fetch Stock and Stock Value DIRECTLY from 'items' table 
-            // This guarantees a 100% EXACT MATCH with dashboard.html's Total Stock Qty
             try {
                 let query = db.from('items').select('current_stock, current_value');
                 if (buyerId) {
-                    query = query.eq('buyer_id', buyerId); // If a specific buyer is selected
+                    query = query.eq('buyer_id', buyerId);
                 }
                 
                 const { data: itemsData, error } = await query;
@@ -2067,7 +1995,6 @@
                     totalStockVal = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_value) || 0), 0);
                 }
 
-                // 3. Update UI
                 document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
                 document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
                 document.getElementById('btNetQty').textContent = fmt(netQty);
@@ -2075,7 +2002,6 @@
                 document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
                 document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
                 
-                // THESE TWO NOW MATCH DASHBOARD EXACTLY
                 document.getElementById('btStock').textContent = fmt(totalStock);
                 document.getElementById('btStockVal').textContent = '$' + fmt(totalStockVal);
 
@@ -2093,7 +2019,6 @@
             }
         }
 
-        // ============ QR CODE FUNCTIONS ============
         function generateQRSvg(text) {
             try {
                 const qr = qrcode(0, 'M');
@@ -2232,7 +2157,6 @@
             }
         }
 
-        // ============ DELETE TRANSACTION ============
         function openDeleteConfirm(txnId) {
             const txn = filteredData.find(t => t.id === txnId);
             pendingDeleteId = txnId;
@@ -2279,7 +2203,6 @@
             }
         }
 
-        // ============ EDIT TRANSACTION ============
         function openEditModal(txnId) {
             const txn = filteredData.find(t => t.id === txnId);
             if (!txn) {
@@ -2436,7 +2359,6 @@
             }
         }
 
-        // ============ RENDER TABLE ============
         function renderTable() {
             const tableContent = document.getElementById('tableContent');
 
@@ -2598,7 +2520,6 @@
             document.querySelector('.table-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        // ============ RESET FILTERS ============
         function resetFilters() {
             document.getElementById('fBuyer').value = '';
             document.getElementById('fItem').value = '';
@@ -2620,7 +2541,6 @@
             applyFilters();
         }
 
-        // ============ EXCEL EXPORT ============
         function downloadExcel() {
             if (!filteredData.length) {
                 showToast('No data to export', 'error');
@@ -2657,7 +2577,6 @@
             showToast('Excel file downloaded!', 'success');
         }
 
-        // ============ INIT ============
         document.addEventListener('DOMContentLoaded', async () => {
             setHeaderHeightVar();
             await loadFilters();
