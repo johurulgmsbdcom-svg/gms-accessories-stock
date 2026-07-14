@@ -1419,7 +1419,10 @@
                     <i class="fas fa-qrcode"></i> Print QR Codes
                 </button>
                 <button class="btn btn-excel" onclick="downloadExcel()">
-                    <i class="fas fa-file-excel"></i> Download Excel
+                    <i class="fas fa-file-excel"></i> Download Filtered
+                </button>
+                <button class="btn btn-search" onclick="downloadFullStockHistory()">
+                    <i class="fas fa-history"></i> Full Stock History
                 </button>
             </div>
         </div>
@@ -2165,7 +2168,6 @@
             evt.stopPropagation();
             ocActiveFilterCol = colIndex;
             
-            // Get unique values for this column
             const uniqueValues = [...new Set(filteredData.map(row => {
                 let val = getSortValue(row, colKey);
                 return val !== undefined && val !== null ? String(val).trim() : '';
@@ -2176,7 +2178,6 @@
 
             const selected = activeColumnFilters[colIndex] || new Set(uniqueValues);
             
-            // Create dropdown HTML
             const dropdown = document.createElement('div');
             dropdown.className = 'col-filter-dropdown show';
             dropdown.id = 'colFilterDropdown';
@@ -2208,7 +2209,6 @@
                 </div>
             `;
             
-            // Position dropdown
             const rect = evt.target.getBoundingClientRect();
             dropdown.style.top = (rect.bottom + 5) + 'px';
             dropdown.style.left = Math.min(rect.left, window.innerWidth - 330) + 'px';
@@ -2249,7 +2249,6 @@
             const colIndex = ocActiveFilterCol;
             if (colIndex === null) return;
             
-            // Apply filters to data
             const columns = [
                 { key: 'no' }, { key: 'txn_date' }, { key: 'buyer' }, { key: 'item' },
                 { key: 'item_code' }, { key: 'unit' }, { key: 'type' }, { key: 'challan_no' },
@@ -2290,7 +2289,6 @@
             closeColumnFilter();
         }
 
-        // Close filter when clicking outside
         document.addEventListener('click', (e) => {
             const dropdown = document.getElementById('colFilterDropdown');
             if (dropdown && !dropdown.contains(e.target) && !e.target.closest('.filter-icon')) {
@@ -2689,7 +2687,6 @@
                 const sortable = col.sortable ? `onclick="sortBy('${col.key}')"` : '';
                 const sortedClass = isSorted ? 'sorted' : '';
                 
-                // Add filter icon for sortable columns
                 const filterIcon = col.sortable 
                     ? `<i class="fas fa-filter filter-icon" style="margin-left:4px;font-size:9px;opacity:0.7" onclick="openColumnFilter(event, ${index}, '${col.key}', '${col.label}')"></i>`
                     : '';
@@ -2825,6 +2822,109 @@
             updateDateReadable();
 
             applyFilters();
+        }
+
+        async function downloadFullStockHistory() {
+            showToast('Preparing Full Stock History...', 'success');
+            try {
+                const { data: items, error: itemError } = await db.from('items').select(`
+                    id, description, unit, current_stock, current_value,
+                    buyer_id, buyers:buyer_id (name)
+                `).limit(100000);
+                if (itemError) throw itemError;
+
+                const { data: txns, error: txnError } = await db.from('transactions').select('item_id, type, qty').limit(200000);
+                if (txnError) throw txnError;
+
+                const itemStats = {};
+                items.forEach(item => {
+                    const buyerName = item.buyers?.name || 'Unknown';
+                    const key = `${buyerName}||${item.description}`;
+                    itemStats[key] = {
+                        buyer: buyerName,
+                        item: item.description,
+                        unit: item.unit,
+                        rcvdQty: 0,
+                        dlvdQty: 0,
+                        presentStock: parseFloat(item.current_stock) || 0
+                    };
+                });
+
+                txns.forEach(txn => {
+                    const item = items.find(i => i.id === txn.item_id);
+                    if (!item) return;
+                    const buyerName = item.buyers?.name || 'Unknown';
+                    const key = `${buyerName}||${item.description}`;
+                    
+                    if (!itemStats[key]) {
+                        itemStats[key] = { buyer: buyerName, item: item.description, unit: item.unit, rcvdQty: 0, dlvdQty: 0, presentStock: 0 };
+                    }
+                    
+                    if (txn.type === 'RCVD') {
+                        itemStats[key].rcvdQty += parseFloat(txn.qty) || 0;
+                    } else if (txn.type === 'DLVD') {
+                        itemStats[key].dlvdQty += parseFloat(txn.qty) || 0;
+                    }
+                });
+
+                const excelData = Object.values(itemStats).map(stat => {
+                    const previousStock = stat.presentStock - stat.rcvdQty + stat.dlvdQty;
+                    return {
+                        'Buyer': stat.buyer,
+                        'Item': stat.item,
+                        'Unit': stat.unit,
+                        'Previous Stock': previousStock,
+                        'Total RCVD Qty': stat.rcvdQty,
+                        'Total DLVD Qty': stat.dlvdQty,
+                        'Present Stock': stat.presentStock
+                    };
+                });
+
+                excelData.sort((a, b) => {
+                    if (a.Buyer !== b.Buyer) return a.Buyer.localeCompare(b.Buyer);
+                    return a.Item.localeCompare(b.Item);
+                });
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(excelData);
+
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                for (let R = range.s.r; R <= range.e.r; ++R) {
+                    for (let C = range.s.c; C <= range.e.c; ++C) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                        if (!ws[cellAddress]) continue;
+                        if (!ws[cellAddress].s) ws[cellAddress].s = {};
+                        ws[cellAddress].s.border = {
+                            top: { style: 'thin', color: { rgb: '000000' } },
+                            bottom: { style: 'thin', color: { rgb: '000000' } },
+                            left: { style: 'thin', color: { rgb: '000000' } },
+                            right: { style: 'thin', color: { rgb: '000000' } }
+                        };
+                        if (R === 0) {
+                            ws[cellAddress].s.font = { bold: true };
+                            ws[cellAddress].s.fill = { fgColor: { rgb: 'D3D3D3' } };
+                        }
+                    }
+                }
+
+                const colWidths = excelData.reduce((w, r) => {
+                    Object.keys(r).forEach((k, i) => {
+                        const len = String(r[k]).length;
+                        w[i] = Math.max(w[i] || 10, len + 2);
+                    });
+                    return w;
+                }, []);
+                ws['!cols'] = colWidths.map(w => ({ wch: w }));
+
+                XLSX.utils.book_append_sheet(wb, ws, 'Full Stock History');
+                const dateStr = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(wb, `GMS_Full_Stock_History_${dateStr}.xlsx`);
+                showToast('Full Stock History downloaded!', 'success');
+
+            } catch (err) {
+                console.error('Download error:', err);
+                showToast('Error downloading full history: ' + err.message, 'error');
+            }
         }
 
         function downloadExcel() {
