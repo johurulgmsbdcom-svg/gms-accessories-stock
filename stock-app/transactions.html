@@ -1975,7 +1975,7 @@
                 if (teamId) query = query.eq('team_member_id', teamId);
                 if (supplier) query = query.ilike('items.supplier', `%${supplier}%`);
 
-                const { data, error } = await query.limit(30000);
+                const { data, error } = await query.limit(15000);
 
                 if (error) throw error;
                 if (requestId !== loadRequestId) return;
@@ -2395,7 +2395,7 @@
                     query = query.eq('buyer_id', buyerId);
                 }
 
-                const { data, error } = await query.limit(30000);
+                const { data, error } = await query.limit(15000);
 
                 if (error) throw error;
 
