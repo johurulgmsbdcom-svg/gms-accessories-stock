@@ -518,7 +518,7 @@
                     query = query.or(`description.ilike.%${itemText}%,item_code.ilike.%${itemText}%`, { foreignTable: 'items' });
                 }
 
-                const { data, error } = await query.limit(10000);
+                const { data, error } = await query.limit(3000);
                 if (error) throw error;
 
                 groupChallans(data || []);
