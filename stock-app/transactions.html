@@ -1318,6 +1318,13 @@
             padding: 8px;
         }
 
+        .col-filter-loading {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
         .col-filter-item {
             display: flex;
             align-items: center;
@@ -1349,6 +1356,11 @@
             justify-content: center;
             padding: 8px 12px;
             font-size: 11px;
+        }
+
+        .filter-icon.active-filter {
+            color: var(--accent-blue) !important;
+            opacity: 1 !important;
         }
 
         @media screen and (min-width: 1600px) {
@@ -1717,10 +1729,14 @@
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let allTransactions = [];
-        let filteredData = [];
+        // ============================================================
+        // STATE
+        // ============================================================
+        // pageRows = only the rows for the CURRENTLY VISIBLE page (server paginated)
+        let pageRows = [];
         let currentPage = 1;
         let perPage = 100;
+        let totalRowCount = 0;       // total rows matching filters (from server count, not just what we fetched)
         let sortColumn = 'txn_date';
         let sortDirection = 'desc';
         let currentQRItems = [];
@@ -1730,10 +1746,44 @@
         let pendingEditId = null;
         let loadRequestId = 0;
         const QR_PER_PAGE = 15;
-        
-        // Column Filter State
-        let activeColumnFilters = {};
+
+        // Aggregates computed over the FULL filtered set (not just the current page)
+        // so stats/footer/buyer totals never silently drop rows beyond a page limit.
+        let agg = {
+            total: 0,
+            prvsQty: 0, prvsVal: 0,
+            rcvdQty: 0, rcvdVal: 0,
+            dlvdQty: 0, dlvdVal: 0
+        };
+
+        // Column Filter State: colKey -> Set of selected string values.
+        // If a key exists in this map, it's applied as a server-side .in() filter.
+        let columnFilters = {};
         let ocActiveFilterCol = null;
+
+        // Maps a sortable/filterable column key to how it's reached in Supabase.
+        // direct: plain column on transactions table.
+        // joined: column on a related table, referenced via dot-notation (matches
+        //         the existing pattern already used in this file for buyer/description filters).
+        const COLUMN_MAP = {
+            txn_date:       { direct: 'txn_date' },
+            buyer:          { joined: 'items.buyers.name' },
+            item:           { joined: 'items.description' },
+            item_code:      { joined: 'items.item_code' },
+            unit:           { joined: 'items.unit' },
+            type:           { direct: 'type' },
+            challan_no:     { direct: 'challan_no' },
+            mrr_no:         { direct: 'mrr_no' },
+            order_no:       { direct: 'order_no' },
+            style_no:       { direct: 'style_no' },
+            qty:            { direct: 'qty' },
+            unit_price:     { direct: 'unit_price_snapshot' },
+            line_value:     { direct: 'line_value' },
+            present_stock:  { direct: 'present_stock_after' },
+            stock_value:    { direct: 'stock_value_after' },
+            supplier:       { joined: 'items.supplier' },
+            team:           { joined: 'team_members.name' }
+        };
 
         function setHeaderHeightVar() {
             const header = document.querySelector('.header');
@@ -1884,6 +1934,104 @@
             }, 350);
         }
 
+        // ============================================================
+        // QUERY BUILDING (shared by page-data fetch, count, aggregates,
+        // and column-filter unique-value lookups so every consumer of
+        // "the filtered set" sees exactly the same rows).
+        // ============================================================
+
+        // Resolves the current UI filter values once per call so every
+        // query builder call (data / count / aggregate / column-filter)
+        // is guaranteed to use the exact same filter set.
+        function getActiveFilterValues() {
+            let dateFrom = document.getElementById('fDateFrom').value;
+            let dateTo = document.getElementById('fDateTo').value;
+
+            if (dateFrom && dateTo && dateFrom > dateTo) {
+                const tmp = dateFrom;
+                dateFrom = dateTo;
+                dateTo = tmp;
+                document.getElementById('fDateFrom').value = dateFrom;
+                document.getElementById('fDateTo').value = dateTo;
+                showToast('Date From ও Date To উল্টো ছিল, ঠিক করে দেওয়া হয়েছে', 'warning');
+            }
+
+            return {
+                dateFrom, dateTo,
+                buyerId: document.getElementById('fBuyer').value,
+                itemText: document.getElementById('fItem').value.trim(),
+                type: document.getElementById('fType').value,
+                challan: document.getElementById('fChallan').value.trim(),
+                mrr: document.getElementById('fMrr').value.trim(),
+                order: document.getElementById('fOrder').value.trim(),
+                style: document.getElementById('fStyle').value.trim(),
+                teamId: document.getElementById('fTeam').value,
+                supplier: document.getElementById('fSupplier').value.trim()
+            };
+        }
+
+        // Applies every standard filter field + active column filters to a
+        // Supabase query builder. `excludeColKey` lets the column-filter
+        // dropdown build its unique-value list against every OTHER active
+        // filter (including other column filters) without excluding itself.
+        async function applyStandardFilters(query, f, excludeColKey) {
+            if (f.dateFrom) query = query.gte('txn_date', f.dateFrom);
+            if (f.dateTo) query = query.lte('txn_date', f.dateTo);
+
+            if (f.buyerId) {
+                const { data: buyerItems } = await db.from('items').select('id').eq('buyer_id', f.buyerId);
+                const itemIds = (buyerItems || []).map(i => i.id);
+                // No items for this buyer -> force an impossible match instead of
+                // silently ignoring the filter.
+                query = query.in('item_id', itemIds.length ? itemIds : [-1]);
+            }
+
+            if (f.itemText) {
+                const matchedItemId = itemNameToId[f.itemText];
+                if (matchedItemId) {
+                    query = query.eq('item_id', matchedItemId);
+                } else {
+                    query = query.ilike('items.description', `%${f.itemText}%`);
+                }
+            }
+            if (f.type) query = query.eq('type', f.type);
+            if (f.challan) query = query.ilike('challan_no', `%${f.challan}%`);
+            if (f.mrr) query = query.ilike('mrr_no', `%${f.mrr}%`);
+            if (f.order) query = query.ilike('order_no', `%${f.order}%`);
+            if (f.style) query = query.ilike('style_no', `%${f.style}%`);
+            if (f.teamId) query = query.eq('team_member_id', f.teamId);
+            if (f.supplier) query = query.ilike('items.supplier', `%${f.supplier}%`);
+
+            // Excel-style column filters (server-side .in on the resolved column)
+            for (const colKey in columnFilters) {
+                if (colKey === excludeColKey) continue;
+                const values = columnFilters[colKey];
+                if (!values || values.size === 0) continue;
+                const meta = COLUMN_MAP[colKey];
+                if (!meta) continue;
+                const col = meta.direct || meta.joined;
+                query = query.in(col, Array.from(values));
+            }
+
+            return query;
+        }
+
+        function mapSortColumnToDb(col) {
+            const meta = COLUMN_MAP[col];
+            if (!meta) return null;
+            if (meta.direct) return { column: meta.direct, foreignTable: undefined };
+            // joined column e.g. "items.buyers.name" / "items.description" / "team_members.name"
+            const parts = meta.joined.split('.');
+            const column = parts[parts.length - 1];
+            const foreignTable = parts.slice(0, -1).join('.');
+            return { column, foreignTable };
+        }
+
+        // ============================================================
+        // MAIN LOAD: fetches ONLY the current page from the server,
+        // plus an exact total count and full-range aggregates, so no
+        // number shown on screen is silently truncated by a row limit.
+        // ============================================================
         async function loadTransactions() {
             const requestId = ++loadRequestId;
             const tableContent = document.getElementById('tableContent');
@@ -1895,94 +2043,80 @@
             `;
 
             try {
-                let query = db
-                    .from('transactions')
-                    .select(`
-                        id, type, txn_date, qty, unit_price_snapshot, line_value,
-                        challan_no, mrr_no, order_no, style_no, remarks,
-                        present_stock_after, stock_value_after, team_member_id, item_id,
-                        items:item_id (
-                            id, description, unit, goods_location, item_code, qr_payload,
-                            buyer_id, supplier,
-                            buyers:buyer_id (name)
-                        ),
-                        team_members:team_member_id (name)
-                    `)
-                    .order('txn_date', { ascending: false })
-                    .order('created_at', { ascending: false });
-
-                let dateFrom = document.getElementById('fDateFrom').value;
-                let dateTo = document.getElementById('fDateTo').value;
-
-                if (dateFrom && dateTo && dateFrom > dateTo) {
-                    const tmp = dateFrom;
-                    dateFrom = dateTo;
-                    dateTo = tmp;
-                    document.getElementById('fDateFrom').value = dateFrom;
-                    document.getElementById('fDateTo').value = dateTo;
-                    showToast('Date From ও Date To উল্টো ছিল, ঠিক করে দেওয়া হয়েছে', 'warning');
-                }
-
-                const buyerId = document.getElementById('fBuyer').value;
-                const itemText = document.getElementById('fItem').value.trim();
-                const type = document.getElementById('fType').value;
-                const challan = document.getElementById('fChallan').value.trim();
-                const mrr = document.getElementById('fMrr').value.trim();
-                const order = document.getElementById('fOrder').value.trim();
-                const style = document.getElementById('fStyle').value.trim();
-                const teamId = document.getElementById('fTeam').value;
-                const supplier = document.getElementById('fSupplier').value.trim();
-
-                if (dateFrom) query = query.gte('txn_date', dateFrom);
-                if (dateTo) query = query.lte('txn_date', dateTo);
+                const f = getActiveFilterValues();
 
                 const debugEl = document.getElementById('activeRangeDebug');
                 if (debugEl) {
-                    if (dateFrom || dateTo) {
-                        debugEl.innerHTML = `<i class="fas fa-filter"></i> Active date filter sent to server: <b>${dateFrom || '(no lower bound)'}</b> &rarr; <b>${dateTo || '(no upper bound)'}</b>`;
+                    if (f.dateFrom || f.dateTo) {
+                        debugEl.innerHTML = `<i class="fas fa-filter"></i> Active date filter sent to server: <b>${f.dateFrom || '(no lower bound)'}</b> &rarr; <b>${f.dateTo || '(no upper bound)'}</b>`;
                     } else {
                         debugEl.innerHTML = `<i class="fas fa-filter"></i> No date filter applied — showing ALL dates`;
                     }
                 }
 
-                if (buyerId) {
-                    const { data: buyerItems } = await db.from('items').select('id').eq('buyer_id', buyerId);
-                    if (buyerItems && buyerItems.length > 0) {
-                        const itemIds = buyerItems.map(i => i.id);
-                        query = query.in('item_id', itemIds);
-                    } else {
-                        allTransactions = [];
-                        filteredData = [];
-                        renderTable();
-                        return;
-                    }
+                // ---- 1) Exact count of ALL matching rows (used for pagination UI) ----
+                let countQuery = db.from('transactions').select('id, items:item_id!inner(id)', { count: 'exact', head: true });
+                countQuery = await applyStandardFilters(countQuery, f);
+                const { count, error: countErr } = await countQuery;
+                if (countErr) throw countErr;
+                if (requestId !== loadRequestId) return;
+                totalRowCount = count || 0;
+
+                // ---- 2) Aggregates over the FULL filtered set (lightweight columns only) ----
+                let aggQuery = db.from('transactions').select('type, qty, line_value, items:item_id!inner(id)');
+                aggQuery = await applyStandardFilters(aggQuery, f);
+                const { data: aggData, error: aggErr } = await aggQuery.limit(200000);
+                if (aggErr) throw aggErr;
+                if (requestId !== loadRequestId) return;
+
+                agg = { total: (aggData || []).length, prvsQty: 0, prvsVal: 0, rcvdQty: 0, rcvdVal: 0, dlvdQty: 0, dlvdVal: 0 };
+                (aggData || []).forEach(t => {
+                    const qty = parseFloat(t.qty) || 0;
+                    const val = parseFloat(t.line_value) || 0;
+                    if (t.type === 'RCVD') { agg.rcvdQty += qty; agg.rcvdVal += val; }
+                    else if (t.type === 'DLVD') { agg.dlvdQty += qty; agg.dlvdVal += val; }
+                    else if (t.type === 'PRVS') { agg.prvsQty += qty; agg.prvsVal += val; }
+                });
+
+                // ---- 3) Only the current page's rows, WITH joins, for display ----
+                const totalPages = Math.max(1, Math.ceil(totalRowCount / perPage));
+                if (currentPage > totalPages) currentPage = totalPages;
+                const from = (currentPage - 1) * perPage;
+                const to = from + perPage - 1;
+
+                let dataQuery = db
+                    .from('transactions')
+                    .select(`
+                        id, type, txn_date, qty, unit_price_snapshot, line_value,
+                        challan_no, mrr_no, order_no, style_no, remarks,
+                        present_stock_after, stock_value_after, team_member_id, item_id,
+                        items:item_id!inner (
+                            id, description, unit, goods_location, item_code, qr_payload,
+                            buyer_id, supplier,
+                            buyers:buyer_id (name)
+                        ),
+                        team_members:team_member_id (name)
+                    `);
+                dataQuery = await applyStandardFilters(dataQuery, f);
+
+                const sortMeta = mapSortColumnToDb(sortColumn);
+                if (sortMeta) {
+                    dataQuery = dataQuery.order(sortMeta.column, {
+                        ascending: sortDirection === 'asc',
+                        foreignTable: sortMeta.foreignTable
+                    });
+                } else {
+                    dataQuery = dataQuery.order('txn_date', { ascending: false });
                 }
+                // Secondary tiebreaker so pagination order stays stable
+                dataQuery = dataQuery.order('id', { ascending: sortDirection === 'asc' });
 
-                if (itemText) {
-                    const matchedItemId = itemNameToId[itemText];
-                    if (matchedItemId) {
-                        query = query.eq('item_id', matchedItemId);
-                    } else {
-                        query = query.ilike('items.description', `%${itemText}%`);
-                    }
-                }
-                if (type) query = query.eq('type', type);
-                if (challan) query = query.ilike('challan_no', `%${challan}%`);
-                if (mrr) query = query.ilike('mrr_no', `%${mrr}%`);
-                if (order) query = query.ilike('order_no', `%${order}%`);
-                if (style) query = query.ilike('style_no', `%${style}%`);
-                if (teamId) query = query.eq('team_member_id', teamId);
-                if (supplier) query = query.ilike('items.supplier', `%${supplier}%`);
-
-                const { data, error } = await query.limit(15000);
-
+                const { data, error } = await dataQuery.range(from, to);
                 if (error) throw error;
                 if (requestId !== loadRequestId) return;
 
-                allTransactions = data || [];
-                filteredData = [...allTransactions];
+                pageRows = data || [];
 
-                applySorting();
                 updateStats();
                 await updateBuyerTotal();
                 renderTable();
@@ -1998,27 +2132,6 @@
                 `;
                 showToast('Error loading data', 'error');
             }
-        }
-
-        function applySorting() {
-            filteredData.sort((a, b) => {
-                let aVal = getSortValue(a, sortColumn);
-                let bVal = getSortValue(b, sortColumn);
-
-                if (aVal === null || aVal === undefined) aVal = '';
-                if (bVal === null || bVal === undefined) bVal = '';
-
-                if (typeof aVal === 'number' && typeof bVal === 'number') {
-                    return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-                }
-
-                aVal = String(aVal).toLowerCase();
-                bVal = String(bVal).toLowerCase();
-
-                if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-                if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-                return 0;
-            });
         }
 
         function getSortValue(row, col) {
@@ -2051,48 +2164,16 @@
                 sortColumn = column;
                 sortDirection = 'asc';
             }
-            applySorting();
-            renderTable();
+            currentPage = 1;
+            loadTransactions();
         }
 
         function updateStats() {
-            const total = filteredData.length;
-            let rcvdQty = 0, dlvdQty = 0, rcvdValue = 0, dlvdValue = 0;
-
-            filteredData.forEach(txn => {
-                const qty = parseFloat(txn.qty) || 0;
-                const value = parseFloat(txn.line_value) || 0;
-                if (txn.type === 'RCVD') {
-                    rcvdQty += qty;
-                    rcvdValue += value;
-                } else if (txn.type === 'DLVD') {
-                    dlvdQty += qty;
-                    dlvdValue += value;
-                }
-            });
-
-            document.getElementById('statTotal').textContent = fmt(total);
-            document.getElementById('statRcvd').textContent = fmtCompact(rcvdQty);
-            document.getElementById('statDlvd').textContent = fmtCompact(dlvdQty);
-            document.getElementById('statRcvdValue').textContent = '$' + fmtCompact(rcvdValue);
-            document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
-        }
-
-        function computeStockTotals(data) {
-            const latestByItem = {};
-            data.forEach(txn => {
-                const itemId = txn.items?.id;
-                if (itemId === undefined || itemId === null) return;
-                if (!latestByItem[itemId] || txn.id > latestByItem[itemId].id) {
-                    latestByItem[itemId] = txn;
-                }
-            });
-            let stock = 0, stockVal = 0;
-            Object.values(latestByItem).forEach(t => {
-                stock += parseFloat(t.present_stock_after) || 0;
-                stockVal += parseFloat(t.stock_value_after) || 0;
-            });
-            return { stock, stockVal };
+            document.getElementById('statTotal').textContent = fmt(totalRowCount);
+            document.getElementById('statRcvd').textContent = fmtCompact(agg.rcvdQty);
+            document.getElementById('statDlvd').textContent = fmtCompact(agg.dlvdQty);
+            document.getElementById('statRcvdValue').textContent = '$' + fmtCompact(agg.rcvdVal);
+            document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(agg.dlvdVal);
         }
 
         async function updateBuyerTotal() {
@@ -2101,21 +2182,8 @@
             const buyerSelect = document.getElementById('fBuyer');
             const buyerId = buyerSelect.value;
 
-            let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
-            filteredData.forEach(txn => {
-                const qty = parseFloat(txn.qty) || 0;
-                const val = parseFloat(txn.line_value) || 0;
-                if (txn.type === 'RCVD') {
-                    rcvdQty += qty;
-                    rcvdVal += val;
-                } else if (txn.type === 'DLVD') {
-                    dlvdQty += qty;
-                    dlvdVal += val;
-                } else if (txn.type === 'PRVS') {
-                    prvsQty += qty;
-                    prvsVal += val;
-                }
-            });
+            const rcvdQty = agg.rcvdQty, dlvdQty = agg.dlvdQty, rcvdVal = agg.rcvdVal, dlvdVal = agg.dlvdVal;
+            const prvsQty = agg.prvsQty, prvsVal = agg.prvsVal;
 
             const netQty = (prvsQty + rcvdQty) - dlvdQty;
             const netVal = (prvsVal + rcvdVal) - dlvdVal;
@@ -2125,7 +2193,7 @@
                 if (buyerId) {
                     query = query.eq('buyer_id', buyerId);
                 }
-                
+
                 const { data: itemsData, error } = await query;
                 if (error) throw error;
 
@@ -2142,7 +2210,7 @@
                 document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
                 document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
                 document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
-                
+
                 document.getElementById('btStock').textContent = fmt(totalStock);
                 document.getElementById('btStockVal').textContent = '$' + fmt(totalStockVal);
 
@@ -2162,21 +2230,14 @@
 
         // =========================================
         // EXCEL-STYLE COLUMN FILTER (BLUE HEADER)
+        // Unique values are fetched from the server, scoped to every OTHER
+        // active filter, so the list (and the filter itself) reflects the
+        // full dataset — not just whatever happened to be on the loaded page.
         // =========================================
-        function openColumnFilter(evt, colIndex, colKey, colLabel) {
+        async function openColumnFilter(evt, colIndex, colKey, colLabel) {
             evt.stopPropagation();
             ocActiveFilterCol = colIndex;
-            
-            const uniqueValues = [...new Set(filteredData.map(row => {
-                let val = getSortValue(row, colKey);
-                return val !== undefined && val !== null ? String(val).trim() : '';
-            }))].sort((a, b) => {
-                if (!isNaN(a) && !isNaN(b)) return parseFloat(a) - parseFloat(b);
-                return String(a).localeCompare(String(b));
-            });
 
-            const selected = activeColumnFilters[colIndex] || new Set(uniqueValues);
-            
             const dropdown = document.createElement('div');
             dropdown.className = 'col-filter-dropdown show';
             dropdown.id = 'colFilterDropdown';
@@ -2186,45 +2247,119 @@
                     <i class="fas fa-times" style="cursor:pointer" onclick="closeColumnFilter()"></i>
                 </div>
                 <div class="col-filter-search-box">
-                    <input type="text" placeholder="Search item..." id="colFilterSearch" oninput="filterColumnOptions('${colKey}')">
+                    <input type="text" placeholder="Search..." id="colFilterSearch" oninput="filterColumnOptions()">
                 </div>
                 <div class="col-filter-quick-actions">
                     <span onclick="columnFilterSelectAll(true)">Select All</span>
                     <span onclick="columnFilterSelectAll(false)">Clear All</span>
                 </div>
                 <div class="col-filter-list" id="colFilterList">
-                    ${uniqueValues.map(val => {
-                        const checked = selected.has(val) ? 'checked' : '';
-                        const displayVal = val === '' ? '(Blank)' : val;
-                        return `<label class="col-filter-item">
-                            <input type="checkbox" value="${val.replace(/"/g, '&quot;')}" ${checked} onchange="updateColumnFilter(${colIndex}, '${val.replace(/'/g, "\\'")}', this.checked)">
-                            <span>${displayVal}</span>
-                        </label>`;
-                    }).join('')}
+                    <div class="col-filter-loading"><i class="fas fa-spinner fa-spin"></i> Loading values...</div>
                 </div>
                 <div class="col-filter-actions">
-                    <button class="btn btn-success" onclick="applyColumnFilter()"><i class="fas fa-check"></i> OK</button>
-                    <button class="btn btn-cancel" onclick="clearColumnFilter()"><i class="fas fa-times"></i> Clear</button>
+                    <button class="btn btn-success" onclick="applyColumnFilter('${colKey}')"><i class="fas fa-check"></i> OK</button>
+                    <button class="btn btn-cancel" onclick="clearColumnFilter('${colKey}')"><i class="fas fa-times"></i> Clear</button>
                 </div>
             `;
-            
+
             const rect = evt.target.getBoundingClientRect();
             dropdown.style.top = (rect.bottom + 5) + 'px';
             dropdown.style.left = Math.min(rect.left, window.innerWidth - 330) + 'px';
-            
+
             document.body.appendChild(dropdown);
+
+            try {
+                const meta = COLUMN_MAP[colKey];
+                if (!meta) return;
+                const col = meta.direct || meta.joined;
+
+                const f = getActiveFilterValues();
+                // Only fetch the single column needed for the dropdown — much
+                // lighter than pulling full joined rows just to list values.
+                let q = db.from('transactions').select(col === (meta.joined || '') ? buildSelectForJoinedCol(meta.joined) : col + (meta.direct ? '' : ''));
+                if (meta.joined) {
+                    q = db.from('transactions').select(buildSelectForJoinedCol(meta.joined));
+                } else {
+                    q = db.from('transactions').select(meta.direct);
+                }
+                q = await applyStandardFilters(q, f, colKey);
+                const { data, error } = await q.limit(8000);
+                if (error) throw error;
+
+                const values = new Set();
+                (data || []).forEach(row => {
+                    const v = extractJoinedValue(row, meta);
+                    values.add(v === null || v === undefined || v === '' ? '' : String(v).trim());
+                });
+
+                const uniqueValues = Array.from(values).sort((a, b) => {
+                    if (a !== '' && b !== '' && !isNaN(a) && !isNaN(b)) return parseFloat(a) - parseFloat(b);
+                    return String(a).localeCompare(String(b));
+                });
+
+                const selected = columnFilters[colKey] || new Set(uniqueValues);
+                const list = document.getElementById('colFilterList');
+                if (!list) return; // dropdown closed before this resolved
+
+                list.innerHTML = uniqueValues.map(val => {
+                    const checked = selected.has(val) ? 'checked' : '';
+                    const displayVal = val === '' ? '(Blank)' : val;
+                    return `<label class="col-filter-item">
+                        <input type="checkbox" value="${val.replace(/"/g, '&quot;')}" ${checked} onchange="toggleColumnFilterValue('${val.replace(/'/g, "\\'")}', this.checked)">
+                        <span>${displayVal}</span>
+                    </label>`;
+                }).join('') || `<div class="col-filter-loading">No values found</div>`;
+
+            } catch (err) {
+                console.error('Column filter load error:', err);
+                const list = document.getElementById('colFilterList');
+                if (list) list.innerHTML = `<div class="col-filter-loading">Error loading values</div>`;
+            }
+        }
+
+        // Builds a minimal select() expression to reach a dot-notation joined
+        // column, e.g. "items.buyers.name" -> "items(buyers(name))"
+        function buildSelectForJoinedCol(joinedPath) {
+            const parts = joinedPath.split('.');
+            let expr = parts[parts.length - 1];
+            for (let i = parts.length - 2; i >= 0; i--) {
+                expr = `${parts[i]}(${expr})`;
+            }
+            return expr;
+        }
+
+        function extractJoinedValue(row, meta) {
+            if (meta.direct) return row[meta.direct];
+            const parts = meta.joined.split('.');
+            let cur = row;
+            for (const p of parts) {
+                if (cur === null || cur === undefined) return '';
+                cur = cur[p];
+            }
+            return cur;
+        }
+
+        // Pending selection (before OK is pressed) tracked separately from
+        // the applied columnFilters so Clear/Cancel don't affect the query
+        // until the user confirms.
+        let pendingColFilterValues = null;
+
+        function toggleColumnFilterValue(value, checked) {
+            if (!pendingColFilterValues) pendingColFilterValues = new Set();
+            if (checked) pendingColFilterValues.add(value);
+            else pendingColFilterValues.delete(value);
         }
 
         function closeColumnFilter() {
             const dropdown = document.getElementById('colFilterDropdown');
             if (dropdown) dropdown.remove();
             ocActiveFilterCol = null;
+            pendingColFilterValues = null;
         }
 
-        function filterColumnOptions(colKey) {
+        function filterColumnOptions() {
             const searchTerm = document.getElementById('colFilterSearch').value.toLowerCase();
             const items = document.querySelectorAll('#colFilterList .col-filter-item');
-            
             items.forEach(item => {
                 const text = item.textContent.toLowerCase();
                 item.style.display = text.includes(searchTerm) ? 'flex' : 'none';
@@ -2232,60 +2367,46 @@
         }
 
         function columnFilterSelectAll(check) {
-            document.querySelectorAll('#colFilterList input[type=checkbox]').forEach(cb => cb.checked = check);
+            document.querySelectorAll('#colFilterList input[type=checkbox]').forEach(cb => {
+                cb.checked = check;
+                toggleColumnFilterValue(cb.value, check);
+            });
         }
 
-        function updateColumnFilter(colIndex, value, isChecked) {
-            if (!activeColumnFilters[colIndex]) activeColumnFilters[colIndex] = new Set();
-            if (isChecked) {
-                activeColumnFilters[colIndex].add(value);
+        async function applyColumnFilter(colKey) {
+            // Snapshot exactly what's checked right now.
+            const checked = Array.from(document.querySelectorAll('#colFilterList input[type=checkbox]:checked')).map(cb => cb.value);
+            const allBoxes = document.querySelectorAll('#colFilterList input[type=checkbox]').length;
+
+            if (checked.length === 0) {
+                showToast('অন্তত একটি value select করুন', 'warning');
+                return;
+            }
+            if (checked.length === allBoxes) {
+                delete columnFilters[colKey]; // everything selected == no filter
             } else {
-                activeColumnFilters[colIndex].delete(value);
+                columnFilters[colKey] = new Set(checked);
             }
+
+            closeColumnFilter();
+            currentPage = 1;
+            markActiveFilterIcons();
+            await loadTransactions();
         }
 
-        function applyColumnFilter() {
-            const colIndex = ocActiveFilterCol;
-            if (colIndex === null) return;
-            
-            const columns = [
-                { key: 'no' }, { key: 'txn_date' }, { key: 'buyer' }, { key: 'item' },
-                { key: 'item_code' }, { key: 'unit' }, { key: 'type' }, { key: 'challan_no' },
-                { key: 'mrr_no' }, { key: 'order_no' }, { key: 'style_no' }, { key: 'qty' },
-                { key: 'unit_price' }, { key: 'line_value' }, { key: 'present_stock' },
-                { key: 'stock_value' }, { key: 'supplier' }, { key: 'team' }, { key: 'remarks' }, { key: 'actions' }
-            ];
-            
-            const colKey = columns[colIndex].key;
-            const selected = activeColumnFilters[colIndex];
-            
-            if (selected && selected.size > 0) {
-                filteredData = allTransactions.filter(row => {
-                    const cellValue = getSortValue(row, colKey);
-                    const strValue = (cellValue !== null && cellValue !== undefined) ? String(cellValue).trim() : '';
-                    return selected.has(strValue);
-                });
-            } else {
-                filteredData = [...allTransactions];
-            }
-            
-            applySorting();
-            updateStats();
-            updateBuyerTotal();
-            renderTable();
+        async function clearColumnFilter(colKey) {
+            delete columnFilters[colKey];
             closeColumnFilter();
+            currentPage = 1;
+            markActiveFilterIcons();
+            await loadTransactions();
         }
 
-        function clearColumnFilter() {
-            if (ocActiveFilterCol !== null) {
-                delete activeColumnFilters[ocActiveFilterCol];
-                filteredData = [...allTransactions];
-                applySorting();
-                updateStats();
-                updateBuyerTotal();
-                renderTable();
-            }
-            closeColumnFilter();
+        function markActiveFilterIcons() {
+            document.querySelectorAll('.filter-icon').forEach(icon => {
+                const key = icon.getAttribute('data-colkey');
+                icon.classList.toggle('active-filter', !!columnFilters[key]);
+            });
         }
 
         document.addEventListener('click', (e) => {
@@ -2434,7 +2555,7 @@
         }
 
         function openDeleteConfirm(txnId) {
-            const txn = filteredData.find(t => t.id === txnId);
+            const txn = pageRows.find(t => t.id === txnId);
             pendingDeleteId = txnId;
 
             const desc = document.getElementById('confirmDesc');
@@ -2480,7 +2601,7 @@
         }
 
         function openEditModal(txnId) {
-            const txn = filteredData.find(t => t.id === txnId);
+            const txn = pageRows.find(t => t.id === txnId);
             if (!txn) {
                 showToast('Transaction not found', 'error');
                 return;
@@ -2561,7 +2682,7 @@
 
         async function saveEditTransaction() {
             if (!pendingEditId) return;
-            const txn = filteredData.find(t => t.id === pendingEditId);
+            const txn = pageRows.find(t => t.id === pendingEditId);
             if (!txn) {
                 showToast('Transaction not found', 'error');
                 return;
@@ -2638,7 +2759,7 @@
         function renderTable() {
             const tableContent = document.getElementById('tableContent');
 
-            if (filteredData.length === 0) {
+            if (totalRowCount === 0) {
                 tableContent.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
@@ -2648,11 +2769,9 @@
                 return;
             }
 
-            const totalPages = Math.ceil(filteredData.length / perPage);
-            if (currentPage > totalPages) currentPage = totalPages;
+            const totalPages = Math.max(1, Math.ceil(totalRowCount / perPage));
             const startIdx = (currentPage - 1) * perPage;
-            const endIdx = Math.min(startIdx + perPage, filteredData.length);
-            const pageData = filteredData.slice(startIdx, endIdx);
+            const endIdx = Math.min(startIdx + pageRows.length, totalRowCount);
 
             const columns = [
                 { key: 'no', label: '#', sortable: false },
@@ -2685,16 +2804,18 @@
                     : '<i class="fas fa-sort sort-icon"></i>';
                 const sortable = col.sortable ? `onclick="sortBy('${col.key}')"` : '';
                 const sortedClass = isSorted ? 'sorted' : '';
-                
-                const filterIcon = col.sortable 
-                    ? `<i class="fas fa-filter filter-icon" style="margin-left:4px;font-size:9px;opacity:0.7" onclick="openColumnFilter(event, ${index}, '${col.key}', '${col.label}')"></i>`
+
+                const isFilterable = col.sortable && !!COLUMN_MAP[col.key];
+                const activeClass = columnFilters[col.key] ? ' active-filter' : '';
+                const filterIcon = isFilterable
+                    ? `<i class="fas fa-filter filter-icon${activeClass}" data-colkey="${col.key}" style="margin-left:4px;font-size:9px;opacity:0.7" onclick="openColumnFilter(event, ${index}, '${col.key}', '${col.label}')"></i>`
                     : '';
-                
+
                 html += `<th class="${sortedClass}" ${sortable} style="position: relative;">${col.label} ${col.sortable ? sortIcon : ''}${filterIcon}</th>`;
             });
             html += '</tr></thead><tbody>';
 
-            pageData.forEach((txn, idx) => {
+            pageRows.forEach((txn, idx) => {
                 const typeClass = txn.type === 'RCVD' ? 'rcvd' : (txn.type === 'DLVD' ? 'dlvd' : 'prvs');
                 const qtyClass = txn.type === 'RCVD' ? 'qty-positive' : (txn.type === 'DLVD' ? 'qty-negative' : 'qty-neutral');
                 const qtyPrefix = txn.type === 'RCVD' ? '+' : (txn.type === 'DLVD' ? '-' : '');
@@ -2729,25 +2850,21 @@
 
             html += '</tbody>';
 
-            let footAddQty = 0, footDlvdQty = 0, footAddVal = 0, footDlvdVal = 0;
-            filteredData.forEach(txn => {
-                const qty = parseFloat(txn.qty) || 0;
-                const val = parseFloat(txn.line_value) || 0;
-                if (txn.type === 'PRVS' || txn.type === 'RCVD') { footAddQty += qty; footAddVal += val; }
-                else if (txn.type === 'DLVD') { footDlvdQty += qty; footDlvdVal += val; }
-            });
+            // Grand total footer — built from server-side aggregates over the
+            // FULL filtered set (agg), never just the current page.
+            const footAddQty = agg.prvsQty + agg.rcvdQty;
+            const footAddVal = agg.prvsVal + agg.rcvdVal;
+            const footDlvdQty = agg.dlvdQty;
+            const footDlvdVal = agg.dlvdVal;
             const footNetQty = footAddQty - footDlvdQty;
             const footNetVal = footAddVal - footDlvdVal;
 
-            const stockTotals = computeStockTotals(filteredData);
-
             html += `<tfoot><tr>
-                <td colspan="11" style="text-align:right;">GRAND TOTAL (all filtered rows):</td>
+                <td colspan="11" style="text-align:right;">GRAND TOTAL (all ${fmt(totalRowCount)} filtered rows):</td>
                 <td>${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
                 <td>—</td>
                 <td>${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
-                <td>${fmt(stockTotals.stock)}</td>
-                <td>$${fmt(stockTotals.stockVal)}</td>
+                <td colspan="2" style="font-size:10.5px;">See Buyer Total card above</td>
                 <td colspan="4"></td>
             </tr></tfoot>`;
 
@@ -2755,7 +2872,7 @@
 
             html += `<div class="pagination">
                 <div class="pagination-info">
-                    Showing ${startIdx + 1}-${endIdx} of ${filteredData.length} transactions
+                    Showing ${totalRowCount === 0 ? 0 : startIdx + 1}-${endIdx} of ${fmt(totalRowCount)} transactions
                 </div>
                 <div class="pagination-controls">
                     <select class="per-page-select" onchange="changePerPage(this.value)">
@@ -2774,6 +2891,7 @@
 
             tableContent.innerHTML = html;
             setHeaderHeightVar();
+            markActiveFilterIcons();
         }
 
         function buildPageNumbers(current, total) {
@@ -2790,14 +2908,14 @@
         function changePerPage(value) {
             perPage = parseInt(value, 10) || 100;
             currentPage = 1;
-            renderTable();
+            loadTransactions();
         }
 
         function goToPage(page) {
-            const totalPages = Math.ceil(filteredData.length / perPage);
+            const totalPages = Math.max(1, Math.ceil(totalRowCount / perPage));
             if (page < 1 || page > totalPages) return;
             currentPage = page;
-            renderTable();
+            loadTransactions();
             document.querySelector('.table-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
@@ -2811,7 +2929,7 @@
             document.getElementById('fStyle').value = '';
             document.getElementById('fTeam').value = '';
             document.getElementById('fSupplier').value = '';
-            activeColumnFilters = {};
+            columnFilters = {};
 
             const today = new Date();
             const thirtyDaysAgo = new Date(today);
@@ -2823,6 +2941,10 @@
             applyFilters();
         }
 
+        // Full Stock History export intentionally still scans the whole
+        // items/transactions tables (it is meant to be a complete snapshot,
+        // not the currently filtered/paginated view) — but the aggregation
+        // happens once here rather than being duplicated per page-view.
         async function downloadFullStockHistory() {
             showToast('Preparing Full Stock History...', 'success');
             try {
@@ -2849,16 +2971,19 @@
                     };
                 });
 
+                const itemLookup = {};
+                items.forEach(i => { itemLookup[i.id] = i; });
+
                 txns.forEach(txn => {
-                    const item = items.find(i => i.id === txn.item_id);
+                    const item = itemLookup[txn.item_id];
                     if (!item) return;
                     const buyerName = item.buyers?.name || 'Unknown';
                     const key = `${buyerName}||${item.description}`;
-                    
+
                     if (!itemStats[key]) {
                         itemStats[key] = { buyer: buyerName, item: item.description, unit: item.unit, rcvdQty: 0, dlvdQty: 0, presentStock: 0 };
                     }
-                    
+
                     if (txn.type === 'RCVD') {
                         itemStats[key].rcvdQty += parseFloat(txn.qty) || 0;
                     } else if (txn.type === 'DLVD') {
@@ -2926,40 +3051,73 @@
             }
         }
 
-        function downloadExcel() {
-            if (!filteredData.length) {
+        // "Download Filtered" now streams the FULL filtered set (not just the
+        // currently visible page) directly from the server in chunks, so the
+        // exported Excel always matches what the filters describe.
+        async function downloadExcel() {
+            if (totalRowCount === 0) {
                 showToast('No data to export', 'error');
                 return;
             }
 
-            const rows = filteredData.map((txn, idx) => ({
-                '#': idx + 1,
-                'Date': txn.txn_date || '',
-                'Buyer': txn.items?.buyers?.name || '',
-                'Item': txn.items?.description || '',
-                'Item Code': txn.items?.item_code || '',
-                'Unit': txn.items?.unit || '',
-                'Type': txn.type,
-                'Challan': txn.challan_no || '',
-                'MRR': txn.mrr_no || '',
-                'Order': txn.order_no || '',
-                'Style': txn.style_no || '',
-                'Qty': parseFloat(txn.qty) || 0,
-                'Unit Price': parseFloat(txn.unit_price_snapshot) || 0,
-                'Value': parseFloat(txn.line_value) || 0,
-                'Stock After': parseFloat(txn.present_stock_after) || 0,
-                'Stock Value After': parseFloat(txn.stock_value_after) || 0,
-                'Supplier': txn.items?.supplier || '',
-                'Team': txn.team_members?.name || '',
-                'Remarks': txn.remarks || ''
-            }));
+            showToast(`Preparing Excel file (${fmt(totalRowCount)} rows)...`, 'success');
 
-            const ws = XLSX.utils.json_to_sheet(rows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
-            const dateStr = new Date().toISOString().split('T')[0];
-            XLSX.writeFile(wb, `GMS_Transactions_${dateStr}.xlsx`);
-            showToast('Excel file downloaded!', 'success');
+            try {
+                const f = getActiveFilterValues();
+                const CHUNK = 1000;
+                const rows = [];
+
+                for (let from = 0; from < totalRowCount; from += CHUNK) {
+                    const to = Math.min(from + CHUNK, totalRowCount) - 1;
+                    let q = db
+                        .from('transactions')
+                        .select(`
+                            id, type, txn_date, qty, unit_price_snapshot, line_value,
+                            challan_no, mrr_no, order_no, style_no, remarks,
+                            present_stock_after, stock_value_after,
+                            items:item_id!inner (description, item_code, unit, supplier, buyers:buyer_id (name)),
+                            team_members:team_member_id (name)
+                        `)
+                        .order('txn_date', { ascending: false })
+                        .order('id', { ascending: false });
+                    q = await applyStandardFilters(q, f);
+                    const { data, error } = await q.range(from, to);
+                    if (error) throw error;
+                    (data || []).forEach(txn => rows.push(txn));
+                }
+
+                const excelRows = rows.map((txn, idx) => ({
+                    '#': idx + 1,
+                    'Date': txn.txn_date || '',
+                    'Buyer': txn.items?.buyers?.name || '',
+                    'Item': txn.items?.description || '',
+                    'Item Code': txn.items?.item_code || '',
+                    'Unit': txn.items?.unit || '',
+                    'Type': txn.type,
+                    'Challan': txn.challan_no || '',
+                    'MRR': txn.mrr_no || '',
+                    'Order': txn.order_no || '',
+                    'Style': txn.style_no || '',
+                    'Qty': parseFloat(txn.qty) || 0,
+                    'Unit Price': parseFloat(txn.unit_price_snapshot) || 0,
+                    'Value': parseFloat(txn.line_value) || 0,
+                    'Stock After': parseFloat(txn.present_stock_after) || 0,
+                    'Stock Value After': parseFloat(txn.stock_value_after) || 0,
+                    'Supplier': txn.items?.supplier || '',
+                    'Team': txn.team_members?.name || '',
+                    'Remarks': txn.remarks || ''
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(excelRows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
+                const dateStr = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(wb, `GMS_Transactions_${dateStr}.xlsx`);
+                showToast('Excel file downloaded!', 'success');
+            } catch (err) {
+                console.error('downloadExcel error:', err);
+                showToast('Error preparing Excel: ' + err.message, 'error');
+            }
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
