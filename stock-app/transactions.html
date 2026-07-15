@@ -1975,7 +1975,17 @@
                 if (teamId) query = query.eq('team_member_id', teamId);
                 if (supplier) query = query.ilike('items.supplier', `%${supplier}%`);
 
-                const { data, error } = await query.limit(30000);
+                // ==========================================
+                // PERFORMANCE OPTIMIZATION (Egress & Speed)
+                // ==========================================
+                // Fetching 30,000 rows with nested joins causes high Egress and slow loading.
+                // Default limit is 2000. If Date filters are applied, limit is 10000.
+                const maxLimit = (dateFrom || dateTo) ? 10000 : 2000;
+                const { data, error } = await query.limit(maxLimit);
+
+                if (data && data.length === maxLimit && !dateFrom && !dateTo) {
+                    showToast('ডেটা বেশি থাকায় সর্বশেষ ২০০০ টি দেখানো হচ্ছে। দ্রুত লোডিং ও Egress কমাতে Date Filter ব্যবহার করুন।', 'warning');
+                }
 
                 if (error) throw error;
                 if (requestId !== loadRequestId) return;
