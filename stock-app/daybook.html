@@ -7,12 +7,20 @@
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0a1628">
     <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <!-- Preconnect: TLS handshake shuru hoy age theke -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.sheetjs.com" crossorigin>
+    <link rel="preconnect" href="https://qwtourjspllhiiryqewf.supabase.co" crossorigin>
+
+    <!-- Only weights actually used: 400,500,600,700,800 (300 & 900 removed - not used in this CSS) -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <!-- Supabase + XLSX libs REMOVED from <head> -> moved to end of <body> so HTML/CSS paints first -->
     <style>
         :root {
             --glass-bg: rgba(255, 255, 255, 0.08);
@@ -591,6 +599,18 @@
         </div>
     </div>
 
+    <!-- Theme applied immediately (before heavy libs load) so there's no flash of wrong theme -->
+    <script>
+        (function() {
+            const saved = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
+
+    <!-- Heavy libs moved here (end of body): browser paints all HTML/CSS above FIRST, then loads these -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
     <script>
         // ============ SUPABASE ============
         const SUPABASE_URL = 'https://qwtourjspllhiiryqewf.supabase.co';
@@ -623,11 +643,7 @@
             const btn = document.getElementById('themeBtn');
             btn.innerHTML = theme === 'dark' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
         }
-        (function() {
-            const saved = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', saved);
-            updateThemeIcon(saved);
-        })();
+        updateThemeIcon(document.documentElement.getAttribute('data-theme'));
 
         // ============ TOAST ============
         function showToast(message, type = 'success') {
@@ -648,10 +664,6 @@
         }
         function pad2(n) { return String(n).padStart(2, '0'); }
 
-        // IMPORTANT: never use Date.toISOString().split('T')[0] for "today"/local dates —
-        // toISOString() converts to UTC, which in UTC+6 (Dhaka) shifts the date back by
-        // one day between midnight and 6 AM local time (e.g. today's postings would be
-        // missing). This formats using the LOCAL calendar date instead.
         function toLocalISODate(d) {
             const yyyy = d.getFullYear();
             const mm = pad2(d.getMonth() + 1);
@@ -739,13 +751,6 @@
         }
 
         // ============ LIVE STOCK ANCHOR ============
-        // The dashboard's "Total Stock Qty / Total Value" comes straight from the
-        // items table (current_stock / current_value columns) — it is NOT simply
-        // "sum of all RCVD minus all DLVD ever posted" (there can be manual edits,
-        // opening entries, adjustments etc. that never went through the transactions
-        // log). So instead of recomputing history from scratch, we anchor the Day
-        // Book to that SAME live source, and only use RCVD/DLVD deltas to walk
-        // backwards/forwards day by day from that anchor.
         async function getLiveStockTotals(buyerId) {
             try {
                 let q = db.from('items').select('current_stock, current_value');
@@ -764,9 +769,6 @@
             }
         }
 
-        // Net RCVD-DLVD activity posted AFTER the visible range's last day — needed to
-        // roll the RIGHT-NOW live stock total back to what it was as of dateTo, so the
-        // last visible row anchors correctly (usually 0 when dateTo = today).
         async function getFutureNet(dateTo, buyerId) {
             if (!dateTo) return { qty: 0, val: 0 };
             try {
@@ -829,9 +831,6 @@
                 ]);
                 if (error) throw error;
 
-                // Present Stock of the LAST visible day/month = live stock right now,
-                // minus whatever has already been posted after that day (if dateTo is
-                // today, futureNet is normally 0, so this equals the live total exactly).
                 closingAnchorQty = live.qty - futureNet.qty;
                 closingAnchorVal = live.val - futureNet.val;
 
@@ -851,12 +850,7 @@
             }
         }
 
-        // ============ PERIOD KEYS (fill every day/month in range, even with zero postings) ============
-        // Without this, a day/month with NO RCVD/DLVD entries simply never appears —
-        // which is why "today" can vanish from the table until something is posted.
-        // We instead always list every day (or month) between Date From and Date To,
-        // defaulting to zero activity, so today's row always shows its carried-forward
-        // Present Stock even before anything is posted for it.
+        // ============ PERIOD KEYS ============
         function generatePeriodKeys(dateFrom, dateTo, mode) {
             if (!dateFrom || !dateTo) return null;
             const keys = [];
@@ -881,16 +875,12 @@
             return keys;
         }
 
-        // ============ BUILD SUMMARY (group by day or month) ============
-        // Previous Stock (prevQty/prevVal) = running stock carried in from
-        //   before this day/month started.
-        // Present Stock (cumQty/cumVal)    = Previous Stock + RCVD - DLVD
-        //   for this day/month (i.e. the stock balance as of this period).
+        // ============ BUILD SUMMARY ============
         function buildSummary() {
             const map = new Map();
 
             rawTxns.forEach(txn => {
-                const key = viewMode === 'daily' ? txn.txn_date : txn.txn_date.slice(0, 7); // YYYY-MM
+                const key = viewMode === 'daily' ? txn.txn_date : txn.txn_date.slice(0, 7);
                 if (!map.has(key)) {
                     map.set(key, {
                         period: key,
@@ -907,8 +897,6 @@
                 row.entries += 1;
             });
 
-            // Fill in zero-activity days/months across the selected range (e.g. today,
-            // before anything has been posted for it) so they still show up as rows.
             const dateFrom = document.getElementById('fDateFrom').value;
             const dateTo = document.getElementById('fDateTo').value;
             const allKeys = generatePeriodKeys(dateFrom, dateTo, viewMode);
@@ -920,13 +908,8 @@
                 });
             }
 
-            // Walk chronologically. Map insertion order is no longer guaranteed ascending
-            // once gap-filled keys are added, so sort explicitly by period key (YYYY-MM-DD
-            // or YYYY-MM both sort correctly as plain strings).
             const sortedKeys = Array.from(map.keys()).sort();
 
-            // Pass 1: compute each row's own net (RCVD - DLVD), and the total net across
-            // the whole visible range.
             let totalNetQty = 0, totalNetVal = 0;
             const netRows = sortedKeys.map(key => {
                 const row = map.get(key);
@@ -937,21 +920,14 @@
                 return { ...row, netQty, netVal };
             });
 
-            // Work out the TRUE opening point (stock just before the first visible row)
-            // by starting from the live-anchored closing total (last visible row's Present
-            // Stock) and subtracting all the net activity in between. This guarantees the
-            // last row's Present Stock lands exactly on closingAnchorQty/Val — i.e. matches
-            // the dashboard's live "Total Stock Qty / Total Value" — instead of drifting
-            // off if we tried to rebuild everything purely from transaction history.
             const openingQty = closingAnchorQty - totalNetQty;
             const openingVal = closingAnchorVal - totalNetVal;
 
-            // Pass 2: walk forward from that true opening point.
             let cumQty = openingQty, cumVal = openingVal;
             summaryRows = netRows.map(row => {
-                const prevQty = cumQty;   // stock brought forward from before this period
+                const prevQty = cumQty;
                 const prevVal = cumVal;
-                cumQty += row.netQty;     // Present Stock = Previous Stock + RCVD - DLVD
+                cumQty += row.netQty;
                 cumVal += row.netVal;
                 return { ...row, prevQty, prevVal, cumQty, cumVal };
             });
@@ -1007,7 +983,7 @@
             document.getElementById('statEntries').textContent = fmt(totalEntries);
         }
 
-        // ============ DRILLDOWN MODAL (click RCVD/DLVD cell to see entries) ============
+        // ============ DRILLDOWN MODAL ============
         function showDrilldown(period, type) {
             const filtered = rawTxns.filter(t => {
                 const key = viewMode === 'daily' ? t.txn_date : t.txn_date.slice(0, 7);
@@ -1119,17 +1095,12 @@
 
             html += '</tbody>';
 
-            // Grand total footer — based on ALL filtered rows (not just current page).
-            // Previous Stock (first row's) and Present Stock (last row's) are shown
-            // rather than summed, since summing a running stock balance across days
-            // isn't meaningful.
             let gRcvdQty = 0, gRcvdVal = 0, gDlvdQty = 0, gDlvdVal = 0, gEntries = 0;
             rows.forEach(r => {
                 gRcvdQty += r.rcvdQty; gRcvdVal += r.rcvdVal;
                 gDlvdQty += r.dlvdQty; gDlvdVal += r.dlvdVal;
                 gEntries += r.entries;
             });
-            // rows may be sorted asc/desc by period, so find true first/last chronologically
             const chronoRows = [...rows].sort((a, b) => a.period < b.period ? -1 : (a.period > b.period ? 1 : 0));
             const openingRow = chronoRows[0];
             const closingRow = chronoRows[chronoRows.length - 1];
@@ -1289,10 +1260,11 @@
         }
 
         // ============ INIT ============
-        document.addEventListener('DOMContentLoaded', async () => {
+        // Scripts already run after body parsed, so no need to wait for DOMContentLoaded
+        (async () => {
             await loadFilters();
             await loadData();
-        });
+        })();
 
         document.querySelectorAll('.filter-group input').forEach(input => {
             input.addEventListener('keypress', (e) => {
