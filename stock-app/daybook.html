@@ -750,7 +750,7 @@
             try {
                 let q = db.from('items').select('current_stock, current_value');
                 if (buyerId) q = q.eq('buyer_id', buyerId);
-                const { data, error } = await q.limit(200000);
+                const { data, error } = await q.limit(5000);
                 if (error) throw error;
                 let qty = 0, val = 0;
                 (data || []).forEach(i => {
@@ -777,7 +777,7 @@
                     .gt('txn_date', dateTo);
                 if (buyerId) q = q.eq('items.buyer_id', buyerId);
 
-                const { data, error } = await q.limit(200000);
+                const { data, error } = await q.limit(5000);
                 if (error) throw error;
 
                 let qty = 0, val = 0;
@@ -823,7 +823,7 @@
                 if (buyerId) query = query.eq('items.buyer_id', buyerId);
 
                 const [{ data, error }, live, futureNet] = await Promise.all([
-                    query.limit(20000),
+                    query.limit(5000),
                     getLiveStockTotals(buyerId),
                     getFutureNet(dateTo, buyerId)
                 ]);
