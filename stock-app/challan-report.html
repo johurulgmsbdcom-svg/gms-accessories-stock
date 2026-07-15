@@ -7,12 +7,20 @@
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0a1628">
     <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <!-- Preconnect: TLS handshake shuru hoy age theke -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.sheetjs.com" crossorigin>
+    <link rel="preconnect" href="https://qwtourjspllhiiryqewf.supabase.co" crossorigin>
+
+    <!-- Only weights actually used: 400,500,600,700,800 (300 & 900 removed - not used in this CSS) -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <!-- Supabase + XLSX libs REMOVED from <head> -> moved to end of <body> so HTML/CSS paints first -->
     <style>
         :root {
             --glass-bg: rgba(255, 255, 255, 0.08);
@@ -414,6 +422,18 @@
         <span id="toastMsg">Success!</span>
     </div>
 
+    <!-- Theme applied immediately (before heavy libs load) so there's no flash of wrong theme -->
+    <script>
+        (function() {
+            const saved = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
+
+    <!-- Heavy libs moved here (end of body): browser paints all HTML/CSS above FIRST, then loads these -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
     <script>
         const SUPABASE_URL = 'https://qwtourjspllhiiryqewf.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_pcQFRFQWWAT1zTXfVfgdSw_43rcVr5S';
@@ -436,11 +456,7 @@
             const btn = document.getElementById('themeBtn');
             btn.innerHTML = theme === 'dark' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
         }
-        (function() {
-            const saved = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', saved);
-            updateThemeIcon(saved);
-        })();
+        updateThemeIcon(document.documentElement.getAttribute('data-theme'));
 
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
@@ -765,10 +781,11 @@
             showToast('Excel file downloaded!', 'success');
         }
 
-        document.addEventListener('DOMContentLoaded', async () => {
+        // Scripts already run after body parsed, so no need to wait for DOMContentLoaded
+        (async () => {
             await loadFilters();
             await loadData();
-        });
+        })();
 
         document.querySelectorAll('.filter-group input').forEach(input => {
             input.addEventListener('keypress', (e) => {
