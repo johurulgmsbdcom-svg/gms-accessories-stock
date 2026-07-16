@@ -1348,11 +1348,7 @@
         // FIX: Fetch the COMPLETE transaction history for every item
         // (no date filter at the query level). We need the full history
         // because PRVS (opening stock) rows and any RCVD/DLVD rows dated
-        // before "Date From" all belong in the "Previous" bucket, while
-        // rows inside the selected range belong in Received/Delivery,
-        // and rows after "Date To" must be excluded from Present Stock
-        // for that date. Filtering at the query level (like the old code
-        // did) silently threw away the PRVS rows and broke this.
+        // before "Date From" all belong in the "Previous" bucket.
         // ================================================================
         async function fetchTransactionsForItems(itemIds) {
             if (!itemIds.length) return {};
@@ -1370,7 +1366,7 @@
                     .order('txn_date', { ascending: true })
                     .order('id', { ascending: true });
 
-                const { data, error } = await query.limit(50000);
+                const { data, error } = await query.limit(100000);
 
                 if (error) throw error;
 
@@ -1385,30 +1381,7 @@
 
         // ================================================================
         // FIX: Correct Previous / Received / Delivery / Present logic.
-        //
-        // Previous Qty/Value  = every PRVS row (opening stock, always
-        //                        counted as "previous" regardless of its
-        //                        date) PLUS every RCVD row and MINUS every
-        //                        DLVD row dated strictly BEFORE "Date From".
-        //
-        // Received Qty/Value  = RCVD rows with txn_date inside
-        //                        [Date From, Date To].
-        //
-        // Delivery Qty/Value  = DLVD rows with txn_date inside
-        //                        [Date From, Date To].
-        //
-        // Present Stock/Value = Previous + Received − Delivery, i.e. the
-        //                        running balance as of "Date To", built
-        //                        entirely from real ledger rows (PRVS +
-        //                        RCVD − DLVD) instead of being derived
-        //                        backwards from today's current_stock.
-        //                        Rows dated AFTER "Date To" are ignored
-        //                        so the report reflects stock as it stood
-        //                        on that date.
-        //
-        // If Date From is left blank, nothing is "before" it, so Previous
-        // is 0 and everything up to Date To (or all rows, if Date To is
-        // also blank) is treated as Received/Delivery.
+        // Matches Excel Balance Sheet logic 100%.
         // ================================================================
         function computePivotForItem(item, txns, dateFrom, dateTo) {
             let prevQty = 0, prevValue = 0;
@@ -1420,20 +1393,20 @@
                 const val = parseFloat(txn.line_value) || 0;
                 const d = txn.txn_date || '';
 
+                // 1. PRVS is ALWAYS considered Previous (Opening Balance)
                 if (txn.type === 'PRVS') {
-                    // Opening balance is always part of "Previous"
                     prevQty += qty;
                     prevValue += val;
                     return;
                 }
 
+                // 2. If transaction is AFTER the report end date, ignore it completely
                 if (dateTo && d > dateTo) {
-                    // Happens after the report's end date — doesn't count
                     return;
                 }
 
+                // 3. If transaction is BEFORE the report start date, it rolls into Previous
                 if (dateFrom && d < dateFrom) {
-                    // Happened before the report's start date — rolls into Previous
                     if (txn.type === 'RCVD') {
                         prevQty += qty;
                         prevValue += val;
@@ -1444,7 +1417,7 @@
                     return;
                 }
 
-                // Inside the selected date range
+                // 4. Transaction is WITHIN the report date range
                 if (txn.type === 'RCVD') {
                     rcvdQty += qty;
                     rcvdValue += val;
@@ -1454,6 +1427,7 @@
                 }
             });
 
+            // Present Stock = Previous + Received - Delivery
             const presentQty = prevQty + rcvdQty - dlvdQty;
             const presentValue = prevValue + rcvdValue - dlvdValue;
 
@@ -1531,13 +1505,10 @@
             }
         }
 
-        // Returns the row set that should actually be displayed / exported,
-        // after applying the "hide zero present-stock" toggle.
         function getDisplayRows() {
             const hideZeroEl = document.getElementById('fHideZeroStock');
             const hideZero = hideZeroEl ? hideZeroEl.checked : false;
             if (!hideZero) return pivotRows;
-            // Treat tiny floating point noise as zero too
             return pivotRows.filter(row => Math.abs(row.presentQty || 0) > 0.0001);
         }
 
@@ -1683,7 +1654,6 @@
             document.getElementById('statStockValue').textContent = '$' + fmt(grandTotal.stockValue);
         }
 
-        // ============ DELETE ITEM (only offered when Present Stock is 0) ============
         let pendingDeleteItemId = null;
 
         function confirmDeleteItem(itemId) {
@@ -1717,8 +1687,6 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
 
             try {
-                // Only rows belonging to this exact item_id are touched —
-                // no other item's PRVS/RCVD/DLVD history is affected.
                 const { error: txnErr } = await db
                     .from('transactions')
                     .delete()
