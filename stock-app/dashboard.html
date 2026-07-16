@@ -586,19 +586,28 @@
 
         async function loadStats() {
             try {
-                const { count: itemCount } = await db.from('items').select('*', { count: 'exact', head: true });
+                // ✅ FIXED: item ids fetched with count in one call (used below for pivot-matched totals)
+                const { data: allItemIdsData, count: itemCount } = await db.from('items').select('id', { count: 'exact' }).limit(300000);
                 setStatValue('statItems', fmt(itemCount || 0));
 
                 const { count: buyerCount } = await db.from('buyers').select('*', { count: 'exact', head: true });
                 setStatValue('statBuyers', fmt(buyerCount || 0));
 
-                // ✅ SAME LOGIC: Fetching directly from 'items' table
-                const { data: stockData } = await db.from('items').select('current_stock').limit(300000);
-                const totalStockQty = (stockData || []).reduce((sum, i) => sum + (parseFloat(i.current_stock) || 0), 0);
+                // ✅ PIVOT-MATCHED FIX: the stored items.current_stock / items.current_value
+                // columns can drift out of sync with the real transaction history (this was
+                // causing Dashboard's Total Stock Qty to disagree with Pivot's Present Stock).
+                // So instead of trusting those stored columns, recompute Present Stock / Value
+                // straight from transactions using the exact same logic as pivot.html.
+                const statItemIds = (allItemIdsData || []).map(i => i.id);
+                const statTxnsByItem = await fetchTransactionsForItems(statItemIds);
+                let totalStockQty = 0;
+                let totalValue = 0;
+                statItemIds.forEach(id => {
+                    const pivot = computePivotForItem({ id }, statTxnsByItem[id] || [], '', '');
+                    totalStockQty += pivot.presentQty;
+                    totalValue += pivot.presentValue;
+                });
                 setStatValue('statStockQty', fmt(totalStockQty));
-
-                const { data: valueData } = await db.from('items').select('current_value').limit(300000);
-                const totalValue = (valueData || []).reduce((s, i) => s + (parseFloat(i.current_value) || 0), 0);
                 setStatValue('statValue', '$' + fmt(totalValue));
 
                 const month = document.getElementById('monthPicker').value;
