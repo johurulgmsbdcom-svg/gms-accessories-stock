@@ -1356,40 +1356,51 @@
         }
 
         // Fetch transactions for items within date range (all types — PRVS, RCVD, DLVD)
+        // ✅ FIXED: uses .range() pagination instead of a single .limit(20000) call,
+        // so large stock histories are no longer silently truncated.
         async function fetchTransactionsForItems(itemIds, dateFrom, dateTo) {
             if (!itemIds.length) return {};
 
             const CHUNK = 200;
+            const PAGE = 1000;
             const byItem = {};
             itemIds.forEach(id => { byItem[id] = []; });
 
             for (let i = 0; i < itemIds.length; i += CHUNK) {
                 const chunkIds = itemIds.slice(i, i + CHUNK);
-                let query = db
-                    .from('transactions')
-                    .select('id, item_id, type, txn_date, qty, line_value')
-                    .in('item_id', chunkIds)
-                    .order('txn_date', { ascending: true });
+                let from = 0;
 
-                if (dateFrom) query = query.gte('txn_date', dateFrom);
-                if (dateTo) query = query.lte('txn_date', dateTo);
+                while (true) {
+                    let query = db
+                        .from('transactions')
+                        .select('id, item_id, type, txn_date, qty, line_value')
+                        .in('item_id', chunkIds)
+                        .order('txn_date', { ascending: true });
 
-                const { data, error } = await query.limit(20000);
+                    if (dateFrom) query = query.gte('txn_date', dateFrom);
+                    if (dateTo) query = query.lte('txn_date', dateTo);
 
-                if (error) throw error;
+                    const { data, error } = await query.range(from, from + PAGE - 1);
 
-                (data || []).forEach(txn => {
-                    if (!byItem[txn.item_id]) byItem[txn.item_id] = [];
-                    byItem[txn.item_id].push(txn);
-                });
+                    if (error) throw error;
+
+                    (data || []).forEach(txn => {
+                        if (!byItem[txn.item_id]) byItem[txn.item_id] = [];
+                        byItem[txn.item_id].push(txn);
+                    });
+
+                    if (!data || data.length < PAGE) break;
+                    from += PAGE;
+                }
             }
 
             return byItem;
         }
 
-        // ✅ FIXED: Previous stock is now computed DIRECTLY from the ledger
+        // ✅ FIXED: Previous stock is computed DIRECTLY from the ledger
         // (sum of every PRVS/RCVD/DLVD transaction dated BEFORE dateFrom),
-        // instead of back-calculating from items.current_stock.
+        // using .range() pagination so it can no longer silently drop rows
+        // once a buyer/date-range's transaction count exceeds a fixed limit.
         // This means it can never drift away from the transaction ledger,
         // and will always match Ledger/transactions.html totals exactly.
         async function fetchPreviousStockForItems(itemIds, dateFrom) {
@@ -1398,29 +1409,38 @@
             if (!itemIds.length || !dateFrom) return byItem;
 
             const CHUNK = 200;
+            const PAGE = 1000;
+
             for (let i = 0; i < itemIds.length; i += CHUNK) {
                 const chunkIds = itemIds.slice(i, i + CHUNK);
-                const { data, error } = await db
-                    .from('transactions')
-                    .select('item_id, type, qty, line_value')
-                    .in('item_id', chunkIds)
-                    .lt('txn_date', dateFrom)
-                    .limit(50000);
+                let from = 0;
 
-                if (error) throw error;
+                while (true) {
+                    const { data, error } = await db
+                        .from('transactions')
+                        .select('item_id, type, qty, line_value')
+                        .in('item_id', chunkIds)
+                        .lt('txn_date', dateFrom)
+                        .range(from, from + PAGE - 1);
 
-                (data || []).forEach(txn => {
-                    const qty = parseFloat(txn.qty) || 0;
-                    const val = parseFloat(txn.line_value) || 0;
-                    if (!byItem[txn.item_id]) byItem[txn.item_id] = { qty: 0, value: 0 };
-                    if (txn.type === 'PRVS' || txn.type === 'RCVD') {
-                        byItem[txn.item_id].qty += qty;
-                        byItem[txn.item_id].value += val;
-                    } else if (txn.type === 'DLVD') {
-                        byItem[txn.item_id].qty -= qty;
-                        byItem[txn.item_id].value -= val;
-                    }
-                });
+                    if (error) throw error;
+
+                    (data || []).forEach(txn => {
+                        const qty = parseFloat(txn.qty) || 0;
+                        const val = parseFloat(txn.line_value) || 0;
+                        if (!byItem[txn.item_id]) byItem[txn.item_id] = { qty: 0, value: 0 };
+                        if (txn.type === 'PRVS' || txn.type === 'RCVD') {
+                            byItem[txn.item_id].qty += qty;
+                            byItem[txn.item_id].value += val;
+                        } else if (txn.type === 'DLVD') {
+                            byItem[txn.item_id].qty -= qty;
+                            byItem[txn.item_id].value -= val;
+                        }
+                    });
+
+                    if (!data || data.length < PAGE) break;
+                    from += PAGE;
+                }
             }
             return byItem;
         }
