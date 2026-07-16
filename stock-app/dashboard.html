@@ -858,6 +858,96 @@
             });
         }
 
+        // ================================================================
+        // PIVOT-MATCHED LOGIC: identical to pivot.html so "Present Stock"
+        // here always agrees with the Pivot Report, item for item.
+        // ================================================================
+        async function fetchTransactionsForItems(itemIds) {
+            if (!itemIds.length) return {};
+
+            const CHUNK = 200;
+            const byItem = {};
+            itemIds.forEach(id => { byItem[id] = []; });
+
+            for (let i = 0; i < itemIds.length; i += CHUNK) {
+                const chunkIds = itemIds.slice(i, i + CHUNK);
+                let query = db
+                    .from('transactions')
+                    .select('id, item_id, type, txn_date, qty, line_value')
+                    .in('item_id', chunkIds)
+                    .order('txn_date', { ascending: true })
+                    .order('id', { ascending: true });
+
+                const { data, error } = await query.limit(100000);
+
+                if (error) throw error;
+
+                (data || []).forEach(txn => {
+                    if (!byItem[txn.item_id]) byItem[txn.item_id] = [];
+                    byItem[txn.item_id].push(txn);
+                });
+            }
+
+            return byItem;
+        }
+
+        function computePivotForItem(item, txns, dateFrom, dateTo) {
+            let prevQty = 0, prevValue = 0;
+            let rcvdQty = 0, rcvdValue = 0;
+            let dlvdQty = 0, dlvdValue = 0;
+
+            txns.forEach(txn => {
+                const qty = parseFloat(txn.qty) || 0;
+                const val = parseFloat(txn.line_value) || 0;
+                const d = txn.txn_date || '';
+
+                // 1. PRVS is ALWAYS considered Previous (Opening Balance)
+                if (txn.type === 'PRVS') {
+                    prevQty += qty;
+                    prevValue += val;
+                    return;
+                }
+
+                // 2. If transaction is AFTER the report end date, ignore it completely
+                if (dateTo && d > dateTo) {
+                    return;
+                }
+
+                // 3. If transaction is BEFORE the report start date, it rolls into Previous
+                if (dateFrom && d < dateFrom) {
+                    if (txn.type === 'RCVD') {
+                        prevQty += qty;
+                        prevValue += val;
+                    } else if (txn.type === 'DLVD') {
+                        prevQty -= qty;
+                        prevValue -= val;
+                    }
+                    return;
+                }
+
+                // 4. Transaction is WITHIN the report date range
+                if (txn.type === 'RCVD') {
+                    rcvdQty += qty;
+                    rcvdValue += val;
+                } else if (txn.type === 'DLVD') {
+                    dlvdQty += qty;
+                    dlvdValue += val;
+                }
+            });
+
+            // Present Stock = Previous + Received - Delivery
+            const presentQty = prevQty + rcvdQty - dlvdQty;
+            const presentValue = prevValue + rcvdValue - dlvdValue;
+
+            return {
+                item,
+                prevQty, prevValue,
+                rcvdQty, rcvdValue,
+                dlvdQty, dlvdValue,
+                presentQty, presentValue
+            };
+        }
+
         async function loadBalanceTable() {
             const buyerFilter = document.getElementById('buyerFilter').value;
             const month = document.getElementById('monthPicker').value;
@@ -866,46 +956,60 @@
             // ✅ FIXED: Safe end-of-month calculation
             const endDate = new Date(parseInt(year), parseInt(mon), 0).toISOString().split('T')[0];
 
+            const tbody = document.getElementById('balanceBody');
+
             try {
-                let query = db.from('transactions').select(`type, qty, unit_price_snapshot, items:item_id (description, unit, goods_location, current_stock, current_value, buyers:buyer_id (name))`).in('type', ['RCVD', 'DLVD']).gte('txn_date', startDate).lte('txn_date', endDate);
+                // 1) Get the items in scope (same item set the Pivot Report uses)
+                let itemQuery = db
+                    .from('items')
+                    .select(`id, description, unit, goods_location, buyer_id, buyers:buyer_id (name)`)
+                    .order('description', { ascending: true });
 
-                if (buyerFilter) query = query.eq('items.buyer_id', buyerFilter);
+                if (buyerFilter) itemQuery = itemQuery.eq('buyer_id', buyerFilter);
 
-                const { data, error } = await query;
-                if (error) throw error;
+                const { data: itemsData, error: itemsErr } = await itemQuery;
+                if (itemsErr) throw itemsErr;
 
-                const tbody = document.getElementById('balanceBody');
-                if (!data || data.length === 0) {
+                const items = itemsData || [];
+
+                if (items.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);"><i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 10px; display: block; opacity: 0.5;"></i>No transactions found</td></tr>`;
                     return;
                 }
 
-                const itemStats = {};
-                data.forEach(txn => {
-                    const item = txn.items;
-                    if (!item) return;
-                    const key = `${item.buyers?.name}-${item.description}`;
-                    if (!itemStats[key]) {
-                        itemStats[key] = {
-                            buyer: item.buyers?.name || 'Unknown', item: item.description, unit: item.unit,
-                            location: item.goods_location || '—', rcvd: 0, dlvd: 0,
-                            stock: item.current_stock || 0, value: item.current_value || 0
-                        };
-                    }
-                    if (txn.type === 'RCVD') itemStats[key].rcvd += parseFloat(txn.qty) || 0;
-                    else itemStats[key].dlvd += parseFloat(txn.qty) || 0;
-                });
+                // 2) Pull FULL transaction history per item (identical to Pivot Report)
+                const itemIds = items.map(i => i.id);
+                const txnsByItem = await fetchTransactionsForItems(itemIds);
 
-                const rows = Object.values(itemStats);
-                tbody.innerHTML = rows.map(row => `
+                // 3) Compute Previous / Received / Delivery / Present exactly like Pivot Report,
+                //    using the selected month as the date window
+                const pivotRows = items.map(item =>
+                    computePivotForItem(item, txnsByItem[item.id] || [], startDate, endDate)
+                );
+
+                // Only show items that actually had RCVD/DLVD movement in the selected month
+                // (keeps this table focused on the month like before), while Present Stock
+                // itself is always the true pivot-matched running balance.
+                const rows = pivotRows.filter(row => Math.abs(row.rcvdQty) > 0.0001 || Math.abs(row.dlvdQty) > 0.0001);
+
+                if (rows.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);"><i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 10px; display: block; opacity: 0.5;"></i>No transactions found</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = rows.map(row => {
+                    const item = row.item;
+                    const buyerName = item.buyers?.name || 'Unknown';
+                    return `
                     <tr>
-                        <td>${row.buyer}</td><td>${row.item}</td><td>${row.unit}</td>
-                        <td class="stock-positive">+${fmt(row.rcvd)}</td>
-                        <td class="stock-negative">-${fmt(row.dlvd)}</td>
-                        <td class="${row.stock >= 0 ? 'stock-positive' : 'stock-negative'}">${fmt(row.stock)}</td>
-                        <td>$${fmt(row.value)}</td><td>${row.location}</td>
+                        <td>${buyerName}</td><td>${item.description || ''}</td><td>${item.unit || ''}</td>
+                        <td class="stock-positive">+${fmt(row.rcvdQty)}</td>
+                        <td class="stock-negative">-${fmt(row.dlvdQty)}</td>
+                        <td class="${row.presentQty >= 0 ? 'stock-positive' : 'stock-negative'}">${fmt(row.presentQty)}</td>
+                        <td>$${fmt(row.presentValue)}</td><td>${item.goods_location || '—'}</td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
 
             } catch (err) {
                 console.error('Balance table error:', err);
