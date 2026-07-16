@@ -1736,7 +1736,7 @@
         let activeColumnFilters = {};
         let ocActiveFilterCol = null;
         
-        // FIX: Global variable to store current stock totals matching Pivot Report
+        // FIX: Global variable to store current stock totals matching Pivot Report exactly
         let currentFilteredStockTotals = { stock: 0, stockVal: 0 };
 
         function setHeaderHeightVar() {
@@ -2082,7 +2082,10 @@
             document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
         }
 
-        // FIX: Fetch CURRENT stock from items table to perfectly match Pivot Report
+        // ================================================================
+        // FIX: Fetch CURRENT stock from items table to perfectly match 
+        // Pivot Report's "Present Stock" (e.g., 17,824,031)
+        // ================================================================
         async function getCurrentStockForFilteredItems() {
             const buyerId = document.getElementById('fBuyer').value;
             const itemText = document.getElementById('fItem').value.trim();
