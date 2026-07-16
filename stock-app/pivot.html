@@ -1419,7 +1419,7 @@
                         .from('transactions')
                         .select('item_id, type, qty, line_value')
                         .in('item_id', chunkIds)
-                        .lt('txn_date', dateFrom)
+                        .lt('txn_date', dateFrom)  // ✅ Strictly BEFORE dateFrom
                         .order('txn_date', { ascending: true })
                         .range(from, from + PAGE - 1);
 
@@ -1485,9 +1485,11 @@
                 }
             });
 
+            // ✅ Present Stock DIRECTLY from items table (matches Dashboard & Ledger)
             const presentQty = parseFloat(item.current_stock) || 0;
             const presentValue = parseFloat(item.current_value) || 0;
 
+            // ✅ Previous Qty/Value from ledger (sum before dateFrom)
             const prevQty = prevStock ? prevStock.qty : 0;
             const prevValue = prevStock ? prevStock.value : 0;
 
