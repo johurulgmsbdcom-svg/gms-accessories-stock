@@ -340,6 +340,28 @@
             color: var(--text-muted);
         }
 
+        .filter-group.checkbox-group {
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+            padding-top: 22px;
+        }
+
+        .filter-group.checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent-blue);
+        }
+
+        .filter-group.checkbox-group label {
+            text-transform: none;
+            font-size: 13px;
+            color: var(--text-primary);
+            cursor: pointer;
+            letter-spacing: 0;
+        }
+
         .multi-select-wrapper {
             position: relative;
         }
@@ -1001,6 +1023,10 @@
                     <label>Item</label>
                     <input type="text" id="fItem" placeholder="Search item...">
                 </div>
+                <div class="filter-group checkbox-group">
+                    <input type="checkbox" id="fHideZeroStock" checked onchange="renderPivotTable()">
+                    <label for="fHideZeroStock">Present Stock = 0 আইটেম লুকান (Hide)</label>
+                </div>
                 <div class="filter-group" style="justify-content: flex-end;">
                     <button class="btn btn-search" onclick="applyFilters()" style="width: 100%;">
                         <i class="fas fa-search"></i> Search
@@ -1361,21 +1387,37 @@
             }
         }
 
+        // Returns the row set that should actually be displayed / exported,
+        // after applying the "hide zero present-stock" toggle.
+        function getDisplayRows() {
+            const hideZeroEl = document.getElementById('fHideZeroStock');
+            const hideZero = hideZeroEl ? hideZeroEl.checked : false;
+            if (!hideZero) return pivotRows;
+            // Treat tiny floating point noise as zero too
+            return pivotRows.filter(row => Math.abs(row.presentQty || 0) > 0.0001);
+        }
+
         function renderPivotTable() {
             const tableContent = document.getElementById('tableContent');
+            const displayRows = getDisplayRows();
 
-            if (pivotRows.length === 0) {
+            if (displayRows.length === 0) {
                 tableContent.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
                         <p>No items found</p>
                     </div>
                 `;
+                document.getElementById('statTotalItems').textContent = '0';
+                document.getElementById('statPrevQty').textContent = '0';
+                document.getElementById('statPrevValue').textContent = '$0';
+                document.getElementById('statPresentStock').textContent = '0';
+                document.getElementById('statStockValue').textContent = '$0';
                 return;
             }
 
             const groups = {};
-            pivotRows.forEach(row => {
+            displayRows.forEach(row => {
                 const buyerName = row.item.buyers?.name || 'Unknown Buyer';
                 if (!groups[buyerName]) groups[buyerName] = [];
                 groups[buyerName].push(row);
@@ -1483,7 +1525,7 @@
             html += '</tbody></table></div>';
             tableContent.innerHTML = html;
 
-            document.getElementById('statTotalItems').textContent = fmt(pivotRows.length);
+            document.getElementById('statTotalItems').textContent = fmt(displayRows.length);
             document.getElementById('statPrevQty').textContent = fmt(grandTotal.prevQty);
             document.getElementById('statPrevValue').textContent = '$' + fmt(grandTotal.prevValue);
             document.getElementById('statPresentStock').textContent = fmt(grandTotal.presentStock);
@@ -1494,13 +1536,15 @@
             document.getElementById('fDateFrom').value = '';
             document.getElementById('fDateTo').value = '';
             document.getElementById('fItem').value = '';
+            document.getElementById('fHideZeroStock').checked = true;
             deselectAllBuyers();
             applyFilters();
             showToast('Filters reset', 'success');
         }
 
         function printReport() {
-            if (pivotRows.length === 0) {
+            const displayRows = getDisplayRows();
+            if (displayRows.length === 0) {
                 showToast('No data to print', 'error');
                 return;
             }
@@ -1518,7 +1562,8 @@
         }
 
         function downloadExcel() {
-            if (pivotRows.length === 0) {
+            const displayRows = getDisplayRows();
+            if (displayRows.length === 0) {
                 showToast('No data to download', 'error');
                 return;
             }
@@ -1526,7 +1571,7 @@
             showToast('Preparing Excel file...', 'success');
 
             const groups = {};
-            pivotRows.forEach(row => {
+            displayRows.forEach(row => {
                 const buyerName = row.item.buyers?.name || 'Unknown Buyer';
                 if (!groups[buyerName]) groups[buyerName] = [];
                 groups[buyerName].push(row);
