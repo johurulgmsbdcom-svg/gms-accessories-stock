@@ -776,6 +776,81 @@
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
+        .pivot-del-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            border: 1px solid var(--accent-red);
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            font-size: 11px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .pivot-del-btn:hover {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .confirm-modal-content {
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 26px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+        .confirm-icon {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            font-size: 24px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 14px;
+        }
+        .confirm-title {
+            font-size: 16px; font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .confirm-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 22px;
+            line-height: 1.5;
+            text-align: left;
+        }
+        .confirm-actions { display: flex; gap: 10px; }
+        .confirm-actions .btn { flex: 1; justify-content: center; }
+        .btn-cancel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+        }
+        .btn-delete-confirm {
+            background: linear-gradient(135deg, var(--accent-red), #dc2626);
+        }
+
         @media print {
             @page {
                 size: A4 landscape;
@@ -925,6 +1000,8 @@
                 font-size: 11px;
                 color: #444;
             }
+
+            .pivot-del-btn { display: none !important; }
         }
 
         .print-header {
@@ -1098,6 +1175,22 @@
     <div class="toast" id="toast">
         <i class="fas fa-check-circle" id="toastIcon"></i>
         <span id="toastMsg">Success!</span>
+    </div>
+
+    <div class="modal-overlay" id="itemDeleteModal">
+        <div class="confirm-modal-content">
+            <div class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="confirm-title">এই আইটেম ডিলিট করবেন?</div>
+            <div class="confirm-desc" id="itemDeleteDesc">এই আইটেম ও এর সব transaction history স্থায়ীভাবে মুছে যাবে। এটি ফেরত আনা যাবে না।</div>
+            <div class="confirm-actions">
+                <button class="btn btn-cancel" onclick="closeItemDeleteModal()">
+                    <i class="fas fa-times"></i> No
+                </button>
+                <button class="btn btn-delete-confirm" id="itemDeleteConfirmBtn" onclick="performDeleteItem()">
+                    <i class="fas fa-trash"></i> Yes, Delete
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1426,7 +1519,7 @@
             const columns = [
                 'Buyer', 'Description Of Item', 'Unit', 'Goods Location', 
                 'Previous Qty', 'Previous Value', 'Received Qty', 'Received Value', 
-                'Delivery Qty', 'Delivery Value', 'Present Stock', 'Stock Value'
+                'Delivery Qty', 'Delivery Value', 'Present Stock', 'Stock Value', 'Action'
             ];
 
             let html = '<div class="table-wrapper"><table><thead><tr>';
@@ -1470,7 +1563,7 @@
                 grandTotal.stockValue += buyerTotal.stockValue;
 
                 html += `<tr class="buyer-row">
-                    <td colspan="12"><i class="fas fa-building"></i> ${buyerName}</td>
+                    <td colspan="13"><i class="fas fa-building"></i> ${buyerName}</td>
                 </tr>`;
 
                 html += `<tr class="col-header-row">`;
@@ -1481,6 +1574,10 @@
 
                 rows.forEach(row => {
                     const item = row.item;
+                    const isZeroStock = Math.abs(row.presentQty || 0) < 0.0001;
+                    const actionCell = isZeroStock
+                        ? `<button class="pivot-del-btn" title="Delete this item" onclick="confirmDeleteItem(${item.id})"><i class="fas fa-trash"></i></button>`
+                        : '';
                     html += `<tr>
                         <td></td>
                         <td>${item.description || ''}</td>
@@ -1494,6 +1591,7 @@
                         <td>$${fmt(row.dlvdValue)}</td>
                         <td>${fmt(row.presentQty)}</td>
                         <td>$${fmt(row.presentValue)}</td>
+                        <td>${actionCell}</td>
                     </tr>`;
                 });
 
@@ -1507,6 +1605,7 @@
                     <td style="font-weight:700;">$${fmt(buyerTotal.dlvdValue)}</td>
                     <td style="font-weight:700;">${fmt(buyerTotal.presentStock)}</td>
                     <td style="font-weight:700;">$${fmt(buyerTotal.stockValue)}</td>
+                    <td></td>
                 </tr>`;
             });
 
@@ -1520,6 +1619,7 @@
                 <td>$${fmt(grandTotal.dlvdValue)}</td>
                 <td>${fmt(grandTotal.presentStock)}</td>
                 <td>$${fmt(grandTotal.stockValue)}</td>
+                <td></td>
             </tr>`;
 
             html += '</tbody></table></div>';
@@ -1530,6 +1630,67 @@
             document.getElementById('statPrevValue').textContent = '$' + fmt(grandTotal.prevValue);
             document.getElementById('statPresentStock').textContent = fmt(grandTotal.presentStock);
             document.getElementById('statStockValue').textContent = '$' + fmt(grandTotal.stockValue);
+        }
+
+        // ============ DELETE ITEM (only offered when Present Stock is 0) ============
+        let pendingDeleteItemId = null;
+
+        function confirmDeleteItem(itemId) {
+            pendingDeleteItemId = itemId;
+            const row = pivotRows.find(r => r.item.id === itemId);
+            const descEl = document.getElementById('itemDeleteDesc');
+            if (row) {
+                descEl.innerHTML = `
+                    <b>${row.item.description || ''}</b><br>
+                    Item Code: ${row.item.item_code || '—'}<br>
+                    Present Stock: ${fmt(row.presentQty)} ${row.item.unit || ''}<br><br>
+                    এই আইটেম এবং এর সাথে যুক্ত সব transaction (শুধু এই item_id-এর) স্থায়ীভাবে মুছে যাবে।
+                    অন্য কোনো আইটেমের ডেটাতে এর প্রভাব পড়বে না। এই কাজ ফেরত আনা যাবে না।
+                `;
+            } else {
+                descEl.textContent = 'এই আইটেম এবং এর সাথে যুক্ত সব transaction স্থায়ীভাবে মুছে যাবে। এই কাজ ফেরত আনা যাবে না।';
+            }
+            document.getElementById('itemDeleteModal').classList.add('active');
+        }
+
+        function closeItemDeleteModal() {
+            document.getElementById('itemDeleteModal').classList.remove('active');
+            pendingDeleteItemId = null;
+        }
+
+        async function performDeleteItem() {
+            if (!pendingDeleteItemId) return;
+            const btn = document.getElementById('itemDeleteConfirmBtn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+
+            try {
+                // Only rows belonging to this exact item_id are touched —
+                // no other item's PRVS/RCVD/DLVD history is affected.
+                const { error: txnErr } = await db
+                    .from('transactions')
+                    .delete()
+                    .eq('item_id', pendingDeleteItemId);
+                if (txnErr) throw txnErr;
+
+                const { error: itemErr } = await db
+                    .from('items')
+                    .delete()
+                    .eq('id', pendingDeleteItemId);
+                if (itemErr) throw itemErr;
+
+                showToast('আইটেম ডিলিট হয়েছে!', 'success');
+                closeItemDeleteModal();
+                await loadItems();
+
+            } catch (err) {
+                console.error('Delete item error:', err);
+                showToast('Delete failed: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
         }
 
         function resetFilters() {
@@ -1675,6 +1836,10 @@
             XLSX.writeFile(wb, fileName);
             showToast(`Downloaded: ${fileName}`, 'success');
         }
+
+        document.getElementById('itemDeleteModal').addEventListener('click', (e) => {
+            if (e.target.id === 'itemDeleteModal') closeItemDeleteModal();
+        });
 
         document.addEventListener('DOMContentLoaded', async () => {
             await loadFilters();
