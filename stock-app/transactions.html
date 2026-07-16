@@ -2079,21 +2079,29 @@
             document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
         }
 
-        function computeStockTotals(data) {
+        // FIX: Calculate Present Stock from filtered transactions (same as Pivot Report)
+        function calculatePresentStockFromTransactions(data) {
+            let totalStock = 0;
+            let totalStockVal = 0;
+            
+            // Group by item_id to get the latest transaction for each item
             const latestByItem = {};
             data.forEach(txn => {
                 const itemId = txn.items?.id;
                 if (itemId === undefined || itemId === null) return;
+                
                 if (!latestByItem[itemId] || txn.id > latestByItem[itemId].id) {
                     latestByItem[itemId] = txn;
                 }
             });
-            let stock = 0, stockVal = 0;
+            
+            // Sum up the present_stock_after from the latest transaction of each item
             Object.values(latestByItem).forEach(t => {
-                stock += parseFloat(t.present_stock_after) || 0;
-                stockVal += parseFloat(t.stock_value_after) || 0;
+                totalStock += parseFloat(t.present_stock_after) || 0;
+                totalStockVal += parseFloat(t.stock_value_after) || 0;
             });
-            return { stock, stockVal };
+            
+            return { stock: totalStock, stockVal: totalStockVal };
         }
 
         async function updateBuyerTotal() {
@@ -2122,21 +2130,9 @@
             const netVal = (prvsVal + rcvdVal) - dlvdVal;
 
             try {
-                let query = db.from('items').select('current_stock, current_value');
-                if (buyerId) {
-                    query = query.eq('buyer_id', buyerId);
-                }
+                // FIX: Calculate Present Stock from filtered transactions instead of items table
+                const stockTotals = calculatePresentStockFromTransactions(filteredData);
                 
-                const { data: itemsData, error } = await query;
-                if (error) throw error;
-
-                let totalStock = 0;
-                let totalStockVal = 0;
-                if (itemsData) {
-                    totalStock = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_stock) || 0), 0);
-                    totalStockVal = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_value) || 0), 0);
-                }
-
                 document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
                 document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
                 document.getElementById('btNetQty').textContent = fmt(netQty);
@@ -2144,8 +2140,8 @@
                 document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
                 document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
                 
-                document.getElementById('btStock').textContent = fmt(totalStock);
-                document.getElementById('btStockVal').textContent = '$' + fmt(totalStockVal);
+                document.getElementById('btStock').textContent = fmt(stockTotals.stock);
+                document.getElementById('btStockVal').textContent = '$' + fmt(stockTotals.stockVal);
 
                 if (buyerId) {
                     const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
@@ -2740,7 +2736,8 @@
             const footNetQty = footAddQty - footDlvdQty;
             const footNetVal = footAddVal - footDlvdVal;
 
-            const stockTotals = computeStockTotals(filteredData);
+            // FIX: Use the same calculation for table footer
+            const stockTotals = calculatePresentStockFromTransactions(filteredData);
 
             html += `<tfoot><tr>
                 <td colspan="11" style="text-align:right;">GRAND TOTAL (all filtered rows):</td>
