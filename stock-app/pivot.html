@@ -1344,8 +1344,17 @@
             await loadItems();
         }
 
-        // Fetch transactions for items within date range
-        async function fetchTransactionsForItems(itemIds, dateFrom, dateTo) {
+        // ================================================================
+        // FIX: Fetch the COMPLETE transaction history for every item
+        // (no date filter at the query level). We need the full history
+        // because PRVS (opening stock) rows and any RCVD/DLVD rows dated
+        // before "Date From" all belong in the "Previous" bucket, while
+        // rows inside the selected range belong in Received/Delivery,
+        // and rows after "Date To" must be excluded from Present Stock
+        // for that date. Filtering at the query level (like the old code
+        // did) silently threw away the PRVS rows and broke this.
+        // ================================================================
+        async function fetchTransactionsForItems(itemIds) {
             if (!itemIds.length) return {};
 
             const CHUNK = 200;
@@ -1358,12 +1367,10 @@
                     .from('transactions')
                     .select('id, item_id, type, txn_date, qty, line_value')
                     .in('item_id', chunkIds)
-                    .order('txn_date', { ascending: true });
+                    .order('txn_date', { ascending: true })
+                    .order('id', { ascending: true });
 
-                if (dateFrom) query = query.gte('txn_date', dateFrom);
-                if (dateTo) query = query.lte('txn_date', dateTo);
-
-                const { data, error } = await query.limit(20000);
+                const { data, error } = await query.limit(50000);
 
                 if (error) throw error;
 
@@ -1376,18 +1383,68 @@
             return byItem;
         }
 
-        // FIFO Logic: Previous + RCVD - DLVD = Present
-        // Present comes from items.current_stock (matches Dashboard)
-        // Previous = Present - RCVD + DLVD (calculated)
-        function computePivotForItem(item, txns) {
+        // ================================================================
+        // FIX: Correct Previous / Received / Delivery / Present logic.
+        //
+        // Previous Qty/Value  = every PRVS row (opening stock, always
+        //                        counted as "previous" regardless of its
+        //                        date) PLUS every RCVD row and MINUS every
+        //                        DLVD row dated strictly BEFORE "Date From".
+        //
+        // Received Qty/Value  = RCVD rows with txn_date inside
+        //                        [Date From, Date To].
+        //
+        // Delivery Qty/Value  = DLVD rows with txn_date inside
+        //                        [Date From, Date To].
+        //
+        // Present Stock/Value = Previous + Received − Delivery, i.e. the
+        //                        running balance as of "Date To", built
+        //                        entirely from real ledger rows (PRVS +
+        //                        RCVD − DLVD) instead of being derived
+        //                        backwards from today's current_stock.
+        //                        Rows dated AFTER "Date To" are ignored
+        //                        so the report reflects stock as it stood
+        //                        on that date.
+        //
+        // If Date From is left blank, nothing is "before" it, so Previous
+        // is 0 and everything up to Date To (or all rows, if Date To is
+        // also blank) is treated as Received/Delivery.
+        // ================================================================
+        function computePivotForItem(item, txns, dateFrom, dateTo) {
+            let prevQty = 0, prevValue = 0;
             let rcvdQty = 0, rcvdValue = 0;
             let dlvdQty = 0, dlvdValue = 0;
 
-            // Sum RCVD and DLVD within date range
             txns.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
+                const d = txn.txn_date || '';
 
+                if (txn.type === 'PRVS') {
+                    // Opening balance is always part of "Previous"
+                    prevQty += qty;
+                    prevValue += val;
+                    return;
+                }
+
+                if (dateTo && d > dateTo) {
+                    // Happens after the report's end date — doesn't count
+                    return;
+                }
+
+                if (dateFrom && d < dateFrom) {
+                    // Happened before the report's start date — rolls into Previous
+                    if (txn.type === 'RCVD') {
+                        prevQty += qty;
+                        prevValue += val;
+                    } else if (txn.type === 'DLVD') {
+                        prevQty -= qty;
+                        prevValue -= val;
+                    }
+                    return;
+                }
+
+                // Inside the selected date range
                 if (txn.type === 'RCVD') {
                     rcvdQty += qty;
                     rcvdValue += val;
@@ -1397,14 +1454,8 @@
                 }
             });
 
-            // Present Stock comes DIRECTLY from items table (matches Dashboard & Ledger)
-            const presentQty = parseFloat(item.current_stock) || 0;
-            const presentValue = parseFloat(item.current_value) || 0;
-
-            // FIFO: Previous = Present - RCVD + DLVD
-            // (What stock was before the date range started)
-            const prevQty = presentQty - rcvdQty + dlvdQty;
-            const prevValue = presentValue - rcvdValue + dlvdValue;
+            const presentQty = prevQty + rcvdQty - dlvdQty;
+            const presentValue = prevValue + rcvdValue - dlvdValue;
 
             return {
                 item,
@@ -1460,10 +1511,10 @@
                 const dateTo = document.getElementById('fDateTo').value || '';
 
                 const itemIds = allItems.map(i => i.id);
-                const txnsByItem = await fetchTransactionsForItems(itemIds, dateFrom, dateTo);
+                const txnsByItem = await fetchTransactionsForItems(itemIds);
 
                 pivotRows = allItems.map(item =>
-                    computePivotForItem(item, txnsByItem[item.id] || [])
+                    computePivotForItem(item, txnsByItem[item.id] || [], dateFrom, dateTo)
                 );
 
                 renderPivotTable();
