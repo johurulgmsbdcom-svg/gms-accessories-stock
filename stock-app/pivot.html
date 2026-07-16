@@ -563,6 +563,13 @@
             background-clip: text;
         }
 
+        .stat-card.cyan .stat-value {
+            background: linear-gradient(135deg, var(--accent-cyan), #0891b2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
         .table-card {
             padding: 20px;
             margin-bottom: 20px;
@@ -579,7 +586,7 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 12px;
-            min-width: 1200px;
+            min-width: 1400px;
             border: 1px solid var(--glass-border);
         }
 
@@ -1125,6 +1132,10 @@
                 <div class="stat-value" id="statPrevValue">—</div>
                 <div class="stat-label">Previous Value</div>
             </div>
+            <div class="stat-card glass cyan">
+                <div class="stat-value" id="statRangeAddQty">—</div>
+                <div class="stat-label">Total PRVS+RCVD Qty</div>
+            </div>
             <div class="stat-card glass purple">
                 <div class="stat-value" id="statPresentStock">—</div>
                 <div class="stat-label">Present Stock</div>
@@ -1344,7 +1355,7 @@
             await loadItems();
         }
 
-        // Fetch transactions for items within date range
+        // Fetch transactions for items within date range (all types — PRVS, RCVD, DLVD)
         async function fetchTransactionsForItems(itemIds, dateFrom, dateTo) {
             if (!itemIds.length) return {};
 
@@ -1376,14 +1387,53 @@
             return byItem;
         }
 
-        // FIFO Logic: Previous + RCVD - DLVD = Present
+        // ✅ FIXED: Previous stock is now computed DIRECTLY from the ledger
+        // (sum of every PRVS/RCVD/DLVD transaction dated BEFORE dateFrom),
+        // instead of back-calculating from items.current_stock.
+        // This means it can never drift away from the transaction ledger,
+        // and will always match Ledger/transactions.html totals exactly.
+        async function fetchPreviousStockForItems(itemIds, dateFrom) {
+            const byItem = {};
+            itemIds.forEach(id => { byItem[id] = { qty: 0, value: 0 }; });
+            if (!itemIds.length || !dateFrom) return byItem;
+
+            const CHUNK = 200;
+            for (let i = 0; i < itemIds.length; i += CHUNK) {
+                const chunkIds = itemIds.slice(i, i + CHUNK);
+                const { data, error } = await db
+                    .from('transactions')
+                    .select('item_id, type, qty, line_value')
+                    .in('item_id', chunkIds)
+                    .lt('txn_date', dateFrom)
+                    .limit(50000);
+
+                if (error) throw error;
+
+                (data || []).forEach(txn => {
+                    const qty = parseFloat(txn.qty) || 0;
+                    const val = parseFloat(txn.line_value) || 0;
+                    if (!byItem[txn.item_id]) byItem[txn.item_id] = { qty: 0, value: 0 };
+                    if (txn.type === 'PRVS' || txn.type === 'RCVD') {
+                        byItem[txn.item_id].qty += qty;
+                        byItem[txn.item_id].value += val;
+                    } else if (txn.type === 'DLVD') {
+                        byItem[txn.item_id].qty -= qty;
+                        byItem[txn.item_id].value -= val;
+                    }
+                });
+            }
+            return byItem;
+        }
+
         // Present comes from items.current_stock (matches Dashboard)
-        // Previous = Present - RCVD + DLVD (calculated)
-        function computePivotForItem(item, txns) {
+        // Previous Qty/Value now comes from the ledger directly (see fetchPreviousStockForItems)
+        // "Total PRVS+RCVD Qty/Value" = exact same metric shown on transactions.html
+        // for the selected date range, so the two pages will always match.
+        function computePivotForItem(item, txns, prevStock) {
             let rcvdQty = 0, rcvdValue = 0;
             let dlvdQty = 0, dlvdValue = 0;
+            let rangeAddQty = 0, rangeAddValue = 0; // PRVS + RCVD within the selected range
 
-            // Sum RCVD and DLVD within date range
             txns.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
@@ -1391,9 +1441,14 @@
                 if (txn.type === 'RCVD') {
                     rcvdQty += qty;
                     rcvdValue += val;
+                    rangeAddQty += qty;
+                    rangeAddValue += val;
                 } else if (txn.type === 'DLVD') {
                     dlvdQty += qty;
                     dlvdValue += val;
+                } else if (txn.type === 'PRVS') {
+                    rangeAddQty += qty;
+                    rangeAddValue += val;
                 }
             });
 
@@ -1401,14 +1456,14 @@
             const presentQty = parseFloat(item.current_stock) || 0;
             const presentValue = parseFloat(item.current_value) || 0;
 
-            // FIFO: Previous = Present - RCVD + DLVD
-            // (What stock was before the date range started)
-            const prevQty = presentQty - rcvdQty + dlvdQty;
-            const prevValue = presentValue - rcvdValue + dlvdValue;
+            // ✅ Previous Qty/Value = true ledger opening balance (sum of everything before dateFrom)
+            const prevQty = prevStock ? prevStock.qty : 0;
+            const prevValue = prevStock ? prevStock.value : 0;
 
             return {
                 item,
                 prevQty, prevValue,
+                rangeAddQty, rangeAddValue,
                 rcvdQty, rcvdValue,
                 dlvdQty, dlvdValue,
                 presentQty, presentValue
@@ -1460,10 +1515,13 @@
                 const dateTo = document.getElementById('fDateTo').value || '';
 
                 const itemIds = allItems.map(i => i.id);
-                const txnsByItem = await fetchTransactionsForItems(itemIds, dateFrom, dateTo);
+                const [txnsByItem, prevStockByItem] = await Promise.all([
+                    fetchTransactionsForItems(itemIds, dateFrom, dateTo),
+                    fetchPreviousStockForItems(itemIds, dateFrom)
+                ]);
 
                 pivotRows = allItems.map(item =>
-                    computePivotForItem(item, txnsByItem[item.id] || [])
+                    computePivotForItem(item, txnsByItem[item.id] || [], prevStockByItem[item.id])
                 );
 
                 renderPivotTable();
@@ -1504,6 +1562,7 @@
                 document.getElementById('statTotalItems').textContent = '0';
                 document.getElementById('statPrevQty').textContent = '0';
                 document.getElementById('statPrevValue').textContent = '$0';
+                document.getElementById('statRangeAddQty').textContent = '0';
                 document.getElementById('statPresentStock').textContent = '0';
                 document.getElementById('statStockValue').textContent = '$0';
                 return;
@@ -1517,9 +1576,12 @@
             });
 
             const columns = [
-                'Buyer', 'Description Of Item', 'Unit', 'Goods Location', 
-                'Previous Qty', 'Previous Value', 'Received Qty', 'Received Value', 
-                'Delivery Qty', 'Delivery Value', 'Present Stock', 'Stock Value', 'Action'
+                'Buyer', 'Description Of Item', 'Unit', 'Goods Location',
+                'Previous Qty', 'Previous Value',
+                'Total PRVS+RCVD Qty', 'Total PRVS+RCVD Value',
+                'Received Qty', 'Received Value',
+                'Delivery Qty', 'Delivery Value',
+                'Present Stock', 'Stock Value', 'Action'
             ];
 
             let html = '<div class="table-wrapper"><table><thead><tr>';
@@ -1529,8 +1591,11 @@
             html += '</tr></thead><tbody>';
 
             let grandTotal = {
-                prevQty: 0, prevValue: 0, rcvdQty: 0, rcvdValue: 0,
-                dlvdQty: 0, dlvdValue: 0, presentStock: 0, stockValue: 0
+                prevQty: 0, prevValue: 0,
+                rangeAddQty: 0, rangeAddValue: 0,
+                rcvdQty: 0, rcvdValue: 0,
+                dlvdQty: 0, dlvdValue: 0,
+                presentStock: 0, stockValue: 0
             };
 
             const buyerNames = Object.keys(groups).sort();
@@ -1538,13 +1603,18 @@
             buyerNames.forEach(buyerName => {
                 const rows = groups[buyerName];
                 let buyerTotal = {
-                    prevQty: 0, prevValue: 0, rcvdQty: 0, rcvdValue: 0,
-                    dlvdQty: 0, dlvdValue: 0, presentStock: 0, stockValue: 0
+                    prevQty: 0, prevValue: 0,
+                    rangeAddQty: 0, rangeAddValue: 0,
+                    rcvdQty: 0, rcvdValue: 0,
+                    dlvdQty: 0, dlvdValue: 0,
+                    presentStock: 0, stockValue: 0
                 };
 
                 rows.forEach(row => {
                     buyerTotal.prevQty += row.prevQty;
                     buyerTotal.prevValue += row.prevValue;
+                    buyerTotal.rangeAddQty += row.rangeAddQty;
+                    buyerTotal.rangeAddValue += row.rangeAddValue;
                     buyerTotal.rcvdQty += row.rcvdQty;
                     buyerTotal.rcvdValue += row.rcvdValue;
                     buyerTotal.dlvdQty += row.dlvdQty;
@@ -1555,6 +1625,8 @@
 
                 grandTotal.prevQty += buyerTotal.prevQty;
                 grandTotal.prevValue += buyerTotal.prevValue;
+                grandTotal.rangeAddQty += buyerTotal.rangeAddQty;
+                grandTotal.rangeAddValue += buyerTotal.rangeAddValue;
                 grandTotal.rcvdQty += buyerTotal.rcvdQty;
                 grandTotal.rcvdValue += buyerTotal.rcvdValue;
                 grandTotal.dlvdQty += buyerTotal.dlvdQty;
@@ -1563,7 +1635,7 @@
                 grandTotal.stockValue += buyerTotal.stockValue;
 
                 html += `<tr class="buyer-row">
-                    <td colspan="13"><i class="fas fa-building"></i> ${buyerName}</td>
+                    <td colspan="15"><i class="fas fa-building"></i> ${buyerName}</td>
                 </tr>`;
 
                 html += `<tr class="col-header-row">`;
@@ -1585,6 +1657,8 @@
                         <td>${item.goods_location || ''}</td>
                         <td>${fmt(row.prevQty)}</td>
                         <td>$${fmt(row.prevValue)}</td>
+                        <td>${fmt(row.rangeAddQty)}</td>
+                        <td>$${fmt(row.rangeAddValue)}</td>
                         <td>${fmt(row.rcvdQty)}</td>
                         <td>$${fmt(row.rcvdValue)}</td>
                         <td>${fmt(row.dlvdQty)}</td>
@@ -1599,6 +1673,8 @@
                     <td colspan="4" style="text-align:right; font-weight:700;">${buyerName} Total</td>
                     <td style="font-weight:700;">${fmt(buyerTotal.prevQty)}</td>
                     <td style="font-weight:700;">$${fmt(buyerTotal.prevValue)}</td>
+                    <td style="font-weight:700;">${fmt(buyerTotal.rangeAddQty)}</td>
+                    <td style="font-weight:700;">$${fmt(buyerTotal.rangeAddValue)}</td>
                     <td style="font-weight:700;">${fmt(buyerTotal.rcvdQty)}</td>
                     <td style="font-weight:700;">$${fmt(buyerTotal.rcvdValue)}</td>
                     <td style="font-weight:700;">${fmt(buyerTotal.dlvdQty)}</td>
@@ -1613,6 +1689,8 @@
                 <td colspan="4" style="text-align:right;">Grand Total</td>
                 <td>${fmt(grandTotal.prevQty)}</td>
                 <td>$${fmt(grandTotal.prevValue)}</td>
+                <td>${fmt(grandTotal.rangeAddQty)}</td>
+                <td>$${fmt(grandTotal.rangeAddValue)}</td>
                 <td>${fmt(grandTotal.rcvdQty)}</td>
                 <td>$${fmt(grandTotal.rcvdValue)}</td>
                 <td>${fmt(grandTotal.dlvdQty)}</td>
@@ -1628,6 +1706,7 @@
             document.getElementById('statTotalItems').textContent = fmt(displayRows.length);
             document.getElementById('statPrevQty').textContent = fmt(grandTotal.prevQty);
             document.getElementById('statPrevValue').textContent = '$' + fmt(grandTotal.prevValue);
+            document.getElementById('statRangeAddQty').textContent = fmt(grandTotal.rangeAddQty);
             document.getElementById('statPresentStock').textContent = fmt(grandTotal.presentStock);
             document.getElementById('statStockValue').textContent = '$' + fmt(grandTotal.stockValue);
         }
@@ -1740,8 +1819,11 @@
 
             let excelData = [];
             let grandTotal = {
-                prevQty: 0, prevValue: 0, rcvdQty: 0, rcvdValue: 0,
-                dlvdQty: 0, dlvdValue: 0, presentStock: 0, stockValue: 0
+                prevQty: 0, prevValue: 0,
+                rangeAddQty: 0, rangeAddValue: 0,
+                rcvdQty: 0, rcvdValue: 0,
+                dlvdQty: 0, dlvdValue: 0,
+                presentStock: 0, stockValue: 0
             };
 
             const buyerNames = Object.keys(groups).sort();
@@ -1749,13 +1831,18 @@
             buyerNames.forEach(buyerName => {
                 const rows = groups[buyerName];
                 let buyerTotal = {
-                    prevQty: 0, prevValue: 0, rcvdQty: 0, rcvdValue: 0,
-                    dlvdQty: 0, dlvdValue: 0, presentStock: 0, stockValue: 0
+                    prevQty: 0, prevValue: 0,
+                    rangeAddQty: 0, rangeAddValue: 0,
+                    rcvdQty: 0, rcvdValue: 0,
+                    dlvdQty: 0, dlvdValue: 0,
+                    presentStock: 0, stockValue: 0
                 };
 
                 rows.forEach(row => {
                     buyerTotal.prevQty += row.prevQty;
                     buyerTotal.prevValue += row.prevValue;
+                    buyerTotal.rangeAddQty += row.rangeAddQty;
+                    buyerTotal.rangeAddValue += row.rangeAddValue;
                     buyerTotal.rcvdQty += row.rcvdQty;
                     buyerTotal.rcvdValue += row.rcvdValue;
                     buyerTotal.dlvdQty += row.dlvdQty;
@@ -1770,6 +1857,8 @@
                         'Goods Location': row.item.goods_location || '',
                         'Previous Qty': row.prevQty,
                         'Previous Value': row.prevValue,
+                        'Total PRVS+RCVD Qty': row.rangeAddQty,
+                        'Total PRVS+RCVD Value': row.rangeAddValue,
                         'Received Qty': row.rcvdQty,
                         'Received Value': row.rcvdValue,
                         'Delivery Qty': row.dlvdQty,
@@ -1781,6 +1870,8 @@
 
                 grandTotal.prevQty += buyerTotal.prevQty;
                 grandTotal.prevValue += buyerTotal.prevValue;
+                grandTotal.rangeAddQty += buyerTotal.rangeAddQty;
+                grandTotal.rangeAddValue += buyerTotal.rangeAddValue;
                 grandTotal.rcvdQty += buyerTotal.rcvdQty;
                 grandTotal.rcvdValue += buyerTotal.rcvdValue;
                 grandTotal.dlvdQty += buyerTotal.dlvdQty;
@@ -1795,6 +1886,8 @@
                     'Goods Location': '',
                     'Previous Qty': buyerTotal.prevQty,
                     'Previous Value': buyerTotal.prevValue,
+                    'Total PRVS+RCVD Qty': buyerTotal.rangeAddQty,
+                    'Total PRVS+RCVD Value': buyerTotal.rangeAddValue,
                     'Received Qty': buyerTotal.rcvdQty,
                     'Received Value': buyerTotal.rcvdValue,
                     'Delivery Qty': buyerTotal.dlvdQty,
@@ -1811,6 +1904,8 @@
                 'Goods Location': '',
                 'Previous Qty': grandTotal.prevQty,
                 'Previous Value': grandTotal.prevValue,
+                'Total PRVS+RCVD Qty': grandTotal.rangeAddQty,
+                'Total PRVS+RCVD Value': grandTotal.rangeAddValue,
                 'Received Qty': grandTotal.rcvdQty,
                 'Received Value': grandTotal.rcvdValue,
                 'Delivery Qty': grandTotal.dlvdQty,
@@ -1824,8 +1919,9 @@
 
             ws['!cols'] = [
                 { wch: 25 }, { wch: 35 }, { wch: 8 }, { wch: 15 },
+                { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 18 },
                 { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
-                { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
+                { wch: 15 }, { wch: 15 }
             ];
 
             XLSX.utils.book_append_sheet(wb, ws, 'Pivot Report');
