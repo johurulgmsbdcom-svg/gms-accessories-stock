@@ -600,10 +600,15 @@
                 // straight from transactions using the exact same logic as pivot.html.
                 const statItemIds = (allItemIdsData || []).map(i => i.id);
                 const statTxnsByItem = await fetchTransactionsForItems(statItemIds);
+                // ✅ Match Pivot Report's default "Date To = today" ceiling exactly —
+                // pivot.html silently excludes any transaction dated AFTER Date To,
+                // so we must apply the same ceiling here or stray future-dated rows
+                // (data entry mistakes, etc.) will make totals disagree.
+                const statTodayCeiling = new Date().toISOString().split('T')[0];
                 let totalStockQty = 0;
                 let totalValue = 0;
                 statItemIds.forEach(id => {
-                    const pivot = computePivotForItem({ id }, statTxnsByItem[id] || [], '', '');
+                    const pivot = computePivotForItem({ id }, statTxnsByItem[id] || [], '', statTodayCeiling);
                     totalStockQty += pivot.presentQty;
                     totalValue += pivot.presentValue;
                 });
