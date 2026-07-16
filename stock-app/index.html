@@ -141,6 +141,20 @@
         .buyer-item-row { cursor: pointer; }
         .buyer-item-row:active { transform: scale(0.98); }
 
+        .row-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .item-del-btn {
+            width: 30px; height: 30px; border-radius: 8px;
+            border: 1px solid var(--red);
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--red);
+            font-size: 12px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .item-del-btn:hover { background: var(--red); color: #fff; }
+
         .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
         .action-card {
             background: var(--card); border-radius: var(--radius);
@@ -279,6 +293,39 @@
         .btn-dlvd:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(239,68,68,0.4); }
         .btn-close-full { grid-column: 1 / -1; background: transparent; color: var(--muted); border: 1px solid var(--border); }
         .btn-close-full:hover { background: var(--bg); }
+
+        .confirm-modal {
+            background: var(--card); border-radius: var(--radius);
+            width: 100%; max-width: 380px; padding: 26px 22px; text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: slideUp 0.3s ease;
+        }
+        .confirm-icon {
+            width: 56px; height: 56px; border-radius: 50%;
+            background: rgba(239,68,68,0.15); color: var(--red);
+            font-size: 24px; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 14px;
+        }
+        .confirm-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+        .confirm-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5; text-align: left; }
+        .confirm-actions { display: flex; gap: 10px; }
+        .confirm-actions .btn-action { flex: 1; }
+        .btn-cancel-action { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-cancel-action:hover { background: var(--bg); }
+        .btn-danger-action { background: linear-gradient(135deg, var(--red), #dc2626); }
+        .btn-danger-action:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(239,68,68,0.4); }
+        .btn-danger-action:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .pin-input-box {
+            width: 100%; padding: 14px; border-radius: 10px; border: 1px solid var(--border);
+            background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif;
+            font-size: 26px; font-weight: 700; text-align: center; letter-spacing: 10px;
+            outline: none; margin-bottom: 10px;
+        }
+        .pin-input-box:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        .pin-error {
+            color: var(--red); font-size: 12px; font-weight: 600;
+            margin-bottom: 10px; display: none; text-align: left;
+        }
 
         .toast {
             position: fixed; top: 20px; left: 50%;
@@ -449,6 +496,32 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="deleteConfirmModal">
+        <div class="confirm-modal">
+            <div class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="confirm-title">এই আইটেম ডিলিট করবেন?</div>
+            <div class="confirm-desc" id="deleteItemDesc">—</div>
+            <div class="confirm-actions">
+                <button class="btn-action btn-cancel-action" onclick="closeDeleteConfirmModal()"><i class="fas fa-times"></i> No</button>
+                <button class="btn-action btn-danger-action" onclick="proceedToPin()"><i class="fas fa-check"></i> Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="pinModal">
+        <div class="confirm-modal">
+            <div class="confirm-icon"><i class="fas fa-lock"></i></div>
+            <div class="confirm-title">PIN দিন</div>
+            <div class="confirm-desc" style="text-align:center;">ডিলিট নিশ্চিত করতে ৪ ডিজিটের PIN দিন।</div>
+            <input type="password" id="pinInput" class="pin-input-box" maxlength="4" inputmode="numeric" placeholder="••••">
+            <div class="pin-error" id="pinError">ভুল পিন! আবার চেষ্টা করুন।</div>
+            <div class="confirm-actions">
+                <button class="btn-action btn-cancel-action" onclick="closePinModal()"><i class="fas fa-times"></i> Cancel</button>
+                <button class="btn-action btn-danger-action" id="pinConfirmBtn" onclick="submitPinAndDelete()"><i class="fas fa-trash"></i> Delete</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast">
         <i class="fas fa-check-circle" id="toastIcon"></i>
         <span id="toastMsg">Success!</span>
@@ -460,9 +533,12 @@
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        const DELETE_PIN = '7862';
+
         let currentItem = null;
         let html5QrCode = null;
         let buyerItemsCache = [];
+        let pendingDeleteItemId = null;
 
         function toggleTheme() {
             const html = document.documentElement;
@@ -626,7 +702,12 @@
                             <div class="item-meta">${item.item_code || ''} • Stock: ${fmt(item.current_stock)} ${item.unit || ''}</div>
                         </div>
                     </div>
-                    <i class="fas fa-chevron-right" style="color:var(--muted)"></i>
+                    <div class="row-actions">
+                        <button class="item-del-btn" data-item-id="${item.item_id}" title="Delete item">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <i class="fas fa-chevron-right" style="color:var(--muted)"></i>
+                    </div>
                 </div>
             `).join('');
 
@@ -639,7 +720,105 @@
                     showItemModal(currentItem);
                 });
             });
+
+            document.querySelectorAll('.item-del-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const itemId = btn.getAttribute('data-item-id');
+                    requestDeleteItem(itemId);
+                });
+            });
         }
+
+        // ============ DELETE ITEM (confirm -> PIN -> delete) ============
+        function requestDeleteItem(itemId) {
+            pendingDeleteItemId = itemId;
+            const found = buyerItemsCache.find(i => String(i.item_id) === String(itemId));
+            const descEl = document.getElementById('deleteItemDesc');
+            if (found) {
+                descEl.innerHTML = `
+                    <b>${found.description || ''}</b><br>
+                    ${found.item_code || '—'} • Stock: ${fmt(found.current_stock)} ${found.unit || ''}<br><br>
+                    এই আইটেম এবং এর সাথে যুক্ত সব transaction history স্থায়ীভাবে মুছে যাবে।
+                    এটি ফেরত আনা যাবে না।
+                `;
+            } else {
+                descEl.textContent = 'এই আইটেম এবং এর সব transaction history স্থায়ীভাবে মুছে যাবে। এটি ফেরত আনা যাবে না।';
+            }
+            document.getElementById('deleteConfirmModal').classList.add('active');
+        }
+
+        function closeDeleteConfirmModal() {
+            document.getElementById('deleteConfirmModal').classList.remove('active');
+            pendingDeleteItemId = null;
+        }
+
+        function proceedToPin() {
+            document.getElementById('deleteConfirmModal').classList.remove('active');
+            const pinInput = document.getElementById('pinInput');
+            pinInput.value = '';
+            document.getElementById('pinError').style.display = 'none';
+            document.getElementById('pinModal').classList.add('active');
+            setTimeout(() => pinInput.focus(), 200);
+        }
+
+        function closePinModal() {
+            document.getElementById('pinModal').classList.remove('active');
+            pendingDeleteItemId = null;
+        }
+
+        async function submitPinAndDelete() {
+            const pinInput = document.getElementById('pinInput');
+            const pin = pinInput.value.trim();
+            const errEl = document.getElementById('pinError');
+
+            if (pin !== DELETE_PIN) {
+                errEl.textContent = 'ভুল পিন! আবার চেষ্টা করুন।';
+                errEl.style.display = 'block';
+                pinInput.value = '';
+                pinInput.focus();
+                return;
+            }
+            errEl.style.display = 'none';
+
+            if (!pendingDeleteItemId) { closePinModal(); return; }
+
+            const btn = document.getElementById('pinConfirmBtn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+
+            const itemIdToDelete = pendingDeleteItemId;
+
+            try {
+                // Only this exact item_id's rows are touched — no effect on any other item.
+                const { error: txnErr } = await db.from('transactions').delete().eq('item_id', itemIdToDelete);
+                if (txnErr) throw txnErr;
+
+                const { error: itemErr } = await db.from('items').delete().eq('id', itemIdToDelete);
+                if (itemErr) throw itemErr;
+
+                showToast('আইটেম ডিলিট হয়েছে!', 'success');
+                document.getElementById('pinModal').classList.remove('active');
+                pendingDeleteItemId = null;
+
+                if (document.getElementById('buyerSelect').value) {
+                    await loadItemsByBuyer();
+                }
+                loadStats();
+
+            } catch (err) {
+                console.error('Delete item error:', err);
+                showToast('Delete failed: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        document.getElementById('pinInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') submitPinAndDelete();
+        });
 
         function showItemModal(item) {
             document.getElementById('modalItemCode').textContent = item.item_code;
@@ -736,6 +915,7 @@
                 if (e.target === overlay) {
                     overlay.classList.remove('active');
                     if (overlay.id === 'scannerModal') stopScanner();
+                    if (overlay.id === 'deleteConfirmModal' || overlay.id === 'pinModal') pendingDeleteItemId = null;
                 }
             });
         });
