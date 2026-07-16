@@ -1735,9 +1735,6 @@
         // Column Filter State
         let activeColumnFilters = {};
         let ocActiveFilterCol = null;
-        
-        // FIX: Global variable to store current stock totals matching Pivot Report exactly
-        let currentFilteredStockTotals = { stock: 0, stockVal: 0 };
 
         function setHeaderHeightVar() {
             const header = document.querySelector('.header');
@@ -1831,7 +1828,7 @@
             const dropdown = document.getElementById('itemDropdown');
             const q = (query || '').trim().toLowerCase();
             const matches = q
-                ? allItemsList.filter(i => (i.description || '').toLowerCase().includes(q))
+                ? allItemsList.filter(i => i.description.toLowerCase().includes(q))
                 : allItemsList;
 
             let html = `<div class="item-dropdown-all" onclick="selectItemFromDropdown('')">✕ Clear (All Items)</div>`;
@@ -1840,7 +1837,7 @@
                 html += `<div class="item-dropdown-empty">No matching items</div>`;
             } else {
                 html += matches.slice(0, 150).map(i =>
-                    `<div class="item-dropdown-option" onclick="selectItemFromDropdown('${(i.description || '').replace(/'/g, "\\'")}')">${i.description}</div>`
+                    `<div class="item-dropdown-option" onclick="selectItemFromDropdown('${i.description.replace(/'/g, "\\'")}')">${i.description}</div>`
                 ).join('');
             }
 
@@ -2082,42 +2079,21 @@
             document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
         }
 
-        // ================================================================
-        // FIX: Fetch CURRENT stock from items table to perfectly match 
-        // Pivot Report's "Present Stock" (e.g., 17,824,031)
-        // ================================================================
-        async function getCurrentStockForFilteredItems() {
-            const buyerId = document.getElementById('fBuyer').value;
-            const itemText = document.getElementById('fItem').value.trim();
-
-            let query = db.from('items').select('id, description, current_stock, current_value');
-            if (buyerId) query = query.eq('buyer_id', buyerId);
-            
-            const { data: itemsData, error } = await query;
-            if (error) {
-                console.error('Error fetching items for stock total:', error);
-                return { stock: 0, stockVal: 0 };
-            }
-
-            let totalStock = 0;
-            let totalStockVal = 0;
-
-            if (itemsData) {
-                itemsData.forEach(item => {
-                    let include = true;
-                    if (itemText) {
-                        const desc = (item.description || '').toLowerCase();
-                        if (!desc.includes(itemText.toLowerCase())) {
-                            include = false;
-                        }
-                    }
-                    if (include) {
-                        totalStock += parseFloat(item.current_stock) || 0;
-                        totalStockVal += parseFloat(item.current_value) || 0;
-                    }
-                });
-            }
-            return { stock: totalStock, stockVal: totalStockVal };
+        function computeStockTotals(data) {
+            const latestByItem = {};
+            data.forEach(txn => {
+                const itemId = txn.items?.id;
+                if (itemId === undefined || itemId === null) return;
+                if (!latestByItem[itemId] || txn.id > latestByItem[itemId].id) {
+                    latestByItem[itemId] = txn;
+                }
+            });
+            let stock = 0, stockVal = 0;
+            Object.values(latestByItem).forEach(t => {
+                stock += parseFloat(t.present_stock_after) || 0;
+                stockVal += parseFloat(t.stock_value_after) || 0;
+            });
+            return { stock, stockVal };
         }
 
         async function updateBuyerTotal() {
@@ -2146,9 +2122,21 @@
             const netVal = (prvsVal + rcvdVal) - dlvdVal;
 
             try {
-                // Get CURRENT stock for the filtered items to match Pivot Report exactly
-                currentFilteredStockTotals = await getCurrentStockForFilteredItems();
+                let query = db.from('items').select('current_stock, current_value');
+                if (buyerId) {
+                    query = query.eq('buyer_id', buyerId);
+                }
                 
+                const { data: itemsData, error } = await query;
+                if (error) throw error;
+
+                let totalStock = 0;
+                let totalStockVal = 0;
+                if (itemsData) {
+                    totalStock = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_stock) || 0), 0);
+                    totalStockVal = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_value) || 0), 0);
+                }
+
                 document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
                 document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
                 document.getElementById('btNetQty').textContent = fmt(netQty);
@@ -2156,8 +2144,8 @@
                 document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
                 document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
                 
-                document.getElementById('btStock').textContent = fmt(currentFilteredStockTotals.stock);
-                document.getElementById('btStockVal').textContent = '$' + fmt(currentFilteredStockTotals.stockVal);
+                document.getElementById('btStock').textContent = fmt(totalStock);
+                document.getElementById('btStockVal').textContent = '$' + fmt(totalStockVal);
 
                 if (buyerId) {
                     const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
@@ -2752,8 +2740,7 @@
             const footNetQty = footAddQty - footDlvdQty;
             const footNetVal = footAddVal - footDlvdVal;
 
-            // FIX: Use the globally updated currentFilteredStockTotals to match Pivot Report
-            const stockTotals = currentFilteredStockTotals;
+            const stockTotals = computeStockTotals(filteredData);
 
             html += `<tfoot><tr>
                 <td colspan="11" style="text-align:right;">GRAND TOTAL (all filtered rows):</td>
