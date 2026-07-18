@@ -2124,39 +2124,87 @@
             return { stock, stockVal };
         }
 
+        // ==========================================================
+        // FIX #3 (Option B): Net Qty / Net Value now match Total
+        // Present Stock / Total Stock Value ALWAYS, regardless of
+        // the Date filter on screen.
+        //
+        // Previously this function summed PRVS/RCVD/DLVD only from
+        // `filteredData` (i.e. rows inside the current Date From/To
+        // range). But Total Present Stock/Value was pulled straight
+        // from items.current_stock / items.current_value, which is
+        // the full, all-time balance and completely ignores the
+        // Date filter. Any item with movement outside the selected
+        // date range made the two numbers disagree.
+        //
+        // Fix: fetch the item's FULL transaction history (only the
+        // Buyer filter is applied, Date filter is intentionally
+        // skipped) and compute Net Qty/Value from that complete set.
+        // Now both halves of the Grand Total card are always
+        // calculated over the exact same scope of data and will
+        // always reconcile, no matter what Date range is selected.
+        // ==========================================================
         async function updateBuyerTotal() {
             const card = document.getElementById('buyerTotalCard');
             const titleEl = document.getElementById('buyerTotalTitle');
             const buyerSelect = document.getElementById('fBuyer');
             const buyerId = buyerSelect.value;
 
-            let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
-            filteredData.forEach(txn => {
-                const qty = parseFloat(txn.qty) || 0;
-                const val = parseFloat(txn.line_value) || 0;
-                if (txn.type === 'RCVD') {
-                    rcvdQty += qty;
-                    rcvdVal += val;
-                } else if (txn.type === 'DLVD') {
-                    dlvdQty += qty;
-                    dlvdVal += val;
-                } else if (txn.type === 'PRVS') {
-                    prvsQty += qty;
-                    prvsVal += val;
-                }
-            });
-
-            const netQty = (prvsQty + rcvdQty) - dlvdQty;
-            const netVal = (prvsVal + rcvdVal) - dlvdVal;
-
             try {
-                let query = db.from('items').select('current_stock, current_value');
+                // Step 1: figure out which items are in scope (buyer filter only)
+                let itemIds = null;
                 if (buyerId) {
-                    query = query.eq('buyer_id', buyerId);
+                    const buyerItems = await fetchAllRows(db.from('items').select('id').eq('buyer_id', buyerId));
+                    itemIds = (buyerItems || []).map(i => i.id);
+                    if (itemIds.length === 0) {
+                        document.getElementById('btRcvdQty').textContent = '0';
+                        document.getElementById('btDlvdQty').textContent = '0';
+                        document.getElementById('btNetQty').textContent = '0';
+                        document.getElementById('btRcvdVal').textContent = '$0';
+                        document.getElementById('btDlvdVal').textContent = '$0';
+                        document.getElementById('btNetVal').textContent = '$0';
+                        document.getElementById('btStock').textContent = '0';
+                        document.getElementById('btStockVal').textContent = '$0';
+                        titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerSelect.options[buyerSelect.selectedIndex].text}`;
+                        card.style.display = 'block';
+                        return;
+                    }
                 }
 
-                // FIX #1 applied here too: items list can also exceed 1000 rows.
-                const itemsData = await fetchAllRows(query);
+                // Step 2: pull the FULL (unfiltered by date) transaction history
+                // for those items, so Net Qty/Value reflect all-time totals —
+                // the same scope as items.current_stock / current_value below.
+                let txnQuery = db.from('transactions').select('type, qty, line_value');
+                if (itemIds) {
+                    txnQuery = txnQuery.in('item_id', itemIds);
+                }
+                const allTxnsForTotal = await fetchAllRows(txnQuery);
+
+                let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
+                allTxnsForTotal.forEach(txn => {
+                    const qty = parseFloat(txn.qty) || 0;
+                    const val = parseFloat(txn.line_value) || 0;
+                    if (txn.type === 'RCVD') {
+                        rcvdQty += qty;
+                        rcvdVal += val;
+                    } else if (txn.type === 'DLVD') {
+                        dlvdQty += qty;
+                        dlvdVal += val;
+                    } else if (txn.type === 'PRVS') {
+                        prvsQty += qty;
+                        prvsVal += val;
+                    }
+                });
+
+                const netQty = (prvsQty + rcvdQty) - dlvdQty;
+                const netVal = (prvsVal + rcvdVal) - dlvdVal;
+
+                // Step 3: Total Present Stock / Value (unchanged — all-time, buyer-only filter)
+                let stockQuery = db.from('items').select('current_stock, current_value');
+                if (buyerId) {
+                    stockQuery = stockQuery.eq('buyer_id', buyerId);
+                }
+                const itemsData = await fetchAllRows(stockQuery);
 
                 let totalStock = 0;
                 let totalStockVal = 0;
@@ -2171,15 +2219,15 @@
                 document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
                 document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
                 document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
-                
+
                 document.getElementById('btStock').textContent = fmt(totalStock);
                 document.getElementById('btStockVal').textContent = '$' + fmt(totalStockVal);
 
                 if (buyerId) {
                     const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
-                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerName}`;
+                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerName} (All-Time)`;
                 } else {
-                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — All Buyers`;
+                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — All Buyers (All-Time)`;
                 }
 
                 card.style.display = 'block';
