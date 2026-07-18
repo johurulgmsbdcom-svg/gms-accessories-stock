@@ -1196,6 +1196,33 @@
         let allBuyers = [];
         let selectedBuyerIds = [];
 
+        // ================================================================
+        // ROW-LIMIT / TRUNCATION FIX
+        // The original items query here had NO .limit() at all, so it fell
+        // back to Supabase/PostgREST's server-side default (commonly 1000
+        // rows). Once the items table grew past that, this page would
+        // silently work with a partial item list — which is the most
+        // likely reason Pivot's Present Stock total (16,612,403) didn't
+        // match Dashboard's (15,956,624), even though both use the same
+        // lifetime-cumulative formula. This helper pages through with
+        // .range() until a page comes back short, so ALL items are always
+        // included no matter how large the table grows or how the
+        // project's row cap is configured.
+        // ================================================================
+        async function fetchAllPaginated(buildQuery, pageSize = 1000) {
+            let allRows = [];
+            let from = 0;
+            while (true) {
+                const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+                if (error) throw error;
+                if (!data || data.length === 0) break;
+                allRows = allRows.concat(data);
+                if (data.length < pageSize) break;
+                from += pageSize;
+            }
+            return allRows;
+        }
+
         function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -1335,6 +1362,7 @@
         // (no date filter at the query level). We need the full history
         // because PRVS (opening stock) rows and any RCVD/DLVD rows dated
         // before "Date From" all belong in the "Previous" bucket.
+        // Also fully paginated per chunk so no transaction is dropped.
         // ================================================================
         async function fetchTransactionsForItems(itemIds) {
             if (!itemIds.length) return {};
@@ -1345,18 +1373,16 @@
 
             for (let i = 0; i < itemIds.length; i += CHUNK) {
                 const chunkIds = itemIds.slice(i, i + CHUNK);
-                let query = db
-                    .from('transactions')
-                    .select('id, item_id, type, txn_date, qty, line_value')
-                    .in('item_id', chunkIds)
-                    .order('txn_date', { ascending: true })
-                    .order('id', { ascending: true });
+                const chunkTxns = await fetchAllPaginated(() =>
+                    db
+                        .from('transactions')
+                        .select('id, item_id, type, txn_date, qty, line_value')
+                        .in('item_id', chunkIds)
+                        .order('txn_date', { ascending: true })
+                        .order('id', { ascending: true })
+                );
 
-                const { data, error } = await query.limit(100000);
-
-                if (error) throw error;
-
-                (data || []).forEach(txn => {
+                chunkTxns.forEach(txn => {
                     if (!byItem[txn.item_id]) byItem[txn.item_id] = [];
                     byItem[txn.item_id].push(txn);
                 });
@@ -1418,27 +1444,26 @@
             `;
 
             try {
-                let query = db
-                    .from('items')
-                    .select(`
-                        id, description, unit, goods_location, current_stock, current_value,
-                        buyer_id, supplier, item_code,
-                        buyers:buyer_id (name)
-                    `)
-                    .order('buyers(name)', { ascending: true })
-                    .order('description', { ascending: true });
+                // ✅ FIXED: fully paginated fetch — no bare .limit(), no reliance
+                // on PostgREST's default row cap. Every item in scope is fetched.
+                allItems = await fetchAllPaginated(() => {
+                    let q = db
+                        .from('items')
+                        .select(`
+                            id, description, unit, goods_location, current_stock, current_value,
+                            buyer_id, supplier, item_code,
+                            buyers:buyer_id (name)
+                        `)
+                        .order('buyers(name)', { ascending: true })
+                        .order('description', { ascending: true });
+
+                    if (selectedBuyerIds.length > 0 && selectedBuyerIds.length < allBuyers.length) {
+                        q = q.in('buyer_id', selectedBuyerIds);
+                    }
+                    return q;
+                });
 
                 const itemSearch = document.getElementById('fItem').value.trim();
-
-                if (selectedBuyerIds.length > 0 && selectedBuyerIds.length < allBuyers.length) {
-                    query = query.in('buyer_id', selectedBuyerIds);
-                }
-
-                const { data, error } = await query;
-
-                if (error) throw error;
-
-                allItems = data || [];
 
                 if (itemSearch) {
                     allItems = allItems.filter(item => {
