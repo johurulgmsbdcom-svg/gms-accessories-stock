@@ -2608,7 +2608,22 @@
                 .order('created_at', { ascending: true });
 
             if (error) throw error;
-            if (!rows || rows.length === 0) return;
+            if (!rows || rows.length === 0) {
+                // FIX #6: Previously this just returned, leaving items.current_stock
+                // untouched for any item with NO transaction rows at all. If that
+                // item had a stale/incorrect current_stock value sitting in the DB
+                // (e.g. from before transactions existed, or a data-entry mistake),
+                // it silently inflated Total Present Stock forever, with nothing in
+                // Net Qty to match it. Since Present Stock should always equal the
+                // sum of that item's own transactions, zero transactions means the
+                // correct stock is 0 — so we write that back explicitly.
+                const { error: zeroErr } = await db
+                    .from('items')
+                    .update({ current_stock: 0, current_value: 0 })
+                    .eq('id', itemId);
+                if (zeroErr) throw zeroErr;
+                return;
+            }
 
             // Force PRVS to always sort first on any given date
             const typeOrder = { PRVS: 0, RCVD: 1, DLVD: 1 };
@@ -2705,19 +2720,34 @@
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fixing...';
             }
             try {
-                const items = await fetchAllRows(db.from('items').select('id'));
+                const items = await fetchAllRows(db.from('items').select('id, description'));
                 showToast(`Recalculating stock for ${items.length} items...`, 'success');
 
+                // FIX #7: run item-by-item with its own try/catch so ONE bad item
+                // (e.g. a permission error, a weird data row) can't silently halt
+                // the whole batch and leave the remaining items un-recalculated.
+                // We collect failures and report them clearly at the end instead.
                 let done = 0;
+                const failed = [];
                 for (const item of items) {
-                    await recalcItemStock(item.id);
+                    try {
+                        await recalcItemStock(item.id);
+                    } catch (itemErr) {
+                        console.error(`recalcItemStock failed for item ${item.id} (${item.description}):`, itemErr);
+                        failed.push({ id: item.id, name: item.description, error: itemErr.message });
+                    }
                     done++;
                     if (btn && done % 10 === 0) {
                         btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${done}/${items.length}...`;
                     }
                 }
 
-                showToast(`All ${items.length} items reconciled! Stock now matches Net Qty.`, 'success');
+                if (failed.length === 0) {
+                    showToast(`All ${items.length} items reconciled! Stock now matches Net Qty.`, 'success');
+                } else {
+                    console.error('Items that FAILED to reconcile:', failed);
+                    showToast(`${items.length - failed.length}/${items.length} fixed. ${failed.length} item(s) failed — check console (F12) for names.`, 'warning');
+                }
                 await loadTransactions();
             } catch (err) {
                 console.error('recalcAllStock error:', err);
