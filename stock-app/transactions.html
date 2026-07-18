@@ -52,6 +52,7 @@
             position: relative;
         }
 
+        /* 3D Animated Background */
         .bg-3d {
             position: fixed;
             top: 0; left: 0;
@@ -95,6 +96,7 @@
             75% { transform: translate(20px, 10px) scale(1.05); }
         }
 
+        /* Glass Effect */
         .glass {
             background: var(--glass-bg);
             backdrop-filter: blur(20px);
@@ -104,6 +106,7 @@
             box-shadow: var(--glass-shadow);
         }
 
+        /* Header */
         .header {
             padding: 14px 20px;
             display: flex;
@@ -197,12 +200,14 @@
             transform: translateY(-2px);
         }
 
+        /* Main */
         .main {
             padding: 20px;
             max-width: 1400px;
             margin: 0 auto;
         }
 
+        /* Page Title */
         .page-title {
             display: flex;
             align-items: center;
@@ -276,6 +281,7 @@
             font-size: 11px;
         }
 
+        /* Filter Card */
         .filter-card {
             padding: 20px;
             margin-bottom: 20px;
@@ -413,6 +419,7 @@
             color: var(--text-muted);
         }
 
+        /* Stats Row */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -479,6 +486,7 @@
             background-clip: text;
         }
 
+        /* Buyer Grand Total Card */
         .buyer-total-card {
             padding: 18px 20px;
             margin-bottom: 20px;
@@ -538,6 +546,7 @@
         .buyer-total-item.dlvdval .bt-value { color: var(--accent-purple); }
         .buyer-total-item.netval .bt-value { color: var(--accent-cyan); }
 
+        /* Table footer (grand total row) */
         tfoot td {
             padding: 12px 10px;
             font-weight: 800;
@@ -553,6 +562,7 @@
             border: 1px solid rgba(30, 41, 59, 0.18);
         }
 
+        /* Table Card */
         .table-card {
             padding: 20px;
             margin-bottom: 20px;
@@ -760,6 +770,7 @@
             justify-content: center;
         }
 
+        /* Pagination */
         .pagination {
             display: flex;
             align-items: center;
@@ -829,6 +840,7 @@
             cursor: pointer;
         }
 
+        /* QR Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -897,6 +909,7 @@
             border-color: var(--accent-red);
         }
 
+        /* Simple Confirm Modal */
         .confirm-modal-content {
             background: var(--glass-bg-strong);
             backdrop-filter: blur(20px);
@@ -956,6 +969,7 @@
             background: linear-gradient(135deg, var(--accent-red), #dc2626);
         }
 
+        /* Edit Modal */
         .edit-modal-content {
             background: var(--glass-bg-strong);
             backdrop-filter: blur(20px);
@@ -1061,6 +1075,7 @@
             justify-content: center;
         }
 
+        /* Print Styles - A4 Landscape, 15 QR codes per page (5x3), each 38mm */
         @media print {
             @page {
                 size: A4 landscape;
@@ -1140,6 +1155,7 @@
             }
         }
 
+        /* Loading / Empty */
         .loading-state, .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -1166,6 +1182,7 @@
             to { transform: translateY(0); opacity: 1; }
         }
 
+        /* Bottom Nav */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -1210,6 +1227,7 @@
             font-size: 18px;
         }
 
+        /* Toast */
         .toast {
             position: fixed;
             top: 20px;
@@ -1239,119 +1257,13 @@
         .toast.success { border-left: 4px solid var(--accent-green); }
         .toast.warning { border-left: 4px solid var(--accent-yellow); }
 
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
-        /* Excel-Style Column Filter Dropdown - BLUE HEADER */
-        .col-filter-dropdown {
-            position: fixed;
-            background: var(--glass-bg-strong);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-            z-index: 10000;
-            min-width: 260px;
-            max-width: 320px;
-            display: none;
-        }
-
-        .col-filter-dropdown.show {
-            display: block;
-        }
-
-        .col-filter-header {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            padding: 12px 14px;
-            border-radius: 10px 10px 0 0;
-            font-weight: 700;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .col-filter-search-box {
-            padding: 10px 14px;
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .col-filter-search-box input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--glass-border);
-            border-radius: 6px;
-            background: var(--glass-bg);
-            color: var(--text-primary);
-            font-size: 12px;
-            outline: none;
-        }
-
-        .col-filter-search-box input:focus {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-        }
-
-        .col-filter-quick-actions {
-            padding: 8px 14px;
-            display: flex;
-            gap: 10px;
-            font-size: 11px;
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .col-filter-quick-actions span {
-            color: var(--accent-blue);
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .col-filter-quick-actions span:hover {
-            text-decoration: underline;
-        }
-
-        .col-filter-list {
-            max-height: 220px;
-            overflow-y: auto;
-            padding: 8px;
-        }
-
-        .col-filter-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 8px;
-            cursor: pointer;
-            border-radius: 6px;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .col-filter-item:hover {
-            background: rgba(59, 130, 246, 0.15);
-        }
-
-        .col-filter-item input[type="checkbox"] {
-            cursor: pointer;
-        }
-
-        .col-filter-actions {
-            padding: 10px 14px;
-            border-top: 1px solid var(--glass-border);
-            display: flex;
-            gap: 8px;
-        }
-
-        .col-filter-actions .btn {
-            flex: 1;
-            justify-content: center;
-            padding: 8px 12px;
-            font-size: 11px;
-        }
-
+        /* Full-width layout for large PC screens so more columns are visible at once */
         @media screen and (min-width: 1600px) {
             .main {
                 max-width: 98%;
@@ -1366,6 +1278,7 @@
             }
         }
 
+        /* Responsive */
         @media screen and (max-width: 768px) {
             .main { padding: 16px; }
             .filter-grid { grid-template-columns: 1fr 1fr; }
@@ -1387,12 +1300,14 @@
     </style>
 </head>
 <body>
+    <!-- 3D Background -->
     <div class="bg-3d"></div>
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
     <div class="orb orb-4"></div>
 
+    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <a href="index.html" class="back-btn">
@@ -1408,7 +1323,9 @@
         </div>
     </header>
 
+    <!-- Main -->
     <main class="main">
+        <!-- Page Title -->
         <div class="page-title">
             <h2><i class="fas fa-list-alt"></i> Full Transaction Ledger</h2>
             <div class="title-actions">
@@ -1419,14 +1336,12 @@
                     <i class="fas fa-qrcode"></i> Print QR Codes
                 </button>
                 <button class="btn btn-excel" onclick="downloadExcel()">
-                    <i class="fas fa-file-excel"></i> Download Filtered
-                </button>
-                <button class="btn btn-search" onclick="downloadFullStockHistory()">
-                    <i class="fas fa-history"></i> Full Stock History
+                    <i class="fas fa-file-excel"></i> Download Excel
                 </button>
             </div>
         </div>
 
+        <!-- Filter Card -->
         <div class="filter-card glass">
             <div class="filter-title">
                 <i class="fas fa-filter"></i> Filters
@@ -1499,6 +1414,7 @@
 
         <div id="activeRangeDebug" style="font-size:11px;color:var(--text-muted);margin:-8px 0 14px;padding:0 4px;"></div>
 
+        <!-- Stats Row -->
         <div class="stats-row">
             <div class="stat-card glass blue">
                 <div class="stat-value" id="statTotal">—</div>
@@ -1522,6 +1438,7 @@
             </div>
         </div>
 
+        <!-- Buyer Grand Total Card -->
         <div class="buyer-total-card glass" id="buyerTotalCard" style="display:none;">
             <div class="buyer-total-title" id="buyerTotalTitle">
                 <i class="fas fa-calculator"></i> Grand Total
@@ -1562,6 +1479,7 @@
             </div>
         </div>
 
+        <!-- Table Card -->
         <div class="table-card glass">
             <div id="tableContent">
                 <div class="loading-state">
@@ -1572,6 +1490,7 @@
         </div>
     </main>
 
+    <!-- QR Modal -->
     <div class="modal-overlay" id="qrModal">
         <div class="modal-content glass">
             <div class="modal-header">
@@ -1592,6 +1511,7 @@
         </div>
     </div>
 
+    <!-- Delete Confirm Modal -->
     <div class="modal-overlay" id="confirmModal">
         <div class="confirm-modal-content">
             <div class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
@@ -1608,6 +1528,7 @@
         </div>
     </div>
 
+    <!-- Edit Transaction Modal -->
     <div class="modal-overlay" id="editModal">
         <div class="edit-modal-content">
             <div class="modal-header">
@@ -1680,6 +1601,7 @@
         </div>
     </div>
 
+    <!-- Bottom Nav -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item">
             <i class="fas fa-home nav-icon"></i> Home
@@ -1707,17 +1629,20 @@
         </a>
     </nav>
 
+    <!-- Toast -->
     <div class="toast" id="toast">
         <i class="fas fa-check-circle" id="toastIcon"></i>
         <span id="toastMsg">Success!</span>
     </div>
 
     <script>
+        // ============ SUPABASE ============
         const SUPABASE_URL = 'https://qwtourjspllhiiryqewf.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_pcQFRFQWWAT1zTXfVfgdSw_43rcVr5S';
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // ============ STATE ============
         let allTransactions = [];
         let filteredData = [];
         let currentPage = 1;
@@ -1731,11 +1656,8 @@
         let pendingEditId = null;
         let loadRequestId = 0;
         const QR_PER_PAGE = 15;
-        
-        // Column Filter State
-        let activeColumnFilters = {};
-        let ocActiveFilterCol = null;
 
+        // ============ HEADER HEIGHT ============
         function setHeaderHeightVar() {
             const header = document.querySelector('.header');
             if (header) {
@@ -1745,6 +1667,7 @@
         window.addEventListener('resize', setHeaderHeightVar);
         window.addEventListener('load', setHeaderHeightVar);
 
+        // ============ THEME ============
         function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -1765,6 +1688,7 @@
             updateThemeIcon(saved);
         })();
 
+        // ============ TOAST ============
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toastIcon');
@@ -1776,6 +1700,7 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
+        // ============ UTILS ============
         function fmt(n) {
             if (n === null || n === undefined || isNaN(n)) return '0';
             return parseFloat(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -1789,6 +1714,7 @@
             return n.toFixed(0);
         }
 
+        // ============ LOAD FILTERS ============
         async function loadFilters() {
             try {
                 const { data: buyers } = await db.from('buyers').select('id, name').order('name');
@@ -1806,9 +1732,12 @@
 
                 const { data: teams } = await db.from('team_members').select('id, name').order('name');
                 const teamSelect = document.getElementById('fTeam');
-                const editTeamSelect = document.getElementById('eTeam');
                 (teams || []).forEach(t => {
                     teamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+                });
+
+                const editTeamSelect = document.getElementById('eTeam');
+                (teams || []).forEach(t => {
                     editTeamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
                 });
 
@@ -1824,6 +1753,7 @@
             }
         }
 
+        // ============ ITEM SEARCH DROPDOWN ============
         function renderItemDropdown(query) {
             const dropdown = document.getElementById('itemDropdown');
             const q = (query || '').trim().toLowerCase();
@@ -1861,6 +1791,7 @@
             }
         });
 
+        // ============ DATE READABLE LABEL ============
         function updateDateReadable() {
             const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
             ['fDateFrom', 'fDateTo'].forEach(id => {
@@ -1872,6 +1803,7 @@
             });
         }
 
+        // ============ APPLY FILTERS ============
         async function applyFilters() {
             currentPage = 1;
             await loadTransactions();
@@ -1885,6 +1817,7 @@
             }, 350);
         }
 
+        // ============ LOAD TRANSACTIONS ============
         async function loadTransactions() {
             const requestId = ++loadRequestId;
             const tableContent = document.getElementById('tableContent');
@@ -1902,7 +1835,7 @@
                         id, type, txn_date, qty, unit_price_snapshot, line_value,
                         challan_no, mrr_no, order_no, style_no, remarks,
                         present_stock_after, stock_value_after, team_member_id, item_id,
-                        items:item_id (
+                        items:item_id!inner (
                             id, description, unit, goods_location, item_code, qr_payload,
                             buyer_id, supplier,
                             buyers:buyer_id (name)
@@ -1945,20 +1878,7 @@
                         debugEl.innerHTML = `<i class="fas fa-filter"></i> No date filter applied — showing ALL dates`;
                     }
                 }
-
-                if (buyerId) {
-                    const { data: buyerItems } = await db.from('items').select('id').eq('buyer_id', buyerId);
-                    if (buyerItems && buyerItems.length > 0) {
-                        const itemIds = buyerItems.map(i => i.id);
-                        query = query.in('item_id', itemIds);
-                    } else {
-                        allTransactions = [];
-                        filteredData = [];
-                        renderTable();
-                        return;
-                    }
-                }
-
+                if (buyerId) query = query.eq('items.buyer_id', buyerId);
                 if (itemText) {
                     const matchedItemId = itemNameToId[itemText];
                     if (matchedItemId) {
@@ -1985,7 +1905,10 @@
 
                 applySorting();
                 updateStats();
+                
+                // UPDATED: Added 'await' here so it fetches exact stock from 'items' table
                 await updateBuyerTotal();
+
                 renderTable();
 
             } catch (err) {
@@ -2001,6 +1924,7 @@
             }
         }
 
+        // ============ SORTING ============
         function applySorting() {
             filteredData.sort((a, b) => {
                 let aVal = getSortValue(a, sortColumn);
@@ -2056,6 +1980,7 @@
             renderTable();
         }
 
+        // ============ UPDATE STATS ============
         function updateStats() {
             const total = filteredData.length;
             let rcvdQty = 0, dlvdQty = 0, rcvdValue = 0, dlvdValue = 0;
@@ -2079,6 +2004,7 @@
             document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
         }
 
+        // ============ STOCK TOTAL HELPER ============
         function computeStockTotals(data) {
             const latestByItem = {};
             data.forEach(txn => {
@@ -2096,12 +2022,14 @@
             return { stock, stockVal };
         }
 
+        // ============ BUYER GRAND TOTAL (UPDATED FOR 100% DASHBOARD MATCH) ============
         async function updateBuyerTotal() {
             const card = document.getElementById('buyerTotalCard');
             const titleEl = document.getElementById('buyerTotalTitle');
             const buyerSelect = document.getElementById('fBuyer');
             const buyerId = buyerSelect.value;
 
+            // 1. Calculate RCVD/DLVD/PRVS from filtered transactions (Period-specific)
             let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
@@ -2121,10 +2049,12 @@
             const netQty = (prvsQty + rcvdQty) - dlvdQty;
             const netVal = (prvsVal + rcvdVal) - dlvdVal;
 
+            // 2. Fetch Stock and Stock Value DIRECTLY from 'items' table 
+            // This guarantees a 100% EXACT MATCH with dashboard.html's Total Stock Qty
             try {
                 let query = db.from('items').select('current_stock, current_value');
                 if (buyerId) {
-                    query = query.eq('buyer_id', buyerId);
+                    query = query.eq('buyer_id', buyerId); // If a specific buyer is selected
                 }
                 
                 const { data: itemsData, error } = await query;
@@ -2137,6 +2067,7 @@
                     totalStockVal = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_value) || 0), 0);
                 }
 
+                // 3. Update UI
                 document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
                 document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
                 document.getElementById('btNetQty').textContent = fmt(netQty);
@@ -2144,6 +2075,7 @@
                 document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
                 document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
                 
+                // THESE TWO NOW MATCH DASHBOARD EXACTLY
                 document.getElementById('btStock').textContent = fmt(totalStock);
                 document.getElementById('btStockVal').textContent = '$' + fmt(totalStockVal);
 
@@ -2161,141 +2093,7 @@
             }
         }
 
-        // =========================================
-        // EXCEL-STYLE COLUMN FILTER (BLUE HEADER)
-        // =========================================
-        function openColumnFilter(evt, colIndex, colKey, colLabel) {
-            evt.stopPropagation();
-            ocActiveFilterCol = colIndex;
-            
-            const uniqueValues = [...new Set(filteredData.map(row => {
-                let val = getSortValue(row, colKey);
-                return val !== undefined && val !== null ? String(val).trim() : '';
-            }))].sort((a, b) => {
-                if (!isNaN(a) && !isNaN(b)) return parseFloat(a) - parseFloat(b);
-                return String(a).localeCompare(String(b));
-            });
-
-            const selected = activeColumnFilters[colIndex] || new Set(uniqueValues);
-            
-            const dropdown = document.createElement('div');
-            dropdown.className = 'col-filter-dropdown show';
-            dropdown.id = 'colFilterDropdown';
-            dropdown.innerHTML = `
-                <div class="col-filter-header">
-                    <span>${colLabel}</span>
-                    <i class="fas fa-times" style="cursor:pointer" onclick="closeColumnFilter()"></i>
-                </div>
-                <div class="col-filter-search-box">
-                    <input type="text" placeholder="Search item..." id="colFilterSearch" oninput="filterColumnOptions('${colKey}')">
-                </div>
-                <div class="col-filter-quick-actions">
-                    <span onclick="columnFilterSelectAll(true)">Select All</span>
-                    <span onclick="columnFilterSelectAll(false)">Clear All</span>
-                </div>
-                <div class="col-filter-list" id="colFilterList">
-                    ${uniqueValues.map(val => {
-                        const checked = selected.has(val) ? 'checked' : '';
-                        const displayVal = val === '' ? '(Blank)' : val;
-                        return `<label class="col-filter-item">
-                            <input type="checkbox" value="${val.replace(/"/g, '&quot;')}" ${checked} onchange="updateColumnFilter(${colIndex}, '${val.replace(/'/g, "\\'")}', this.checked)">
-                            <span>${displayVal}</span>
-                        </label>`;
-                    }).join('')}
-                </div>
-                <div class="col-filter-actions">
-                    <button class="btn btn-success" onclick="applyColumnFilter()"><i class="fas fa-check"></i> OK</button>
-                    <button class="btn btn-cancel" onclick="clearColumnFilter()"><i class="fas fa-times"></i> Clear</button>
-                </div>
-            `;
-            
-            const rect = evt.target.getBoundingClientRect();
-            dropdown.style.top = (rect.bottom + 5) + 'px';
-            dropdown.style.left = Math.min(rect.left, window.innerWidth - 330) + 'px';
-            
-            document.body.appendChild(dropdown);
-        }
-
-        function closeColumnFilter() {
-            const dropdown = document.getElementById('colFilterDropdown');
-            if (dropdown) dropdown.remove();
-            ocActiveFilterCol = null;
-        }
-
-        function filterColumnOptions(colKey) {
-            const searchTerm = document.getElementById('colFilterSearch').value.toLowerCase();
-            const items = document.querySelectorAll('#colFilterList .col-filter-item');
-            
-            items.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                item.style.display = text.includes(searchTerm) ? 'flex' : 'none';
-            });
-        }
-
-        function columnFilterSelectAll(check) {
-            document.querySelectorAll('#colFilterList input[type=checkbox]').forEach(cb => cb.checked = check);
-        }
-
-        function updateColumnFilter(colIndex, value, isChecked) {
-            if (!activeColumnFilters[colIndex]) activeColumnFilters[colIndex] = new Set();
-            if (isChecked) {
-                activeColumnFilters[colIndex].add(value);
-            } else {
-                activeColumnFilters[colIndex].delete(value);
-            }
-        }
-
-        function applyColumnFilter() {
-            const colIndex = ocActiveFilterCol;
-            if (colIndex === null) return;
-            
-            const columns = [
-                { key: 'no' }, { key: 'txn_date' }, { key: 'buyer' }, { key: 'item' },
-                { key: 'item_code' }, { key: 'unit' }, { key: 'type' }, { key: 'challan_no' },
-                { key: 'mrr_no' }, { key: 'order_no' }, { key: 'style_no' }, { key: 'qty' },
-                { key: 'unit_price' }, { key: 'line_value' }, { key: 'present_stock' },
-                { key: 'stock_value' }, { key: 'supplier' }, { key: 'team' }, { key: 'remarks' }, { key: 'actions' }
-            ];
-            
-            const colKey = columns[colIndex].key;
-            const selected = activeColumnFilters[colIndex];
-            
-            if (selected && selected.size > 0) {
-                filteredData = allTransactions.filter(row => {
-                    const cellValue = getSortValue(row, colKey);
-                    const strValue = (cellValue !== null && cellValue !== undefined) ? String(cellValue).trim() : '';
-                    return selected.has(strValue);
-                });
-            } else {
-                filteredData = [...allTransactions];
-            }
-            
-            applySorting();
-            updateStats();
-            updateBuyerTotal();
-            renderTable();
-            closeColumnFilter();
-        }
-
-        function clearColumnFilter() {
-            if (ocActiveFilterCol !== null) {
-                delete activeColumnFilters[ocActiveFilterCol];
-                filteredData = [...allTransactions];
-                applySorting();
-                updateStats();
-                updateBuyerTotal();
-                renderTable();
-            }
-            closeColumnFilter();
-        }
-
-        document.addEventListener('click', (e) => {
-            const dropdown = document.getElementById('colFilterDropdown');
-            if (dropdown && !dropdown.contains(e.target) && !e.target.closest('.filter-icon')) {
-                closeColumnFilter();
-            }
-        });
-
+        // ============ QR CODE FUNCTIONS ============
         function generateQRSvg(text) {
             try {
                 const qr = qrcode(0, 'M');
@@ -2434,6 +2232,7 @@
             }
         }
 
+        // ============ DELETE TRANSACTION ============
         function openDeleteConfirm(txnId) {
             const txn = filteredData.find(t => t.id === txnId);
             pendingDeleteId = txnId;
@@ -2480,6 +2279,7 @@
             }
         }
 
+        // ============ EDIT TRANSACTION ============
         function openEditModal(txnId) {
             const txn = filteredData.find(t => t.id === txnId);
             if (!txn) {
@@ -2636,6 +2436,7 @@
             }
         }
 
+        // ============ RENDER TABLE ============
         function renderTable() {
             const tableContent = document.getElementById('tableContent');
 
@@ -2643,7 +2444,7 @@
                 tableContent.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
-                        <p>No transactions found for this filter.<br><small>Try expanding the date range or clicking "Reset"</small></p>
+                        <p>No transactions found</p>
                     </div>
                 `;
                 return;
@@ -2679,19 +2480,14 @@
             ];
 
             let html = '<div class="table-wrapper"><table><thead><tr>';
-            columns.forEach((col, index) => {
+            columns.forEach(col => {
                 const isSorted = sortColumn === col.key;
                 const sortIcon = isSorted
                     ? (sortDirection === 'asc' ? '<i class="fas fa-sort-up sort-icon"></i>' : '<i class="fas fa-sort-down sort-icon"></i>')
                     : '<i class="fas fa-sort sort-icon"></i>';
                 const sortable = col.sortable ? `onclick="sortBy('${col.key}')"` : '';
                 const sortedClass = isSorted ? 'sorted' : '';
-                
-                const filterIcon = col.sortable 
-                    ? `<i class="fas fa-filter filter-icon" style="margin-left:4px;font-size:9px;opacity:0.7" onclick="openColumnFilter(event, ${index}, '${col.key}', '${col.label}')"></i>`
-                    : '';
-                
-                html += `<th class="${sortedClass}" ${sortable} style="position: relative;">${col.label} ${col.sortable ? sortIcon : ''}${filterIcon}</th>`;
+                html += `<th class="${sortedClass}" ${sortable}>${col.label} ${col.sortable ? sortIcon : ''}</th>`;
             });
             html += '</tr></thead><tbody>';
 
@@ -2802,6 +2598,7 @@
             document.querySelector('.table-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
+        // ============ RESET FILTERS ============
         function resetFilters() {
             document.getElementById('fBuyer').value = '';
             document.getElementById('fItem').value = '';
@@ -2812,7 +2609,6 @@
             document.getElementById('fStyle').value = '';
             document.getElementById('fTeam').value = '';
             document.getElementById('fSupplier').value = '';
-            activeColumnFilters = {};
 
             const today = new Date();
             const thirtyDaysAgo = new Date(today);
@@ -2824,109 +2620,7 @@
             applyFilters();
         }
 
-        async function downloadFullStockHistory() {
-            showToast('Preparing Full Stock History...', 'success');
-            try {
-                const { data: items, error: itemError } = await db.from('items').select(`
-                    id, description, unit, current_stock, current_value,
-                    buyer_id, buyers:buyer_id (name)
-                `).limit(10000);
-                if (itemError) throw itemError;
-
-                const { data: txns, error: txnError } = await db.from('transactions').select('item_id, type, qty').limit(10000);
-                if (txnError) throw txnError;
-
-                const itemStats = {};
-                items.forEach(item => {
-                    const buyerName = item.buyers?.name || 'Unknown';
-                    const key = `${buyerName}||${item.description}`;
-                    itemStats[key] = {
-                        buyer: buyerName,
-                        item: item.description,
-                        unit: item.unit,
-                        rcvdQty: 0,
-                        dlvdQty: 0,
-                        presentStock: parseFloat(item.current_stock) || 0
-                    };
-                });
-
-                txns.forEach(txn => {
-                    const item = items.find(i => i.id === txn.item_id);
-                    if (!item) return;
-                    const buyerName = item.buyers?.name || 'Unknown';
-                    const key = `${buyerName}||${item.description}`;
-                    
-                    if (!itemStats[key]) {
-                        itemStats[key] = { buyer: buyerName, item: item.description, unit: item.unit, rcvdQty: 0, dlvdQty: 0, presentStock: 0 };
-                    }
-                    
-                    if (txn.type === 'RCVD') {
-                        itemStats[key].rcvdQty += parseFloat(txn.qty) || 0;
-                    } else if (txn.type === 'DLVD') {
-                        itemStats[key].dlvdQty += parseFloat(txn.qty) || 0;
-                    }
-                });
-
-                const excelData = Object.values(itemStats).map(stat => {
-                    const previousStock = stat.presentStock - stat.rcvdQty + stat.dlvdQty;
-                    return {
-                        'Buyer': stat.buyer,
-                        'Item': stat.item,
-                        'Unit': stat.unit,
-                        'Previous Stock': previousStock,
-                        'Total RCVD Qty': stat.rcvdQty,
-                        'Total DLVD Qty': stat.dlvdQty,
-                        'Present Stock': stat.presentStock
-                    };
-                });
-
-                excelData.sort((a, b) => {
-                    if (a.Buyer !== b.Buyer) return a.Buyer.localeCompare(b.Buyer);
-                    return a.Item.localeCompare(b.Item);
-                });
-
-                const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.json_to_sheet(excelData);
-
-                const range = XLSX.utils.decode_range(ws['!ref']);
-                for (let R = range.s.r; R <= range.e.r; ++R) {
-                    for (let C = range.s.c; C <= range.e.c; ++C) {
-                        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-                        if (!ws[cellAddress]) continue;
-                        if (!ws[cellAddress].s) ws[cellAddress].s = {};
-                        ws[cellAddress].s.border = {
-                            top: { style: 'thin', color: { rgb: '000000' } },
-                            bottom: { style: 'thin', color: { rgb: '000000' } },
-                            left: { style: 'thin', color: { rgb: '000000' } },
-                            right: { style: 'thin', color: { rgb: '000000' } }
-                        };
-                        if (R === 0) {
-                            ws[cellAddress].s.font = { bold: true };
-                            ws[cellAddress].s.fill = { fgColor: { rgb: 'D3D3D3' } };
-                        }
-                    }
-                }
-
-                const colWidths = excelData.reduce((w, r) => {
-                    Object.keys(r).forEach((k, i) => {
-                        const len = String(r[k]).length;
-                        w[i] = Math.max(w[i] || 10, len + 2);
-                    });
-                    return w;
-                }, []);
-                ws['!cols'] = colWidths.map(w => ({ wch: w }));
-
-                XLSX.utils.book_append_sheet(wb, ws, 'Full Stock History');
-                const dateStr = new Date().toISOString().split('T')[0];
-                XLSX.writeFile(wb, `GMS_Full_Stock_History_${dateStr}.xlsx`);
-                showToast('Full Stock History downloaded!', 'success');
-
-            } catch (err) {
-                console.error('Download error:', err);
-                showToast('Error downloading full history: ' + err.message, 'error');
-            }
-        }
-
+        // ============ EXCEL EXPORT ============
         function downloadExcel() {
             if (!filteredData.length) {
                 showToast('No data to export', 'error');
@@ -2963,6 +2657,7 @@
             showToast('Excel file downloaded!', 'success');
         }
 
+        // ============ INIT ============
         document.addEventListener('DOMContentLoaded', async () => {
             setHeaderHeightVar();
             await loadFilters();
