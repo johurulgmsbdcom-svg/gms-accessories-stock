@@ -1885,6 +1885,33 @@
             }, 350);
         }
 
+        // ==========================================================
+        // FIX #1: Supabase PostgREST caps ANY single request at the
+        // project's "Max Rows" setting (default 1000), no matter what
+        // .limit() you pass. If you have 1425 rows, only 1000 come
+        // back. This helper pages through with .range() in batches
+        // of 1000 until every row is fetched, so nothing is silently
+        // dropped and Total Transactions always matches the DB.
+        // ==========================================================
+        async function fetchAllRows(queryBuilder) {
+            const BATCH_SIZE = 1000;
+            let allRows = [];
+            let from = 0;
+
+            while (true) {
+                const { data: batch, error } = await queryBuilder.range(from, from + BATCH_SIZE - 1);
+                if (error) throw error;
+                if (!batch || batch.length === 0) break;
+
+                allRows = allRows.concat(batch);
+
+                if (batch.length < BATCH_SIZE) break; // last page reached
+                from += BATCH_SIZE;
+            }
+
+            return allRows;
+        }
+
         async function loadTransactions() {
             const requestId = ++loadRequestId;
             const tableContent = document.getElementById('tableContent');
@@ -1947,7 +1974,7 @@
                 }
 
                 if (buyerId) {
-                    const { data: buyerItems } = await db.from('items').select('id').eq('buyer_id', buyerId);
+                    const buyerItems = await fetchAllRows(db.from('items').select('id').eq('buyer_id', buyerId));
                     if (buyerItems && buyerItems.length > 0) {
                         const itemIds = buyerItems.map(i => i.id);
                         query = query.in('item_id', itemIds);
@@ -1975,9 +2002,10 @@
                 if (teamId) query = query.eq('team_member_id', teamId);
                 if (supplier) query = query.ilike('items.supplier', `%${supplier}%`);
 
-                const { data, error } = await query.limit(30000);
+                // FIX #1 applied here: page through ALL matching rows,
+                // not just the first 1000 the server would otherwise cap at.
+                const data = await fetchAllRows(query);
 
-                if (error) throw error;
                 if (requestId !== loadRequestId) return;
 
                 allTransactions = data || [];
@@ -2096,58 +2124,69 @@
             return { stock, stockVal };
         }
 
-        // =========================================
-        // FIXED: Strict PRVS + RCVD - DLVD Logic
-        // =========================================
         async function updateBuyerTotal() {
             const card = document.getElementById('buyerTotalCard');
             const titleEl = document.getElementById('buyerTotalTitle');
             const buyerSelect = document.getElementById('fBuyer');
             const buyerId = buyerSelect.value;
 
-            let prvsQty = 0, prvsVal = 0, rcvdQty = 0, rcvdVal = 0, dlvdQty = 0, dlvdVal = 0;
-
+            let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
-                if (txn.type === 'PRVS') { 
-                    prvsQty += qty; 
-                    prvsVal += val; 
-                } else if (txn.type === 'RCVD') { 
-                    rcvdQty += qty; 
-                    rcvdVal += val; 
-                } else if (txn.type === 'DLVD') { 
-                    dlvdQty += qty; 
-                    dlvdVal += val; 
+                if (txn.type === 'RCVD') {
+                    rcvdQty += qty;
+                    rcvdVal += val;
+                } else if (txn.type === 'DLVD') {
+                    dlvdQty += qty;
+                    dlvdVal += val;
+                } else if (txn.type === 'PRVS') {
+                    prvsQty += qty;
+                    prvsVal += val;
                 }
             });
 
-            // সরাসরি আপনার লজিক: (PRVS + RCVD) - DLVD = Present Stock
-            const totalAddQty = prvsQty + rcvdQty;
-            const totalAddVal = prvsVal + rcvdVal;
-            const netQty = totalAddQty - dlvdQty;
-            const netVal = totalAddVal - dlvdVal;
+            const netQty = (prvsQty + rcvdQty) - dlvdQty;
+            const netVal = (prvsVal + rcvdVal) - dlvdVal;
 
-            document.getElementById('btRcvdQty').textContent = fmt(totalAddQty);
-            document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
-            document.getElementById('btNetQty').textContent = fmt(netQty);
-            
-            document.getElementById('btRcvdVal').textContent = '$' + fmt(totalAddVal);
-            document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
-            document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
-            
-            // Present Stock সরাসরি Net Qty এবং Net Value এর সমান হবে
-            document.getElementById('btStock').textContent = fmt(netQty);
-            document.getElementById('btStockVal').textContent = '$' + fmt(netVal);
+            try {
+                let query = db.from('items').select('current_stock, current_value');
+                if (buyerId) {
+                    query = query.eq('buyer_id', buyerId);
+                }
 
-            if (buyerId) {
-                const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
-                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerName}`;
-            } else {
-                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — All Buyers (PRVS + RCVD - DLVD)`;
+                // FIX #1 applied here too: items list can also exceed 1000 rows.
+                const itemsData = await fetchAllRows(query);
+
+                let totalStock = 0;
+                let totalStockVal = 0;
+                if (itemsData) {
+                    totalStock = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_stock) || 0), 0);
+                    totalStockVal = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_value) || 0), 0);
+                }
+
+                document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
+                document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
+                document.getElementById('btNetQty').textContent = fmt(netQty);
+                document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
+                document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
+                document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
+                
+                document.getElementById('btStock').textContent = fmt(totalStock);
+                document.getElementById('btStockVal').textContent = '$' + fmt(totalStockVal);
+
+                if (buyerId) {
+                    const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
+                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerName}`;
+                } else {
+                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — All Buyers`;
+                }
+
+                card.style.display = 'block';
+            } catch (err) {
+                console.error('updateBuyerTotal error:', err);
+                card.style.display = 'none';
             }
-
-            card.style.display = 'block';
         }
 
         // =========================================
@@ -2384,9 +2423,8 @@
                     query = query.eq('buyer_id', buyerId);
                 }
 
-                const { data, error } = await query.limit(30000);
-
-                if (error) throw error;
+                // FIX #1: page through all items instead of capping at 1000
+                const data = await fetchAllRows(query);
 
                 if (!data || data.length === 0) {
                     showToast('No items found for this selection', 'error');
@@ -2500,6 +2538,16 @@
             pendingEditId = null;
         }
 
+        // ==========================================================
+        // FIX #2: PRVS-first ordering within recalcItemStock.
+        // Previously rows were sorted only by txn_date + created_at.
+        // If any RCVD/DLVD ever landed on the SAME date as the PRVS
+        // opening entry (01-07-2026), it could get sorted before the
+        // PRVS row and corrupt the running stock. Now PRVS is always
+        // forced first for a given date, guaranteeing your opening
+        // balance (e.g. 17,824,031 grand total) is always the base
+        // that RCVD/DLVD apply on top of.
+        // ==========================================================
         async function recalcItemStock(itemId) {
             const { data: rows, error } = await db
                 .from('transactions')
@@ -2510,6 +2558,18 @@
 
             if (error) throw error;
             if (!rows || rows.length === 0) return;
+
+            // Force PRVS to always sort first on any given date
+            const typeOrder = { PRVS: 0, RCVD: 1, DLVD: 1 };
+            rows.sort((a, b) => {
+                if (a.txn_date !== b.txn_date) {
+                    return a.txn_date < b.txn_date ? -1 : 1;
+                }
+                const ta = typeOrder[a.type] ?? 1;
+                const tb = typeOrder[b.type] ?? 1;
+                if (ta !== tb) return ta - tb;
+                return new Date(a.created_at) - new Date(b.created_at);
+            });
 
             let runningStock = 0;
             let runningValue = 0;
@@ -2729,14 +2789,15 @@
             const footNetQty = footAddQty - footDlvdQty;
             const footNetVal = footAddVal - footDlvdVal;
 
-            // FIXED: Table footer now also strictly uses (PRVS + RCVD) - DLVD for Present Stock
+            const stockTotals = computeStockTotals(filteredData);
+
             html += `<tfoot><tr>
                 <td colspan="11" style="text-align:right;">GRAND TOTAL (all filtered rows):</td>
                 <td>${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
                 <td>—</td>
                 <td>${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
-                <td>${fmt(footNetQty)}</td>
-                <td>$${fmt(footNetVal)}</td>
+                <td>${fmt(stockTotals.stock)}</td>
+                <td>$${fmt(stockTotals.stockVal)}</td>
                 <td colspan="4"></td>
             </tr></tfoot>`;
 
@@ -2815,14 +2876,16 @@
         async function downloadFullStockHistory() {
             showToast('Preparing Full Stock History...', 'success');
             try {
-                const { data: items, error: itemError } = await db.from('items').select(`
-                    id, description, unit, current_stock, current_value,
-                    buyer_id, buyers:buyer_id (name)
-                `).limit(10000);
-                if (itemError) throw itemError;
+                const items = await fetchAllRows(
+                    db.from('items').select(`
+                        id, description, unit, current_stock, current_value,
+                        buyer_id, buyers:buyer_id (name)
+                    `)
+                );
 
-                const { data: txns, error: txnError } = await db.from('transactions').select('item_id, type, qty').limit(10000);
-                if (txnError) throw txnError;
+                const txns = await fetchAllRows(
+                    db.from('transactions').select('item_id, type, qty')
+                );
 
                 const itemStats = {};
                 items.forEach(item => {
@@ -2838,8 +2901,11 @@
                     };
                 });
 
+                const itemById = {};
+                items.forEach(item => { itemById[item.id] = item; });
+
                 txns.forEach(txn => {
-                    const item = items.find(i => i.id === txn.item_id);
+                    const item = itemById[txn.item_id];
                     if (!item) return;
                     const buyerName = item.buyers?.name || 'Unknown';
                     const key = `${buyerName}||${item.description}`;
