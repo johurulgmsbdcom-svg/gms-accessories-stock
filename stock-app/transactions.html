@@ -2647,11 +2647,15 @@
                 });
             });
 
+            // NOTE: 'line_value' is a database-generated column (qty * unit_price_snapshot,
+            // computed automatically by Postgres). It cannot be set manually — attempting
+            // to do so throws: "column 'line_value' can only be updated to DEFAULT".
+            // We still compute lineValue locally above (needed to build the running
+            // stock_value_after total), we just don't try to write it back.
             for (const u of updates) {
                 const { error: upErr } = await db
                     .from('transactions')
                     .update({
-                        line_value: u.line_value,
                         present_stock_after: u.present_stock_after,
                         stock_value_after: u.stock_value_after
                     })
