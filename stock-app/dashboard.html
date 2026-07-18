@@ -597,18 +597,14 @@
                 // columns can drift out of sync with the real transaction history (this was
                 // causing Dashboard's Total Stock Qty to disagree with Pivot's Present Stock).
                 // So instead of trusting those stored columns, recompute Present Stock / Value
-                // straight from transactions using the exact same logic as pivot.html.
+                // straight from transactions using the exact same lifetime-cumulative logic
+                // as transactions.html / pivot.html (no date filtering at all).
                 const statItemIds = (allItemIdsData || []).map(i => i.id);
                 const statTxnsByItem = await fetchTransactionsForItems(statItemIds);
-                // ✅ Match Pivot Report's default "Date To = today" ceiling exactly —
-                // pivot.html silently excludes any transaction dated AFTER Date To,
-                // so we must apply the same ceiling here or stray future-dated rows
-                // (data entry mistakes, etc.) will make totals disagree.
-                const statTodayCeiling = new Date().toISOString().split('T')[0];
                 let totalStockQty = 0;
                 let totalValue = 0;
                 statItemIds.forEach(id => {
-                    const pivot = computePivotForItem({ id }, statTxnsByItem[id] || [], '', statTodayCeiling);
+                    const pivot = computePivotForItem({ id }, statTxnsByItem[id] || []);
                     totalStockQty += pivot.presentQty;
                     totalValue += pivot.presentValue;
                 });
@@ -905,7 +901,16 @@
             return byItem;
         }
 
-        function computePivotForItem(item, txns, dateFrom, dateTo) {
+        // ================================================================
+        // Lifetime-cumulative logic — SAME as transactions.html and the
+        // updated pivot.html. No date-range bucketing, so Present Stock
+        // here always matches Pivot Report and Ledger totals exactly:
+        //   Previous  = sum of all PRVS rows (opening balance)
+        //   Received  = sum of ALL RCVD rows, ever
+        //   Delivery  = sum of ALL DLVD rows, ever
+        //   Present   = Previous + Received - Delivery
+        // ================================================================
+        function computePivotForItem(item, txns) {
             let prevQty = 0, prevValue = 0;
             let rcvdQty = 0, rcvdValue = 0;
             let dlvdQty = 0, dlvdValue = 0;
@@ -913,34 +918,11 @@
             txns.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
-                const d = txn.txn_date || '';
 
-                // 1. PRVS is ALWAYS considered Previous (Opening Balance)
                 if (txn.type === 'PRVS') {
                     prevQty += qty;
                     prevValue += val;
-                    return;
-                }
-
-                // 2. If transaction is AFTER the report end date, ignore it completely
-                if (dateTo && d > dateTo) {
-                    return;
-                }
-
-                // 3. If transaction is BEFORE the report start date, it rolls into Previous
-                if (dateFrom && d < dateFrom) {
-                    if (txn.type === 'RCVD') {
-                        prevQty += qty;
-                        prevValue += val;
-                    } else if (txn.type === 'DLVD') {
-                        prevQty -= qty;
-                        prevValue -= val;
-                    }
-                    return;
-                }
-
-                // 4. Transaction is WITHIN the report date range
-                if (txn.type === 'RCVD') {
+                } else if (txn.type === 'RCVD') {
                     rcvdQty += qty;
                     rcvdValue += val;
                 } else if (txn.type === 'DLVD') {
@@ -960,6 +942,22 @@
                 dlvdQty, dlvdValue,
                 presentQty, presentValue
             };
+        }
+
+        // Movement (RCVD/DLVD) within a specific date window only — used just
+        // for the "this month" columns in the Balance Sheet table. This is
+        // separate from Present Stock, which is always the full lifetime total.
+        function computeMonthlyMovement(txns, dateFrom, dateTo) {
+            let rcvdQty = 0, dlvdQty = 0;
+            txns.forEach(txn => {
+                const d = txn.txn_date || '';
+                if (dateFrom && d < dateFrom) return;
+                if (dateTo && d > dateTo) return;
+                const qty = parseFloat(txn.qty) || 0;
+                if (txn.type === 'RCVD') rcvdQty += qty;
+                else if (txn.type === 'DLVD') dlvdQty += qty;
+            });
+            return { rcvdQty, dlvdQty };
         }
 
         async function loadBalanceTable() {
@@ -995,11 +993,20 @@
                 const itemIds = items.map(i => i.id);
                 const txnsByItem = await fetchTransactionsForItems(itemIds);
 
-                // 3) Compute Previous / Received / Delivery / Present exactly like Pivot Report,
-                //    using the selected month as the date window
-                const pivotRows = items.map(item =>
-                    computePivotForItem(item, txnsByItem[item.id] || [], startDate, endDate)
-                );
+                // 3) Present Stock/Value = lifetime cumulative (identical to Ledger & Pivot Report).
+                //    RCVD/DLVD columns = movement within the selected month only (this table's purpose).
+                const pivotRows = items.map(item => {
+                    const txns = txnsByItem[item.id] || [];
+                    const pivot = computePivotForItem(item, txns);
+                    const monthly = computeMonthlyMovement(txns, startDate, endDate);
+                    return {
+                        item,
+                        rcvdQty: monthly.rcvdQty,
+                        dlvdQty: monthly.dlvdQty,
+                        presentQty: pivot.presentQty,
+                        presentValue: pivot.presentValue
+                    };
+                });
 
                 // Only show items that actually had RCVD/DLVD movement in the selected month
                 // (keeps this table focused on the month like before), while Present Stock
