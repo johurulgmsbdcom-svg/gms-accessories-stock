@@ -340,28 +340,6 @@
             color: var(--text-muted);
         }
 
-        .filter-group.checkbox-group {
-            flex-direction: row;
-            align-items: center;
-            gap: 8px;
-            padding-top: 22px;
-        }
-
-        .filter-group.checkbox-group input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            accent-color: var(--accent-blue);
-        }
-
-        .filter-group.checkbox-group label {
-            text-transform: none;
-            font-size: 13px;
-            color: var(--text-primary);
-            cursor: pointer;
-            letter-spacing: 0;
-        }
-
         .multi-select-wrapper {
             position: relative;
         }
@@ -776,81 +754,6 @@
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
-        .pivot-del-btn {
-            width: 26px;
-            height: 26px;
-            border-radius: 6px;
-            border: 1px solid var(--accent-red);
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--accent-red);
-            font-size: 11px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-        .pivot-del-btn:hover {
-            background: var(--accent-red);
-            color: white;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(6px);
-            z-index: 1000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .modal-overlay.active { display: flex; }
-
-        .confirm-modal-content {
-            background: var(--glass-bg-strong);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 26px;
-            max-width: 400px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-            text-align: center;
-        }
-        .confirm-icon {
-            width: 56px; height: 56px;
-            border-radius: 50%;
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--accent-red);
-            font-size: 24px;
-            display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 14px;
-        }
-        .confirm-title {
-            font-size: 16px; font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-        }
-        .confirm-desc {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-bottom: 22px;
-            line-height: 1.5;
-            text-align: left;
-        }
-        .confirm-actions { display: flex; gap: 10px; }
-        .confirm-actions .btn { flex: 1; justify-content: center; }
-        .btn-cancel {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            color: var(--text-primary);
-        }
-        .btn-delete-confirm {
-            background: linear-gradient(135deg, var(--accent-red), #dc2626);
-        }
-
         @media print {
             @page {
                 size: A4 landscape;
@@ -1000,8 +903,6 @@
                 font-size: 11px;
                 color: #444;
             }
-
-            .pivot-del-btn { display: none !important; }
         }
 
         .print-header {
@@ -1100,10 +1001,6 @@
                     <label>Item</label>
                     <input type="text" id="fItem" placeholder="Search item...">
                 </div>
-                <div class="filter-group checkbox-group">
-                    <input type="checkbox" id="fHideZeroStock" checked onchange="renderPivotTable()">
-                    <label for="fHideZeroStock">Present Stock = 0 আইটেম লুকান (Hide)</label>
-                </div>
                 <div class="filter-group" style="justify-content: flex-end;">
                     <button class="btn btn-search" onclick="applyFilters()" style="width: 100%;">
                         <i class="fas fa-search"></i> Search
@@ -1175,22 +1072,6 @@
     <div class="toast" id="toast">
         <i class="fas fa-check-circle" id="toastIcon"></i>
         <span id="toastMsg">Success!</span>
-    </div>
-
-    <div class="modal-overlay" id="itemDeleteModal">
-        <div class="confirm-modal-content">
-            <div class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
-            <div class="confirm-title">এই আইটেম ডিলিট করবেন?</div>
-            <div class="confirm-desc" id="itemDeleteDesc">এই আইটেম ও এর সব transaction history স্থায়ীভাবে মুছে যাবে। এটি ফেরত আনা যাবে না।</div>
-            <div class="confirm-actions">
-                <button class="btn btn-cancel" onclick="closeItemDeleteModal()">
-                    <i class="fas fa-times"></i> No
-                </button>
-                <button class="btn btn-delete-confirm" id="itemDeleteConfirmBtn" onclick="performDeleteItem()">
-                    <i class="fas fa-trash"></i> Yes, Delete
-                </button>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -1353,15 +1234,12 @@
 
             for (let i = 0; i < itemIds.length; i += CHUNK) {
                 const chunkIds = itemIds.slice(i, i + CHUNK);
-                let query = db
+                const { data, error } = await db
                     .from('transactions')
-                    // FIX: Added unit_price_snapshot as fallback to guarantee accurate value calculation
-                    .select('id, item_id, type, txn_date, qty, line_value, unit_price_snapshot')
+                    .select('id, item_id, type, txn_date, qty, line_value')
                     .in('item_id', chunkIds)
-                    .order('txn_date', { ascending: true })
-                    .order('id', { ascending: true });
-
-                const { data, error } = await query.limit(100000);
+                    .order('id', { ascending: true })
+                    .limit(20000);
 
                 if (error) throw error;
 
@@ -1374,50 +1252,22 @@
             return byItem;
         }
 
-        // ================================================================
-        // FIX: Correct Previous / Received / Delivery / Present logic.
-        // CORRECT FORMULA: Present Stock = (Total PRVS + Total RCVD) - Total DLVD
-        // Matches Excel Balance Sheet logic 100% and ignores items.current_stock.
-        // ================================================================
+        // FIXED: Present Stock comes DIRECTLY from items.current_stock
+        // Previous = Present Stock - RCVD + DLVD (within date range)
         function computePivotForItem(item, txns, dateFrom, dateTo) {
-            let prvsQty = 0, prvsValue = 0;
             let rcvdQty = 0, rcvdValue = 0;
             let dlvdQty = 0, dlvdValue = 0;
 
+            // Sum RCVD and DLVD transactions that fall inside the selected range
             txns.forEach(txn => {
+                if (txn.type === 'PRVS') return;
+
+                const inRange = (!dateFrom || txn.txn_date >= dateFrom) && (!dateTo || txn.txn_date <= dateTo);
+                if (!inRange) return;
+
                 const qty = parseFloat(txn.qty) || 0;
-                const price = parseFloat(txn.unit_price_snapshot) || 0;
-                // Fallback to qty * price if line_value is missing/null
-                const val = (txn.line_value !== null && txn.line_value !== undefined) 
-                            ? parseFloat(txn.line_value) 
-                            : (qty * price);
-                const d = txn.txn_date || '';
+                const val = parseFloat(txn.line_value) || 0;
 
-                // 1. PRVS is ALWAYS considered Opening Balance
-                if (txn.type === 'PRVS') {
-                    prvsQty += qty;
-                    prvsValue += val;
-                    return;
-                }
-
-                // 2. If transaction is AFTER the report end date, ignore it completely
-                if (dateTo && d > dateTo) {
-                    return;
-                }
-
-                // 3. If transaction is BEFORE the report start date, it rolls into Previous
-                if (dateFrom && d < dateFrom) {
-                    if (txn.type === 'RCVD') {
-                        prvsQty += qty;
-                        prvsValue += val;
-                    } else if (txn.type === 'DLVD') {
-                        prvsQty -= qty;
-                        prvsValue -= val;
-                    }
-                    return;
-                }
-
-                // 4. Transaction is WITHIN the report date range
                 if (txn.type === 'RCVD') {
                     rcvdQty += qty;
                     rcvdValue += val;
@@ -1427,13 +1277,17 @@
                 }
             });
 
-            // CORRECT FORMULA: Present Stock = (Total PRVS + Total RCVD) - Total DLVD
-            const presentQty = prvsQty + rcvdQty - dlvdQty;
-            const presentValue = prvsValue + rcvdValue - dlvdValue;
+            // Present Stock comes DIRECTLY from items table (matches Dashboard & Ledger)
+            const presentQty = parseFloat(item.current_stock) || 0;
+            const presentValue = parseFloat(item.current_value) || 0;
+
+            // Previous = Present Stock - RCVD + DLVD (what stock was before the date range)
+            const prevQty = presentQty - rcvdQty + dlvdQty;
+            const prevValue = presentValue - rcvdValue + dlvdValue;
 
             return {
                 item,
-                prevQty: prvsQty, prevValue: prvsValue,
+                prevQty, prevValue,
                 rcvdQty, rcvdValue,
                 dlvdQty, dlvdValue,
                 presentQty, presentValue
@@ -1452,10 +1306,8 @@
             try {
                 let query = db
                     .from('items')
-                    // FIX: Removed current_stock and current_value from SELECT to guarantee 
-                    // zero reliance on cached database columns for summary calculations.
                     .select(`
-                        id, description, unit, goods_location,
+                        id, description, unit, goods_location, current_stock, current_value,
                         buyer_id, supplier, item_code,
                         buyers:buyer_id (name)
                     `)
@@ -1507,34 +1359,21 @@
             }
         }
 
-        function getDisplayRows() {
-            const hideZeroEl = document.getElementById('fHideZeroStock');
-            const hideZero = hideZeroEl ? hideZeroEl.checked : false;
-            if (!hideZero) return pivotRows;
-            return pivotRows.filter(row => Math.abs(row.presentQty || 0) > 0.0001);
-        }
-
         function renderPivotTable() {
             const tableContent = document.getElementById('tableContent');
-            const displayRows = getDisplayRows();
 
-            if (displayRows.length === 0) {
+            if (pivotRows.length === 0) {
                 tableContent.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
                         <p>No items found</p>
                     </div>
                 `;
-                document.getElementById('statTotalItems').textContent = '0';
-                document.getElementById('statPrevQty').textContent = '0';
-                document.getElementById('statPrevValue').textContent = '$0';
-                document.getElementById('statPresentStock').textContent = '0';
-                document.getElementById('statStockValue').textContent = '$0';
                 return;
             }
 
             const groups = {};
-            displayRows.forEach(row => {
+            pivotRows.forEach(row => {
                 const buyerName = row.item.buyers?.name || 'Unknown Buyer';
                 if (!groups[buyerName]) groups[buyerName] = [];
                 groups[buyerName].push(row);
@@ -1543,7 +1382,7 @@
             const columns = [
                 'Buyer', 'Description Of Item', 'Unit', 'Goods Location', 
                 'Previous Qty', 'Previous Value', 'Received Qty', 'Received Value', 
-                'Delivery Qty', 'Delivery Value', 'Present Stock', 'Stock Value', 'Action'
+                'Delivery Qty', 'Delivery Value', 'Present Stock', 'Stock Value'
             ];
 
             let html = '<div class="table-wrapper"><table><thead><tr>';
@@ -1573,7 +1412,6 @@
                     buyerTotal.rcvdValue += row.rcvdValue;
                     buyerTotal.dlvdQty += row.dlvdQty;
                     buyerTotal.dlvdValue += row.dlvdValue;
-                    // CORRECT FORMULA: Summing the strictly calculated presentQty/presentValue
                     buyerTotal.presentStock += row.presentQty;
                     buyerTotal.stockValue += row.presentValue;
                 });
@@ -1588,7 +1426,7 @@
                 grandTotal.stockValue += buyerTotal.stockValue;
 
                 html += `<tr class="buyer-row">
-                    <td colspan="13"><i class="fas fa-building"></i> ${buyerName}</td>
+                    <td colspan="12"><i class="fas fa-building"></i> ${buyerName}</td>
                 </tr>`;
 
                 html += `<tr class="col-header-row">`;
@@ -1599,10 +1437,6 @@
 
                 rows.forEach(row => {
                     const item = row.item;
-                    const isZeroStock = Math.abs(row.presentQty || 0) < 0.0001;
-                    const actionCell = isZeroStock
-                        ? `<button class="pivot-del-btn" title="Delete this item" onclick="confirmDeleteItem(${item.id})"><i class="fas fa-trash"></i></button>`
-                        : '';
                     html += `<tr>
                         <td></td>
                         <td>${item.description || ''}</td>
@@ -1616,7 +1450,6 @@
                         <td>$${fmt(row.dlvdValue)}</td>
                         <td>${fmt(row.presentQty)}</td>
                         <td>$${fmt(row.presentValue)}</td>
-                        <td>${actionCell}</td>
                     </tr>`;
                 });
 
@@ -1630,7 +1463,6 @@
                     <td style="font-weight:700;">$${fmt(buyerTotal.dlvdValue)}</td>
                     <td style="font-weight:700;">${fmt(buyerTotal.presentStock)}</td>
                     <td style="font-weight:700;">$${fmt(buyerTotal.stockValue)}</td>
-                    <td></td>
                 </tr>`;
             });
 
@@ -1644,90 +1476,29 @@
                 <td>$${fmt(grandTotal.dlvdValue)}</td>
                 <td>${fmt(grandTotal.presentStock)}</td>
                 <td>$${fmt(grandTotal.stockValue)}</td>
-                <td></td>
             </tr>`;
 
             html += '</tbody></table></div>';
             tableContent.innerHTML = html;
 
-            document.getElementById('statTotalItems').textContent = fmt(displayRows.length);
+            document.getElementById('statTotalItems').textContent = fmt(pivotRows.length);
             document.getElementById('statPrevQty').textContent = fmt(grandTotal.prevQty);
             document.getElementById('statPrevValue').textContent = '$' + fmt(grandTotal.prevValue);
             document.getElementById('statPresentStock').textContent = fmt(grandTotal.presentStock);
             document.getElementById('statStockValue').textContent = '$' + fmt(grandTotal.stockValue);
         }
 
-        let pendingDeleteItemId = null;
-
-        function confirmDeleteItem(itemId) {
-            pendingDeleteItemId = itemId;
-            const row = pivotRows.find(r => r.item.id === itemId);
-            const descEl = document.getElementById('itemDeleteDesc');
-            if (row) {
-                descEl.innerHTML = `
-                    <b>${row.item.description || ''}</b><br>
-                    Item Code: ${row.item.item_code || '—'}<br>
-                    Present Stock: ${fmt(row.presentQty)} ${row.item.unit || ''}<br><br>
-                    এই আইটেম এবং এর সাথে যুক্ত সব transaction (শুধু এই item_id-এর) স্থায়ীভাবে মুছে যাবে।
-                    অন্য কোনো আইটেমের ডেটাতে এর প্রভাব পড়বে না। এই কাজ ফেরত আনা যাবে না।
-                `;
-            } else {
-                descEl.textContent = 'এই আইটেম এবং এর সাথে যুক্ত সব transaction স্থায়ীভাবে মুছে যাবে। এই কাজ ফেরত আনা যাবে না।';
-            }
-            document.getElementById('itemDeleteModal').classList.add('active');
-        }
-
-        function closeItemDeleteModal() {
-            document.getElementById('itemDeleteModal').classList.remove('active');
-            pendingDeleteItemId = null;
-        }
-
-        async function performDeleteItem() {
-            if (!pendingDeleteItemId) return;
-            const btn = document.getElementById('itemDeleteConfirmBtn');
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
-
-            try {
-                const { error: txnErr } = await db
-                    .from('transactions')
-                    .delete()
-                    .eq('item_id', pendingDeleteItemId);
-                if (txnErr) throw txnErr;
-
-                const { error: itemErr } = await db
-                    .from('items')
-                    .delete()
-                    .eq('id', pendingDeleteItemId);
-                if (itemErr) throw itemErr;
-
-                showToast('আইটেম ডিলিট হয়েছে!', 'success');
-                closeItemDeleteModal();
-                await loadItems();
-
-            } catch (err) {
-                console.error('Delete item error:', err);
-                showToast('Delete failed: ' + err.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-            }
-        }
-
         function resetFilters() {
             document.getElementById('fDateFrom').value = '';
             document.getElementById('fDateTo').value = '';
             document.getElementById('fItem').value = '';
-            document.getElementById('fHideZeroStock').checked = true;
             deselectAllBuyers();
             applyFilters();
             showToast('Filters reset', 'success');
         }
 
         function printReport() {
-            const displayRows = getDisplayRows();
-            if (displayRows.length === 0) {
+            if (pivotRows.length === 0) {
                 showToast('No data to print', 'error');
                 return;
             }
@@ -1745,8 +1516,7 @@
         }
 
         function downloadExcel() {
-            const displayRows = getDisplayRows();
-            if (displayRows.length === 0) {
+            if (pivotRows.length === 0) {
                 showToast('No data to download', 'error');
                 return;
             }
@@ -1754,7 +1524,7 @@
             showToast('Preparing Excel file...', 'success');
 
             const groups = {};
-            displayRows.forEach(row => {
+            pivotRows.forEach(row => {
                 const buyerName = row.item.buyers?.name || 'Unknown Buyer';
                 if (!groups[buyerName]) groups[buyerName] = [];
                 groups[buyerName].push(row);
@@ -1858,10 +1628,6 @@
             XLSX.writeFile(wb, fileName);
             showToast(`Downloaded: ${fileName}`, 'success');
         }
-
-        document.getElementById('itemDeleteModal').addEventListener('click', (e) => {
-            if (e.target.id === 'itemDeleteModal') closeItemDeleteModal();
-        });
 
         document.addEventListener('DOMContentLoaded', async () => {
             await loadFilters();
