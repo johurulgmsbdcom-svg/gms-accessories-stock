@@ -1424,6 +1424,9 @@
                 <button class="btn btn-search" onclick="downloadFullStockHistory()">
                     <i class="fas fa-history"></i> Full Stock History
                 </button>
+                <button class="btn btn-reset" id="fixAllStockBtn" onclick="if(confirm('সব item এর stock recalculate করা হবে (এটা কিছুক্ষণ সময় নিতে পারে item সংখ্যার উপর ভিত্তি করে)। এগোতে চান?')) recalcAllStock();">
+                    <i class="fas fa-wrench"></i> Fix All Stock
+                </button>
             </div>
         </div>
 
@@ -2654,6 +2657,72 @@
                     })
                     .eq('id', u.id);
                 if (upErr) throw upErr;
+            }
+
+            // ==========================================================
+            // FIX #4 (ROOT CAUSE of Net Qty vs Total Present Stock gap):
+            // This function was recalculating present_stock_after /
+            // stock_value_after on every TRANSACTION row, but it never
+            // wrote the final running total back to the ITEMS table
+            // (items.current_stock / items.current_value). Every time a
+            // transaction got edited, the transactions table became
+            // correct but items.current_stock silently drifted away
+            // from it. That drift is exactly the 95,678 qty / $3,482
+            // value gap you were seeing. Now we push the final balance
+            // (the last row's running total) into the items table too,
+            // so both sides always agree going forward.
+            // ==========================================================
+            const finalBalance = updates[updates.length - 1];
+            const { error: itemStockErr } = await db
+                .from('items')
+                .update({
+                    current_stock: finalBalance.present_stock_after,
+                    current_value: finalBalance.stock_value_after
+                })
+                .eq('id', itemId);
+            if (itemStockErr) throw itemStockErr;
+        }
+
+        // ==========================================================
+        // FIX #5: One-time (or whenever needed) reconciliation tool.
+        // Loops through EVERY item, recalculates its full transaction
+        // history in order, and writes the correct running totals to
+        // both the transactions table AND items.current_stock /
+        // items.current_value. This clears out any historical drift
+        // that built up before FIX #4 existed (e.g. from past edits).
+        // Safe to run any time — it is idempotent, it just recomputes
+        // truth from the transactions table.
+        // ==========================================================
+        async function recalcAllStock() {
+            const btn = document.getElementById('fixAllStockBtn');
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fixing...';
+            }
+            try {
+                const items = await fetchAllRows(db.from('items').select('id'));
+                showToast(`Recalculating stock for ${items.length} items...`, 'success');
+
+                let done = 0;
+                for (const item of items) {
+                    await recalcItemStock(item.id);
+                    done++;
+                    if (btn && done % 10 === 0) {
+                        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${done}/${items.length}...`;
+                    }
+                }
+
+                showToast(`All ${items.length} items reconciled! Stock now matches Net Qty.`, 'success');
+                await loadTransactions();
+            } catch (err) {
+                console.error('recalcAllStock error:', err);
+                showToast('Fix failed: ' + err.message, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
             }
         }
 
