@@ -1529,7 +1529,7 @@
             <div class="buyer-total-grid">
                 <div class="buyer-total-item rcvd">
                     <div class="bt-value" id="btRcvdQty">0</div>
-                    <div class="bt-label">Total PRVS+RCVD Qty</div>
+                    <div class="bt-label">Total PRVS + RCVD Qty</div>
                 </div>
                 <div class="buyer-total-item dlvd">
                     <div class="bt-value" id="btDlvdQty">0</div>
@@ -1537,11 +1537,11 @@
                 </div>
                 <div class="buyer-total-item net">
                     <div class="bt-value" id="btNetQty">0</div>
-                    <div class="bt-label">Net Qty</div>
+                    <div class="bt-label">Net Qty (Present Stock)</div>
                 </div>
                 <div class="buyer-total-item rcvdval">
                     <div class="bt-value" id="btRcvdVal">$0</div>
-                    <div class="bt-label">Total PRVS+RCVD Value</div>
+                    <div class="bt-label">Total PRVS + RCVD Value</div>
                 </div>
                 <div class="buyer-total-item dlvdval">
                     <div class="bt-value" id="btDlvdVal">$0</div>
@@ -1549,15 +1549,15 @@
                 </div>
                 <div class="buyer-total-item netval">
                     <div class="bt-value" id="btNetVal">$0</div>
-                    <div class="bt-label">Net Value</div>
+                    <div class="bt-label">Net Value (Present Stock Val)</div>
                 </div>
                 <div class="buyer-total-item net">
                     <div class="bt-value" id="btStock">0</div>
-                    <div class="bt-label">Total Present Stock</div>
+                    <div class="bt-label">Present Stock (Qty)</div>
                 </div>
                 <div class="buyer-total-item netval">
                     <div class="bt-value" id="btStockVal">$0</div>
-                    <div class="bt-label">Total Stock Value</div>
+                    <div class="bt-label">Present Stock (Value)</div>
                 </div>
             </div>
         </div>
@@ -1984,7 +1984,7 @@
 
                 applySorting();
                 updateStats();
-                await updateBuyerTotal();
+                updateBuyerTotal(); // Removed await as it is now synchronous
                 renderTable();
 
             } catch (err) {
@@ -2078,34 +2078,35 @@
             document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
         }
 
+        // ==========================================
+        // CORRECTED: Present Stock = (PRVS + RCVD) - DLVD
+        // ==========================================
         function computeStockTotals(data) {
-            const latestByItem = {};
+            let addQty = 0, dlvdQty = 0, addVal = 0, dlvdVal = 0;
+            
             data.forEach(txn => {
-                const itemId = txn.items?.id;
-                if (itemId === undefined || itemId === null) return;
+                const qty = parseFloat(txn.qty) || 0;
+                const val = parseFloat(txn.line_value) || 0;
                 
-                if (!latestByItem[itemId]) {
-                    latestByItem[itemId] = txn;
-                } else {
-                    const current = latestByItem[itemId];
-                    if (txn.txn_date > current.txn_date) {
-                        latestByItem[itemId] = txn;
-                    } else if (txn.txn_date === current.txn_date) {
-                        if (txn.id > current.id) {
-                            latestByItem[itemId] = txn;
-                        }
-                    }
+                if (txn.type === 'PRVS' || txn.type === 'RCVD') {
+                    addQty += qty;
+                    addVal += val;
+                } else if (txn.type === 'DLVD') {
+                    dlvdQty += qty;
+                    dlvdVal += val;
                 }
             });
-            let stock = 0, stockVal = 0;
-            Object.values(latestByItem).forEach(t => {
-                stock += parseFloat(t.present_stock_after) || 0;
-                stockVal += parseFloat(t.stock_value_after) || 0;
-            });
-            return { stock, stockVal };
+            
+            const netQty = addQty - dlvdQty;
+            const netVal = addVal - dlvdVal;
+            
+            return { stock: netQty, stockVal: netVal };
         }
 
-        async function updateBuyerTotal() {
+        // ==========================================
+        // CORRECTED: Removed DB lookup, uses filtered sum
+        // ==========================================
+        function updateBuyerTotal() {
             const card = document.getElementById('buyerTotalCard');
             const titleEl = document.getElementById('buyerTotalTitle');
             const buyerSelect = document.getElementById('fBuyer');
@@ -2128,38 +2129,20 @@
                 }
             });
 
-            const netMovementQty = (prvsQty + rcvdQty) - dlvdQty;
-            const netMovementVal = (prvsVal + rcvdVal) - dlvdVal;
-
-            const closingTotals = computeStockTotals(filteredData);
-            const closingStockQty = closingTotals.stock;
-            const closingStockVal = closingTotals.stockVal;
-
-            const openingStockQty = closingStockQty - netMovementQty;
-            const openingStockVal = closingStockVal - netMovementVal;
+            const netQty = (prvsQty + rcvdQty) - dlvdQty;
+            const netVal = (prvsVal + rcvdVal) - dlvdVal;
 
             document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
             document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
-            document.getElementById('btNetQty').textContent = fmt(netMovementQty);
+            document.getElementById('btNetQty').textContent = fmt(netQty);
             
             document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
             document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
-            document.getElementById('btNetVal').textContent = '$' + fmt(netMovementVal);
+            document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
             
-            document.getElementById('btStock').textContent = fmt(openingStockQty);
-            document.getElementById('btStockVal').textContent = '$' + fmt(closingStockVal);
-
-            const labels = document.querySelectorAll('#buyerTotalCard .bt-label');
-            if (labels.length >= 8) {
-                labels[0].textContent = 'Total PRVS + RCVD Qty';
-                labels[1].textContent = 'Total DLVD Qty';
-                labels[2].textContent = 'Net Movement Qty';
-                labels[3].textContent = 'Total PRVS + RCVD Value';
-                labels[4].textContent = 'Total DLVD Value';
-                labels[5].textContent = 'Net Movement Value';
-                labels[6].textContent = 'Opening Stock (Previous)';
-                labels[7].textContent = 'Closing Stock (Present)';
-            }
+            // FIX: Use calculated netQty/netVal instead of items.current_stock/current_value
+            document.getElementById('btStock').textContent = fmt(netQty);
+            document.getElementById('btStockVal').textContent = '$' + fmt(netVal);
 
             if (buyerId) {
                 const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
@@ -2747,17 +2730,17 @@
             const footNetQty = footAddQty - footDlvdQty;
             const footNetVal = footAddVal - footDlvdVal;
 
-            const stockTotals = computeStockTotals(filteredData);
-
+            // CORRECT FORMULA: Present Stock = footNetQty, Present Stock Value = footNetVal
+            // We use the already-calculated net totals directly for consistency.
             html += `<tfoot><tr>
                 <td colspan="11" style="text-align:right; font-weight:700; color:var(--accent-blue);">
-                    <i class="fas fa-calculator"></i> NET MOVEMENT & CLOSING STOCK (Filtered):
+                    <i class="fas fa-calculator"></i> PRESENT STOCK (Filtered):
                 </td>
                 <td style="color:var(--accent-blue); font-weight:800;">${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
                 <td>—</td>
                 <td style="color:var(--accent-blue); font-weight:800;">${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
-                <td style="color:var(--accent-green); font-weight:800;">${fmt(stockTotals.stock)}</td>
-                <td style="color:var(--accent-green); font-weight:800;">$${fmt(stockTotals.stockVal)}</td>
+                <td style="color:var(--accent-green); font-weight:800;">${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
+                <td style="color:var(--accent-green); font-weight:800;">${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
                 <td colspan="4"></td>
             </tr></tfoot>`;
 
@@ -2837,7 +2820,7 @@
             showToast('Preparing Full Stock History...', 'success');
             try {
                 const { data: items, error: itemError } = await db.from('items').select(`
-                    id, description, unit, current_stock, current_value,
+                    id, description, unit,
                     buyer_id, buyers:buyer_id (name)
                 `).limit(10000);
                 if (itemError) throw itemError;
@@ -2853,9 +2836,9 @@
                         buyer: buyerName,
                         item: item.description,
                         unit: item.unit,
+                        prvsQty: 0,
                         rcvdQty: 0,
-                        dlvdQty: 0,
-                        presentStock: parseFloat(item.current_stock) || 0
+                        dlvdQty: 0
                     };
                 });
 
@@ -2866,26 +2849,30 @@
                     const key = `${buyerName}||${item.description}`;
                     
                     if (!itemStats[key]) {
-                        itemStats[key] = { buyer: buyerName, item: item.description, unit: item.unit, rcvdQty: 0, dlvdQty: 0, presentStock: 0 };
+                        itemStats[key] = { buyer: buyerName, item: item.description, unit: item.unit, prvsQty: 0, rcvdQty: 0, dlvdQty: 0 };
                     }
                     
-                    if (txn.type === 'RCVD' || txn.type === 'PRVS') {
-                        itemStats[key].rcvdQty += parseFloat(txn.qty) || 0;
+                    const qty = parseFloat(txn.qty) || 0;
+                    if (txn.type === 'PRVS') {
+                        itemStats[key].prvsQty += qty;
+                    } else if (txn.type === 'RCVD') {
+                        itemStats[key].rcvdQty += qty;
                     } else if (txn.type === 'DLVD') {
-                        itemStats[key].dlvdQty += parseFloat(txn.qty) || 0;
+                        itemStats[key].dlvdQty += qty;
                     }
                 });
 
                 const excelData = Object.values(itemStats).map(stat => {
-                    const previousStock = stat.presentStock - stat.rcvdQty + stat.dlvdQty;
+                    // CORRECT FORMULA applied to Excel export as well
+                    const presentStock = (stat.prvsQty + stat.rcvdQty) - stat.dlvdQty;
                     return {
                         'Buyer': stat.buyer,
                         'Item': stat.item,
                         'Unit': stat.unit,
-                        'Previous Stock': previousStock,
+                        'Total PRVS Qty': stat.prvsQty,
                         'Total RCVD Qty': stat.rcvdQty,
                         'Total DLVD Qty': stat.dlvdQty,
-                        'Present Stock': stat.presentStock
+                        'Present Stock': presentStock
                     };
                 });
 
