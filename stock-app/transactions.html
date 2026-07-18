@@ -52,6 +52,7 @@
             position: relative;
         }
 
+        /* 3D Animated Background */
         .bg-3d {
             position: fixed;
             top: 0; left: 0;
@@ -95,6 +96,7 @@
             75% { transform: translate(20px, 10px) scale(1.05); }
         }
 
+        /* Glass Effect */
         .glass {
             background: var(--glass-bg);
             backdrop-filter: blur(20px);
@@ -104,6 +106,7 @@
             box-shadow: var(--glass-shadow);
         }
 
+        /* Header */
         .header {
             padding: 14px 20px;
             display: flex;
@@ -197,12 +200,14 @@
             transform: translateY(-2px);
         }
 
+        /* Main */
         .main {
             padding: 20px;
             max-width: 1400px;
             margin: 0 auto;
         }
 
+        /* Page Title */
         .page-title {
             display: flex;
             align-items: center;
@@ -276,6 +281,7 @@
             font-size: 11px;
         }
 
+        /* Filter Card */
         .filter-card {
             padding: 20px;
             margin-bottom: 20px;
@@ -413,6 +419,7 @@
             color: var(--text-muted);
         }
 
+        /* Stats Row */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -479,6 +486,7 @@
             background-clip: text;
         }
 
+        /* Buyer Grand Total Card */
         .buyer-total-card {
             padding: 18px 20px;
             margin-bottom: 20px;
@@ -538,6 +546,7 @@
         .buyer-total-item.dlvdval .bt-value { color: var(--accent-purple); }
         .buyer-total-item.netval .bt-value { color: var(--accent-cyan); }
 
+        /* Table footer (grand total row) */
         tfoot td {
             padding: 12px 10px;
             font-weight: 800;
@@ -553,6 +562,7 @@
             border: 1px solid rgba(30, 41, 59, 0.18);
         }
 
+        /* Table Card */
         .table-card {
             padding: 20px;
             margin-bottom: 20px;
@@ -760,6 +770,7 @@
             justify-content: center;
         }
 
+        /* Pagination */
         .pagination {
             display: flex;
             align-items: center;
@@ -829,6 +840,7 @@
             cursor: pointer;
         }
 
+        /* QR Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -897,6 +909,7 @@
             border-color: var(--accent-red);
         }
 
+        /* Simple Confirm Modal */
         .confirm-modal-content {
             background: var(--glass-bg-strong);
             backdrop-filter: blur(20px);
@@ -956,6 +969,7 @@
             background: linear-gradient(135deg, var(--accent-red), #dc2626);
         }
 
+        /* Edit Modal */
         .edit-modal-content {
             background: var(--glass-bg-strong);
             backdrop-filter: blur(20px);
@@ -1061,6 +1075,7 @@
             justify-content: center;
         }
 
+        /* Print Styles - A4 Landscape, 15 QR codes per page (5x3), each 38mm */
         @media print {
             @page {
                 size: A4 landscape;
@@ -1140,6 +1155,7 @@
             }
         }
 
+        /* Loading / Empty */
         .loading-state, .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -1166,6 +1182,7 @@
             to { transform: translateY(0); opacity: 1; }
         }
 
+        /* Bottom Nav */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -1210,6 +1227,7 @@
             font-size: 18px;
         }
 
+        /* Toast */
         .toast {
             position: fixed;
             top: 20px;
@@ -1239,119 +1257,13 @@
         .toast.success { border-left: 4px solid var(--accent-green); }
         .toast.warning { border-left: 4px solid var(--accent-yellow); }
 
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
-        /* Excel-Style Column Filter Dropdown - BLUE HEADER */
-        .col-filter-dropdown {
-            position: fixed;
-            background: var(--glass-bg-strong);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-            z-index: 10000;
-            min-width: 260px;
-            max-width: 320px;
-            display: none;
-        }
-
-        .col-filter-dropdown.show {
-            display: block;
-        }
-
-        .col-filter-header {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            padding: 12px 14px;
-            border-radius: 10px 10px 0 0;
-            font-weight: 700;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .col-filter-search-box {
-            padding: 10px 14px;
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .col-filter-search-box input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--glass-border);
-            border-radius: 6px;
-            background: var(--glass-bg);
-            color: var(--text-primary);
-            font-size: 12px;
-            outline: none;
-        }
-
-        .col-filter-search-box input:focus {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-        }
-
-        .col-filter-quick-actions {
-            padding: 8px 14px;
-            display: flex;
-            gap: 10px;
-            font-size: 11px;
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .col-filter-quick-actions span {
-            color: var(--accent-blue);
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .col-filter-quick-actions span:hover {
-            text-decoration: underline;
-        }
-
-        .col-filter-list {
-            max-height: 220px;
-            overflow-y: auto;
-            padding: 8px;
-        }
-
-        .col-filter-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 8px;
-            cursor: pointer;
-            border-radius: 6px;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .col-filter-item:hover {
-            background: rgba(59, 130, 246, 0.15);
-        }
-
-        .col-filter-item input[type="checkbox"] {
-            cursor: pointer;
-        }
-
-        .col-filter-actions {
-            padding: 10px 14px;
-            border-top: 1px solid var(--glass-border);
-            display: flex;
-            gap: 8px;
-        }
-
-        .col-filter-actions .btn {
-            flex: 1;
-            justify-content: center;
-            padding: 8px 12px;
-            font-size: 11px;
-        }
-
+        /* Full-width layout for large PC screens so more columns are visible at once */
         @media screen and (min-width: 1600px) {
             .main {
                 max-width: 98%;
@@ -1366,6 +1278,7 @@
             }
         }
 
+        /* Responsive */
         @media screen and (max-width: 768px) {
             .main { padding: 16px; }
             .filter-grid { grid-template-columns: 1fr 1fr; }
@@ -1387,12 +1300,14 @@
     </style>
 </head>
 <body>
+    <!-- 3D Background -->
     <div class="bg-3d"></div>
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
     <div class="orb orb-4"></div>
 
+    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <a href="index.html" class="back-btn">
@@ -1408,7 +1323,9 @@
         </div>
     </header>
 
+    <!-- Main -->
     <main class="main">
+        <!-- Page Title -->
         <div class="page-title">
             <h2><i class="fas fa-list-alt"></i> Full Transaction Ledger</h2>
             <div class="title-actions">
@@ -1419,14 +1336,12 @@
                     <i class="fas fa-qrcode"></i> Print QR Codes
                 </button>
                 <button class="btn btn-excel" onclick="downloadExcel()">
-                    <i class="fas fa-file-excel"></i> Download Filtered
-                </button>
-                <button class="btn btn-search" onclick="downloadFullStockHistory()">
-                    <i class="fas fa-history"></i> Full Stock History
+                    <i class="fas fa-file-excel"></i> Download Excel
                 </button>
             </div>
         </div>
 
+        <!-- Filter Card -->
         <div class="filter-card glass">
             <div class="filter-title">
                 <i class="fas fa-filter"></i> Filters
@@ -1499,6 +1414,7 @@
 
         <div id="activeRangeDebug" style="font-size:11px;color:var(--text-muted);margin:-8px 0 14px;padding:0 4px;"></div>
 
+        <!-- Stats Row -->
         <div class="stats-row">
             <div class="stat-card glass blue">
                 <div class="stat-value" id="statTotal">—</div>
@@ -1522,14 +1438,15 @@
             </div>
         </div>
 
+        <!-- Buyer Grand Total Card -->
         <div class="buyer-total-card glass" id="buyerTotalCard" style="display:none;">
             <div class="buyer-total-title" id="buyerTotalTitle">
-                <i class="fas fa-calculator"></i> Ledger Total
+                <i class="fas fa-calculator"></i> Grand Total
             </div>
             <div class="buyer-total-grid">
                 <div class="buyer-total-item rcvd">
                     <div class="bt-value" id="btRcvdQty">0</div>
-                    <div class="bt-label">Total PRVS + RCVD Qty</div>
+                    <div class="bt-label">Total PRVS+RCVD Qty</div>
                 </div>
                 <div class="buyer-total-item dlvd">
                     <div class="bt-value" id="btDlvdQty">0</div>
@@ -1537,11 +1454,11 @@
                 </div>
                 <div class="buyer-total-item net">
                     <div class="bt-value" id="btNetQty">0</div>
-                    <div class="bt-label">Net Qty (Present Stock)</div>
+                    <div class="bt-label">Net Qty</div>
                 </div>
                 <div class="buyer-total-item rcvdval">
                     <div class="bt-value" id="btRcvdVal">$0</div>
-                    <div class="bt-label">Total PRVS + RCVD Value</div>
+                    <div class="bt-label">Total PRVS+RCVD Value</div>
                 </div>
                 <div class="buyer-total-item dlvdval">
                     <div class="bt-value" id="btDlvdVal">$0</div>
@@ -1549,19 +1466,20 @@
                 </div>
                 <div class="buyer-total-item netval">
                     <div class="bt-value" id="btNetVal">$0</div>
-                    <div class="bt-label">Net Value (Present Stock Val)</div>
+                    <div class="bt-label">Net Value</div>
                 </div>
                 <div class="buyer-total-item net">
                     <div class="bt-value" id="btStock">0</div>
-                    <div class="bt-label">Present Stock (Qty)</div>
+                    <div class="bt-label">Total Present Stock</div>
                 </div>
                 <div class="buyer-total-item netval">
                     <div class="bt-value" id="btStockVal">$0</div>
-                    <div class="bt-label">Present Stock (Value)</div>
+                    <div class="bt-label">Total Stock Value</div>
                 </div>
             </div>
         </div>
 
+        <!-- Table Card -->
         <div class="table-card glass">
             <div id="tableContent">
                 <div class="loading-state">
@@ -1572,6 +1490,7 @@
         </div>
     </main>
 
+    <!-- QR Modal -->
     <div class="modal-overlay" id="qrModal">
         <div class="modal-content glass">
             <div class="modal-header">
@@ -1592,6 +1511,7 @@
         </div>
     </div>
 
+    <!-- Delete Confirm Modal -->
     <div class="modal-overlay" id="confirmModal">
         <div class="confirm-modal-content">
             <div class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
@@ -1608,6 +1528,7 @@
         </div>
     </div>
 
+    <!-- Edit Transaction Modal -->
     <div class="modal-overlay" id="editModal">
         <div class="edit-modal-content">
             <div class="modal-header">
@@ -1680,6 +1601,7 @@
         </div>
     </div>
 
+    <!-- Bottom Nav -->
     <nav class="bottom-nav">
         <a href="index.html" class="nav-item">
             <i class="fas fa-home nav-icon"></i> Home
@@ -1707,17 +1629,20 @@
         </a>
     </nav>
 
+    <!-- Toast -->
     <div class="toast" id="toast">
         <i class="fas fa-check-circle" id="toastIcon"></i>
         <span id="toastMsg">Success!</span>
     </div>
 
     <script>
+        // ============ SUPABASE ============
         const SUPABASE_URL = 'https://qwtourjspllhiiryqewf.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_pcQFRFQWWAT1zTXfVfgdSw_43rcVr5S';
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // ============ STATE ============
         let allTransactions = [];
         let filteredData = [];
         let currentPage = 1;
@@ -1731,10 +1656,8 @@
         let pendingEditId = null;
         let loadRequestId = 0;
         const QR_PER_PAGE = 15;
-        
-        let activeColumnFilters = {};
-        let ocActiveFilterCol = null;
 
+        // ============ HEADER HEIGHT ============
         function setHeaderHeightVar() {
             const header = document.querySelector('.header');
             if (header) {
@@ -1744,6 +1667,7 @@
         window.addEventListener('resize', setHeaderHeightVar);
         window.addEventListener('load', setHeaderHeightVar);
 
+        // ============ THEME ============
         function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -1764,6 +1688,7 @@
             updateThemeIcon(saved);
         })();
 
+        // ============ TOAST ============
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toastIcon');
@@ -1775,6 +1700,7 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
+        // ============ UTILS ============
         function fmt(n) {
             if (n === null || n === undefined || isNaN(n)) return '0';
             return parseFloat(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -1788,6 +1714,7 @@
             return n.toFixed(0);
         }
 
+        // ============ LOAD FILTERS ============
         async function loadFilters() {
             try {
                 const { data: buyers } = await db.from('buyers').select('id, name').order('name');
@@ -1805,15 +1732,20 @@
 
                 const { data: teams } = await db.from('team_members').select('id, name').order('name');
                 const teamSelect = document.getElementById('fTeam');
-                const editTeamSelect = document.getElementById('eTeam');
                 (teams || []).forEach(t => {
                     teamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+                });
+
+                const editTeamSelect = document.getElementById('eTeam');
+                (teams || []).forEach(t => {
                     editTeamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
                 });
 
-                // ✅ Date fields খালি রাখা হয়েছে (কোনো ডিফল্ট তারিখ নেই)
-                document.getElementById('fDateTo').value = '';
-                document.getElementById('fDateFrom').value = '';
+                const today = new Date();
+                const thirtyDaysAgo = new Date(today);
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+                document.getElementById('fDateTo').value = today.toISOString().split('T')[0];
+                document.getElementById('fDateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
                 updateDateReadable();
 
             } catch (err) {
@@ -1821,6 +1753,7 @@
             }
         }
 
+        // ============ ITEM SEARCH DROPDOWN ============
         function renderItemDropdown(query) {
             const dropdown = document.getElementById('itemDropdown');
             const q = (query || '').trim().toLowerCase();
@@ -1858,6 +1791,7 @@
             }
         });
 
+        // ============ DATE READABLE LABEL ============
         function updateDateReadable() {
             const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
             ['fDateFrom', 'fDateTo'].forEach(id => {
@@ -1869,6 +1803,7 @@
             });
         }
 
+        // ============ APPLY FILTERS ============
         async function applyFilters() {
             currentPage = 1;
             await loadTransactions();
@@ -1882,6 +1817,7 @@
             }, 350);
         }
 
+        // ============ LOAD TRANSACTIONS ============
         async function loadTransactions() {
             const requestId = ++loadRequestId;
             const tableContent = document.getElementById('tableContent');
@@ -1899,7 +1835,7 @@
                         id, type, txn_date, qty, unit_price_snapshot, line_value,
                         challan_no, mrr_no, order_no, style_no, remarks,
                         present_stock_after, stock_value_after, team_member_id, item_id,
-                        items:item_id (
+                        items:item_id!inner (
                             id, description, unit, goods_location, item_code, qr_payload,
                             buyer_id, supplier,
                             buyers:buyer_id (name)
@@ -1931,33 +1867,18 @@
                 const teamId = document.getElementById('fTeam').value;
                 const supplier = document.getElementById('fSupplier').value.trim();
 
-                // ✅ Date filter শুধু RCVD এবং DLVD এর জন্য প্রয়োগ হবে
-                // PRVS কখনোই date filter দ্বারা প্রভাবিত হবে না
                 if (dateFrom) query = query.gte('txn_date', dateFrom);
                 if (dateTo) query = query.lte('txn_date', dateTo);
 
                 const debugEl = document.getElementById('activeRangeDebug');
                 if (debugEl) {
                     if (dateFrom || dateTo) {
-                        debugEl.innerHTML = `<i class="fas fa-filter"></i> Active date filter: <b>${dateFrom || '(no lower bound)'}</b> → <b>${dateTo || '(no upper bound)'}</b><br><small>Note: PRVS entries will ALWAYS be included regardless of date filter</small>`;
+                        debugEl.innerHTML = `<i class="fas fa-filter"></i> Active date filter sent to server: <b>${dateFrom || '(no lower bound)'}</b> &rarr; <b>${dateTo || '(no upper bound)'}</b>`;
                     } else {
-                        debugEl.innerHTML = `<i class="fas fa-filter"></i> No date filter applied — showing ALL transactions`;
+                        debugEl.innerHTML = `<i class="fas fa-filter"></i> No date filter applied — showing ALL dates`;
                     }
                 }
-
-                if (buyerId) {
-                    const { data: buyerItems } = await db.from('items').select('id').eq('buyer_id', buyerId);
-                    if (buyerItems && buyerItems.length > 0) {
-                        const itemIds = buyerItems.map(i => i.id);
-                        query = query.in('item_id', itemIds);
-                    } else {
-                        allTransactions = [];
-                        filteredData = [];
-                        renderTable();
-                        return;
-                    }
-                }
-
+                if (buyerId) query = query.eq('items.buyer_id', buyerId);
                 if (itemText) {
                     const matchedItemId = itemNameToId[itemText];
                     if (matchedItemId) {
@@ -1974,8 +1895,7 @@
                 if (teamId) query = query.eq('team_member_id', teamId);
                 if (supplier) query = query.ilike('items.supplier', `%${supplier}%`);
 
-                // ✅ Limit 100,000 করা হয়েছে যাতে সব ডেটা লোড হয়
-                const { data, error } = await query.limit(100000);
+                const { data, error } = await query.limit(30000);
 
                 if (error) throw error;
                 if (requestId !== loadRequestId) return;
@@ -1985,7 +1905,10 @@
 
                 applySorting();
                 updateStats();
-                updateBuyerTotal();
+                
+                // UPDATED: Added 'await' here so it fetches exact stock from 'items' table
+                await updateBuyerTotal();
+
                 renderTable();
 
             } catch (err) {
@@ -2001,6 +1924,7 @@
             }
         }
 
+        // ============ SORTING ============
         function applySorting() {
             filteredData.sort((a, b) => {
                 let aVal = getSortValue(a, sortColumn);
@@ -2056,6 +1980,7 @@
             renderTable();
         }
 
+        // ============ UPDATE STATS ============
         function updateStats() {
             const total = filteredData.length;
             let rcvdQty = 0, dlvdQty = 0, rcvdValue = 0, dlvdValue = 0;
@@ -2079,90 +2004,439 @@
             document.getElementById('statDlvdValue').textContent = '$' + fmtCompact(dlvdValue);
         }
 
-        // ==========================================
-        // ✅ PRVS ALWAYS INCLUDED (ignores date filter)
-        // Only RCVD and DLVD respect date filter
-        // ==========================================
-        function updateBuyerTotal() {
+        // ============ STOCK TOTAL HELPER ============
+        function computeStockTotals(data) {
+            const latestByItem = {};
+            data.forEach(txn => {
+                const itemId = txn.items?.id;
+                if (itemId === undefined || itemId === null) return;
+                if (!latestByItem[itemId] || txn.id > latestByItem[itemId].id) {
+                    latestByItem[itemId] = txn;
+                }
+            });
+            let stock = 0, stockVal = 0;
+            Object.values(latestByItem).forEach(t => {
+                stock += parseFloat(t.present_stock_after) || 0;
+                stockVal += parseFloat(t.stock_value_after) || 0;
+            });
+            return { stock, stockVal };
+        }
+
+        // ============ BUYER GRAND TOTAL (UPDATED FOR 100% DASHBOARD MATCH) ============
+        async function updateBuyerTotal() {
             const card = document.getElementById('buyerTotalCard');
             const titleEl = document.getElementById('buyerTotalTitle');
             const buyerSelect = document.getElementById('fBuyer');
             const buyerId = buyerSelect.value;
-            
-            // Get date filters
-            const dateFrom = document.getElementById('fDateFrom').value;
-            const dateTo = document.getElementById('fDateTo').value;
 
-            let prvsQty = 0, prvsVal = 0;
-            let rcvdQty = 0, rcvdVal = 0;
-            let dlvdQty = 0, dlvdVal = 0;
-            
+            // 1. Calculate RCVD/DLVD/PRVS from filtered transactions (Period-specific)
+            let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
-                const type = (txn.type || '').toUpperCase().trim();
-                const txnDate = txn.txn_date || '';
-                
-                // ✅ PRVS: ALWAYS included (IGNORES date filter)
-                if (type === 'PRVS') {
+                if (txn.type === 'RCVD') {
+                    rcvdQty += qty;
+                    rcvdVal += val;
+                } else if (txn.type === 'DLVD') {
+                    dlvdQty += qty;
+                    dlvdVal += val;
+                } else if (txn.type === 'PRVS') {
                     prvsQty += qty;
                     prvsVal += val;
                 }
-                // ✅ RCVD: Only if within date range (or no date filter)
-                else if (type === 'RCVD') {
-                    const passesDateFilter = (!dateFrom || txnDate >= dateFrom) && 
-                                             (!dateTo || txnDate <= dateTo);
-                    if (passesDateFilter) {
-                        rcvdQty += qty;
-                        rcvdVal += val;
-                    }
-                }
-                // ✅ DLVD: Only if within date range (or no date filter)
-                else if (type === 'DLVD') {
-                    const passesDateFilter = (!dateFrom || txnDate >= dateFrom) && 
-                                             (!dateTo || txnDate <= dateTo);
-                    if (passesDateFilter) {
-                        dlvdQty += qty;
-                        dlvdVal += val;
-                    }
-                }
             });
 
-            // ✅ STRICT FORMULA: (PRVS + RCVD) - DLVD
             const netQty = (prvsQty + rcvdQty) - dlvdQty;
             const netVal = (prvsVal + rcvdVal) - dlvdVal;
 
-            console.log("=== STOCK CALCULATION (PRVS IGNORES DATE FILTER) ===");
-            console.log("Total PRVS Qty (ALL TIME):", prvsQty);
-            console.log("Total RCVD Qty (Filtered):", rcvdQty);
-            console.log("Total DLVD Qty (Filtered):", dlvdQty);
-            console.log("Formula: (PRVS + RCVD) - DLVD =", netQty);
-            console.log("===================================================");
+            // 2. Fetch Stock and Stock Value DIRECTLY from 'items' table 
+            // This guarantees a 100% EXACT MATCH with dashboard.html's Total Stock Qty
+            try {
+                let query = db.from('items').select('current_stock, current_value');
+                if (buyerId) {
+                    query = query.eq('buyer_id', buyerId); // If a specific buyer is selected
+                }
+                
+                const { data: itemsData, error } = await query;
+                if (error) throw error;
 
-            document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
-            document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
-            document.getElementById('btNetQty').textContent = fmt(netQty);
-            
-            document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
-            document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
-            document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
-            
-            document.getElementById('btStock').textContent = fmt(netQty);
-            document.getElementById('btStockVal').textContent = '$' + fmt(netVal);
+                let totalStock = 0;
+                let totalStockVal = 0;
+                if (itemsData) {
+                    totalStock = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_stock) || 0), 0);
+                    totalStockVal = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_value) || 0), 0);
+                }
 
-            if (buyerId) {
-                const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
-                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Ledger Total — ${buyerName}`;
-            } else {
-                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Ledger Total — All Buyers`;
+                // 3. Update UI
+                document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
+                document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
+                document.getElementById('btNetQty').textContent = fmt(netQty);
+                document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
+                document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
+                document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
+                
+                // THESE TWO NOW MATCH DASHBOARD EXACTLY
+                document.getElementById('btStock').textContent = fmt(totalStock);
+                document.getElementById('btStockVal').textContent = '$' + fmt(totalStockVal);
+
+                if (buyerId) {
+                    const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
+                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerName}`;
+                } else {
+                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — All Buyers`;
+                }
+
+                card.style.display = 'block';
+            } catch (err) {
+                console.error('updateBuyerTotal error:', err);
+                card.style.display = 'none';
             }
-
-            card.style.display = 'block';
         }
 
-        // ... rest of the code remains the same (openColumnFilter, closeColumnFilter, etc.)
-        // For brevity, I'm showing only the critical changes
+        // ============ QR CODE FUNCTIONS ============
+        function generateQRSvg(text) {
+            try {
+                const qr = qrcode(0, 'M');
+                qr.addData(String(text));
+                qr.make();
+                return qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+            } catch (err) {
+                console.error('QR generation error:', err);
+                return '<div style="font-size:9px;color:#ef4444;padding:20px 0;">QR error</div>';
+            }
+        }
 
+        function showQRModal(items) {
+            currentQRItems = items;
+            const modal = document.getElementById('qrModal');
+            const container = document.getElementById('qrContainer');
+            const titleEl = document.getElementById('qrModalTitle');
+
+            container.innerHTML = '';
+
+            if (!items || items.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No items found</p>
+                    </div>
+                `;
+                modal.classList.add('active');
+                return;
+            }
+
+            const pages = [];
+            for (let i = 0; i < items.length; i += QR_PER_PAGE) {
+                pages.push(items.slice(i, i + QR_PER_PAGE));
+            }
+
+            const totalPagesLabel = pages.length === 1 ? '1 page' : `${pages.length} pages`;
+            titleEl.innerHTML = `<i class="fas fa-qrcode"></i> Item QR Codes for Rack Labeling — ${items.length} item${items.length > 1 ? 's' : ''} (${totalPagesLabel})`;
+
+            pages.forEach((pageItems, pageIdx) => {
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'qr-page';
+
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'qr-page-label';
+                labelDiv.textContent = `Page ${pageIdx + 1} of ${pages.length}`;
+                pageDiv.appendChild(labelDiv);
+
+                pageItems.forEach(item => {
+                    const itemCode = item.item_code || item.qr_payload || `ITEM-${item.id}`;
+                    const buyerName = item.buyers?.name || 'N/A';
+                    const itemName = item.description || 'No Description';
+
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'qr-item';
+                    itemDiv.innerHTML = `
+                        <div class="qr-item-name">${itemName}</div>
+                        <div class="qr-item-buyer">Buyer: ${buyerName}</div>
+                        <div class="qr-svg-wrap">${generateQRSvg(itemCode)}</div>
+                        <div class="qr-item-code">${itemCode}</div>
+                    `;
+
+                    pageDiv.appendChild(itemDiv);
+                });
+
+                container.appendChild(pageDiv);
+            });
+
+            modal.classList.add('active');
+        }
+
+        function closeQRModal() {
+            const modal = document.getElementById('qrModal');
+            modal.classList.remove('active');
+            currentQRItems = [];
+        }
+
+        function printQRCodes() {
+            window.print();
+        }
+
+        async function printFilteredQRCodes() {
+            const buyerId = document.getElementById('fBuyer').value;
+            const buyerSelect = document.getElementById('fBuyer');
+            const buyerLabel = buyerId ? buyerSelect.options[buyerSelect.selectedIndex].text : 'All Buyers';
+
+            showToast(`Loading items for ${buyerLabel}...`, 'success');
+
+            try {
+                let query = db
+                    .from('items')
+                    .select('id, description, item_code, qr_payload, buyer_id, buyers:buyer_id (name)')
+                    .order('buyer_id', { ascending: true })
+                    .order('description', { ascending: true });
+
+                if (buyerId) {
+                    query = query.eq('buyer_id', buyerId);
+                }
+
+                const { data, error } = await query.limit(30000);
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    showToast('No items found for this selection', 'error');
+                    return;
+                }
+
+                showQRModal(data);
+                showToast(`${data.length} item QR code(s) ready to print`, 'success');
+
+            } catch (err) {
+                console.error('printFilteredQRCodes error:', err);
+                showToast('Error loading items: ' + err.message, 'error');
+            }
+        }
+
+        async function showItemQR(itemId) {
+            showToast('Loading QR code...', 'success');
+            try {
+                const { data, error } = await db
+                    .from('items')
+                    .select('id, description, item_code, qr_payload, buyer_id, buyers:buyer_id (name)')
+                    .eq('id', itemId)
+                    .single();
+
+                if (error) throw error;
+                if (!data) {
+                    showToast('Item not found', 'error');
+                    return;
+                }
+                showQRModal([data]);
+            } catch (err) {
+                console.error('showItemQR error:', err);
+                showToast('Error loading item: ' + err.message, 'error');
+            }
+        }
+
+        // ============ DELETE TRANSACTION ============
+        function openDeleteConfirm(txnId) {
+            const txn = filteredData.find(t => t.id === txnId);
+            pendingDeleteId = txnId;
+
+            const desc = document.getElementById('confirmDesc');
+            if (txn) {
+                const itemName = txn.items?.description || 'Unknown Item';
+                const typeLabel = txn.type;
+                const qty = fmt(txn.qty);
+                desc.innerHTML = `<b>${itemName}</b><br>Type: ${typeLabel} • Qty: ${qty}<br><br>এই transaction ডিলিট হয়ে যাবে এবং stock automatic adjust হয়ে যাবে। এটা পূর্বাবস্থায় ফেরানো যাবে না।`;
+            }
+
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+            pendingDeleteId = null;
+        }
+
+        async function confirmDeleteTransaction() {
+            if (!pendingDeleteId) return;
+
+            const btn = document.getElementById('confirmDeleteBtn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+
+            try {
+                const { error } = await db.rpc('delete_transaction', { txn_id: pendingDeleteId });
+
+                if (error) throw error;
+
+                showToast('Entry deleted, stock adjusted!', 'success');
+                closeConfirmModal();
+                await loadTransactions();
+
+            } catch (err) {
+                console.error('Delete transaction error:', err);
+                showToast('Delete failed: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        // ============ EDIT TRANSACTION ============
+        function openEditModal(txnId) {
+            const txn = filteredData.find(t => t.id === txnId);
+            if (!txn) {
+                showToast('Transaction not found', 'error');
+                return;
+            }
+            pendingEditId = txnId;
+
+            document.getElementById('editItemLabel').innerHTML =
+                `<b>${txn.items?.description || 'Unknown Item'}</b> &nbsp;•&nbsp; Buyer: ${txn.items?.buyers?.name || 'N/A'} &nbsp;•&nbsp; Unit: ${txn.items?.unit || ''}`;
+
+            document.getElementById('eDate').value = txn.txn_date || '';
+            document.getElementById('eType').value = txn.type || 'RCVD';
+            document.getElementById('eQty').value = txn.qty ?? '';
+            document.getElementById('ePrice').value = txn.unit_price_snapshot ?? '';
+            document.getElementById('eChallan').value = txn.challan_no || '';
+            document.getElementById('eMrr').value = txn.mrr_no || '';
+            document.getElementById('eOrder').value = txn.order_no || '';
+            document.getElementById('eStyle').value = txn.style_no || '';
+            document.getElementById('eTeam').value = txn.team_member_id || '';
+            document.getElementById('eSupplier').value = txn.items?.supplier || '';
+            document.getElementById('eRemarks').value = txn.remarks || '';
+
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            pendingEditId = null;
+        }
+
+        async function recalcItemStock(itemId) {
+            const { data: rows, error } = await db
+                .from('transactions')
+                .select('id, type, qty, unit_price_snapshot, txn_date, created_at')
+                .eq('item_id', itemId)
+                .order('txn_date', { ascending: true })
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+            if (!rows || rows.length === 0) return;
+
+            let runningStock = 0;
+            let runningValue = 0;
+            const updates = [];
+
+            rows.forEach(r => {
+                const qty = parseFloat(r.qty) || 0;
+                const price = parseFloat(r.unit_price_snapshot) || 0;
+                const lineValue = qty * price;
+
+                if (r.type === 'PRVS' || r.type === 'RCVD') {
+                    runningStock += qty;
+                    runningValue += lineValue;
+                } else if (r.type === 'DLVD') {
+                    runningStock -= qty;
+                    runningValue -= lineValue;
+                }
+
+                updates.push({
+                    id: r.id,
+                    line_value: lineValue,
+                    present_stock_after: runningStock,
+                    stock_value_after: runningValue
+                });
+            });
+
+            for (const u of updates) {
+                const { error: upErr } = await db
+                    .from('transactions')
+                    .update({
+                        line_value: u.line_value,
+                        present_stock_after: u.present_stock_after,
+                        stock_value_after: u.stock_value_after
+                    })
+                    .eq('id', u.id);
+                if (upErr) throw upErr;
+            }
+        }
+
+        async function saveEditTransaction() {
+            if (!pendingEditId) return;
+            const txn = filteredData.find(t => t.id === pendingEditId);
+            if (!txn) {
+                showToast('Transaction not found', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('editSaveBtn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                const newDate = document.getElementById('eDate').value;
+                const newType = document.getElementById('eType').value;
+                const newQty = parseFloat(document.getElementById('eQty').value) || 0;
+                const newPrice = parseFloat(document.getElementById('ePrice').value) || 0;
+                const newChallan = document.getElementById('eChallan').value.trim();
+                const newMrr = document.getElementById('eMrr').value.trim();
+                const newOrder = document.getElementById('eOrder').value.trim();
+                const newStyle = document.getElementById('eStyle').value.trim();
+                const newTeamId = document.getElementById('eTeam').value || null;
+                const newSupplier = document.getElementById('eSupplier').value.trim();
+                const newRemarks = document.getElementById('eRemarks').value.trim();
+
+                if (!newDate) {
+                    showToast('Date দিতে হবে', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    return;
+                }
+
+                const { error: txnErr } = await db
+                    .from('transactions')
+                    .update({
+                        txn_date: newDate,
+                        type: newType,
+                        qty: newQty,
+                        unit_price_snapshot: newPrice,
+                        challan_no: newChallan || null,
+                        mrr_no: newMrr || null,
+                        order_no: newOrder || null,
+                        style_no: newStyle || null,
+                        team_member_id: newTeamId,
+                        remarks: newRemarks || null
+                    })
+                    .eq('id', pendingEditId);
+
+                if (txnErr) throw txnErr;
+
+                if (txn.items?.id && newSupplier !== (txn.items?.supplier || '')) {
+                    const { error: itemErr } = await db
+                        .from('items')
+                        .update({ supplier: newSupplier || null })
+                        .eq('id', txn.items.id);
+                    if (itemErr) throw itemErr;
+                }
+
+                if (txn.items?.id) {
+                    await recalcItemStock(txn.items.id);
+                }
+
+                showToast('Transaction updated, stock recalculated!', 'success');
+                closeEditModal();
+                await loadTransactions();
+
+            } catch (err) {
+                console.error('Edit transaction error:', err);
+                showToast('Update failed: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        // ============ RENDER TABLE ============
         function renderTable() {
             const tableContent = document.getElementById('tableContent');
 
@@ -2170,7 +2444,7 @@
                 tableContent.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
-                        <p>No transactions found for this filter.<br><small>Try expanding the date range or clicking "Reset"</small></p>
+                        <p>No transactions found</p>
                     </div>
                 `;
                 return;
@@ -2206,19 +2480,14 @@
             ];
 
             let html = '<div class="table-wrapper"><table><thead><tr>';
-            columns.forEach((col, index) => {
+            columns.forEach(col => {
                 const isSorted = sortColumn === col.key;
                 const sortIcon = isSorted
                     ? (sortDirection === 'asc' ? '<i class="fas fa-sort-up sort-icon"></i>' : '<i class="fas fa-sort-down sort-icon"></i>')
                     : '<i class="fas fa-sort sort-icon"></i>';
                 const sortable = col.sortable ? `onclick="sortBy('${col.key}')"` : '';
                 const sortedClass = isSorted ? 'sorted' : '';
-                
-                const filterIcon = col.sortable 
-                    ? `<i class="fas fa-filter filter-icon" style="margin-left:4px;font-size:9px;opacity:0.7" onclick="openColumnFilter(event, ${index}, '${col.key}', '${col.label}')"></i>`
-                    : '';
-                
-                html += `<th class="${sortedClass}" ${sortable} style="position: relative;">${col.label} ${col.sortable ? sortIcon : ''}${filterIcon}</th>`;
+                html += `<th class="${sortedClass}" ${sortable}>${col.label} ${col.sortable ? sortIcon : ''}</th>`;
             });
             html += '</tr></thead><tbody>';
 
@@ -2257,58 +2526,25 @@
 
             html += '</tbody>';
 
-            // ✅ Footer calculation with PRVS ignoring date filter
-            let footPRVSQty = 0, footPRVSVal = 0;
-            let footRCVDQty = 0, footRCVDVal = 0;
-            let footDLVDQty = 0, footDLVDVal = 0;
-            
-            const dateFrom = document.getElementById('fDateFrom').value;
-            const dateTo = document.getElementById('fDateTo').value;
-
+            let footAddQty = 0, footDlvdQty = 0, footAddVal = 0, footDlvdVal = 0;
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
-                const type = (txn.type || '').toUpperCase().trim();
-                const txnDate = txn.txn_date || '';
-
-                // ✅ PRVS: ALWAYS included (IGNORES date filter)
-                if (type === 'PRVS') {
-                    footPRVSQty += qty;
-                    footPRVSVal += val;
-                }
-                // ✅ RCVD: Only if within date range
-                else if (type === 'RCVD') {
-                    const passesDateFilter = (!dateFrom || txnDate >= dateFrom) && 
-                                             (!dateTo || txnDate <= dateTo);
-                    if (passesDateFilter) {
-                        footRCVDQty += qty;
-                        footRCVDVal += val;
-                    }
-                }
-                // ✅ DLVD: Only if within date range
-                else if (type === 'DLVD') {
-                    const passesDateFilter = (!dateFrom || txnDate >= dateFrom) && 
-                                             (!dateTo || txnDate <= dateTo);
-                    if (passesDateFilter) {
-                        footDLVDQty += qty;
-                        footDLVDVal += val;
-                    }
-                }
+                if (txn.type === 'PRVS' || txn.type === 'RCVD') { footAddQty += qty; footAddVal += val; }
+                else if (txn.type === 'DLVD') { footDlvdQty += qty; footDlvdVal += val; }
             });
+            const footNetQty = footAddQty - footDlvdQty;
+            const footNetVal = footAddVal - footDlvdVal;
 
-            // ✅ STRICT FORMULA: (PRVS + RCVD) - DLVD
-            const footNetQty = (footPRVSQty + footRCVDQty) - footDLVDQty;
-            const footNetVal = (footPRVSVal + footRCVDVal) - footDLVDVal;
+            const stockTotals = computeStockTotals(filteredData);
 
             html += `<tfoot><tr>
-                <td colspan="11" style="text-align:right; font-weight:700; color:var(--accent-blue);">
-                    <i class="fas fa-calculator"></i> PRESENT STOCK (PRVS always included):
-                </td>
-                <td style="color:var(--accent-blue); font-weight:800;">${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
+                <td colspan="11" style="text-align:right;">GRAND TOTAL (all filtered rows):</td>
+                <td>${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
                 <td>—</td>
-                <td style="color:var(--accent-blue); font-weight:800;">${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
-                <td style="color:var(--accent-green); font-weight:800;">${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
-                <td style="color:var(--accent-green); font-weight:800;">${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
+                <td>${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
+                <td>${fmt(stockTotals.stock)}</td>
+                <td>$${fmt(stockTotals.stockVal)}</td>
                 <td colspan="4"></td>
             </tr></tfoot>`;
 
@@ -2362,6 +2598,7 @@
             document.querySelector('.table-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
+        // ============ RESET FILTERS ============
         function resetFilters() {
             document.getElementById('fBuyer').value = '';
             document.getElementById('fItem').value = '';
@@ -2372,125 +2609,18 @@
             document.getElementById('fStyle').value = '';
             document.getElementById('fTeam').value = '';
             document.getElementById('fSupplier').value = '';
-            // ✅ Date fields খালি করা হয়েছে
-            document.getElementById('fDateFrom').value = '';
-            document.getElementById('fDateTo').value = '';
+
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            document.getElementById('fDateTo').value = today.toISOString().split('T')[0];
+            document.getElementById('fDateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
             updateDateReadable();
-            activeColumnFilters = {};
 
             applyFilters();
         }
 
-        // ... rest of functions (downloadExcel, downloadFullStockHistory, etc.) remain the same
-
-        async function downloadFullStockHistory() {
-            showToast('Preparing Full Stock History...', 'success');
-            try {
-                const { data: items, error: itemError } = await db.from('items').select(`
-                    id, description, unit,
-                    buyer_id, buyers:buyer_id (name)
-                `).limit(10000);
-                if (itemError) throw itemError;
-
-                const { data: txns, error: txnError } = await db.from('transactions').select('item_id, type, qty').limit(100000);
-                if (txnError) throw txnError;
-
-                const itemStats = {};
-                items.forEach(item => {
-                    const buyerName = item.buyers?.name || 'Unknown';
-                    const key = `${buyerName}||${item.description}`;
-                    itemStats[key] = {
-                        buyer: buyerName,
-                        item: item.description,
-                        unit: item.unit,
-                        prvsQty: 0,
-                        rcvdQty: 0,
-                        dlvdQty: 0
-                    };
-                });
-
-                txns.forEach(txn => {
-                    const item = items.find(i => i.id === txn.item_id);
-                    if (!item) return;
-                    const buyerName = item.buyers?.name || 'Unknown';
-                    const key = `${buyerName}||${item.description}`;
-                    
-                    if (!itemStats[key]) {
-                        itemStats[key] = { buyer: buyerName, item: item.description, unit: item.unit, prvsQty: 0, rcvdQty: 0, dlvdQty: 0 };
-                    }
-                    
-                    const qty = parseFloat(txn.qty) || 0;
-                    const type = (txn.type || '').toUpperCase().trim();
-                    if (type === 'PRVS') {
-                        itemStats[key].prvsQty += qty;
-                    } else if (type === 'RCVD') {
-                        itemStats[key].rcvdQty += qty;
-                    } else if (type === 'DLVD') {
-                        itemStats[key].dlvdQty += qty;
-                    }
-                });
-
-                const excelData = Object.values(itemStats).map(stat => {
-                    // ✅ STRICT FORMULA: (PRVS + RCVD) - DLVD
-                    const presentStock = (stat.prvsQty + stat.rcvdQty) - stat.dlvdQty;
-                    return {
-                        'Buyer': stat.buyer,
-                        'Item': stat.item,
-                        'Unit': stat.unit,
-                        'Total PRVS Qty': stat.prvsQty,
-                        'Total RCVD Qty': stat.rcvdQty,
-                        'Total DLVD Qty': stat.dlvdQty,
-                        'Present Stock': presentStock
-                    };
-                });
-
-                excelData.sort((a, b) => {
-                    if (a.Buyer !== b.Buyer) return a.Buyer.localeCompare(b.Buyer);
-                    return a.Item.localeCompare(b.Item);
-                });
-
-                const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.json_to_sheet(excelData);
-
-                const range = XLSX.utils.decode_range(ws['!ref']);
-                for (let R = range.s.r; R <= range.e.r; ++R) {
-                    for (let C = range.s.c; C <= range.e.c; ++C) {
-                        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-                        if (!ws[cellAddress]) continue;
-                        if (!ws[cellAddress].s) ws[cellAddress].s = {};
-                        ws[cellAddress].s.border = {
-                            top: { style: 'thin', color: { rgb: '000000' } },
-                            bottom: { style: 'thin', color: { rgb: '000000' } },
-                            left: { style: 'thin', color: { rgb: '000000' } },
-                            right: { style: 'thin', color: { rgb: '000000' } }
-                        };
-                        if (R === 0) {
-                            ws[cellAddress].s.font = { bold: true };
-                            ws[cellAddress].s.fill = { fgColor: { rgb: 'D3D3D3' } };
-                        }
-                    }
-                }
-
-                const colWidths = excelData.reduce((w, r) => {
-                    Object.keys(r).forEach((k, i) => {
-                        const len = String(r[k]).length;
-                        w[i] = Math.max(w[i] || 10, len + 2);
-                    });
-                    return w;
-                }, []);
-                ws['!cols'] = colWidths.map(w => ({ wch: w }));
-
-                XLSX.utils.book_append_sheet(wb, ws, 'Full Stock History');
-                const dateStr = new Date().toISOString().split('T')[0];
-                XLSX.writeFile(wb, `GMS_Full_Stock_History_${dateStr}.xlsx`);
-                showToast('Full Stock History downloaded!', 'success');
-
-            } catch (err) {
-                console.error('Download error:', err);
-                showToast('Error downloading full history: ' + err.message, 'error');
-            }
-        }
-
+        // ============ EXCEL EXPORT ============
         function downloadExcel() {
             if (!filteredData.length) {
                 showToast('No data to export', 'error');
@@ -2527,9 +2657,7 @@
             showToast('Excel file downloaded!', 'success');
         }
 
-        // ... other helper functions (openColumnFilter, closeColumnFilter, etc.)
-        // For brevity, keeping the same as before
-
+        // ============ INIT ============
         document.addEventListener('DOMContentLoaded', async () => {
             setHeaderHeightVar();
             await loadFilters();
