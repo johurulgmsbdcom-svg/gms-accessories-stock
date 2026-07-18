@@ -1732,7 +1732,6 @@
         let loadRequestId = 0;
         const QR_PER_PAGE = 15;
         
-        // Column Filter State
         let activeColumnFilters = {};
         let ocActiveFilterCol = null;
 
@@ -2084,8 +2083,18 @@
             data.forEach(txn => {
                 const itemId = txn.items?.id;
                 if (itemId === undefined || itemId === null) return;
-                if (!latestByItem[itemId] || txn.id > latestByItem[itemId].id) {
+                
+                if (!latestByItem[itemId]) {
                     latestByItem[itemId] = txn;
+                } else {
+                    const current = latestByItem[itemId];
+                    if (txn.txn_date > current.txn_date) {
+                        latestByItem[itemId] = txn;
+                    } else if (txn.txn_date === current.txn_date) {
+                        if (txn.id > current.id) {
+                            latestByItem[itemId] = txn;
+                        }
+                    }
                 }
             });
             let stock = 0, stockVal = 0;
@@ -2103,6 +2112,7 @@
             const buyerId = buyerSelect.value;
 
             let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
+            
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
@@ -2118,52 +2128,49 @@
                 }
             });
 
-            const netQty = (prvsQty + rcvdQty) - dlvdQty;
-            const netVal = (prvsVal + rcvdVal) - dlvdVal;
+            const netMovementQty = (prvsQty + rcvdQty) - dlvdQty;
+            const netMovementVal = (prvsVal + rcvdVal) - dlvdVal;
 
-            try {
-                let query = db.from('items').select('current_stock, current_value');
-                if (buyerId) {
-                    query = query.eq('buyer_id', buyerId);
-                }
-                
-                const { data: itemsData, error } = await query;
-                if (error) throw error;
+            const closingTotals = computeStockTotals(filteredData);
+            const closingStockQty = closingTotals.stock;
+            const closingStockVal = closingTotals.stockVal;
 
-                let totalStock = 0;
-                let totalStockVal = 0;
-                if (itemsData) {
-                    totalStock = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_stock) || 0), 0);
-                    totalStockVal = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_value) || 0), 0);
-                }
+            const openingStockQty = closingStockQty - netMovementQty;
+            const openingStockVal = closingStockVal - netMovementVal;
 
-                document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
-                document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
-                document.getElementById('btNetQty').textContent = fmt(netQty);
-                document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
-                document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
-                document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
-                
-                document.getElementById('btStock').textContent = fmt(totalStock);
-                document.getElementById('btStockVal').textContent = '$' + fmt(totalStockVal);
+            document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
+            document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
+            document.getElementById('btNetQty').textContent = fmt(netMovementQty);
+            
+            document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
+            document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
+            document.getElementById('btNetVal').textContent = '$' + fmt(netMovementVal);
+            
+            document.getElementById('btStock').textContent = fmt(openingStockQty);
+            document.getElementById('btStockVal').textContent = '$' + fmt(closingStockVal);
 
-                if (buyerId) {
-                    const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
-                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerName}`;
-                } else {
-                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — All Buyers`;
-                }
-
-                card.style.display = 'block';
-            } catch (err) {
-                console.error('updateBuyerTotal error:', err);
-                card.style.display = 'none';
+            const labels = document.querySelectorAll('#buyerTotalCard .bt-label');
+            if (labels.length >= 8) {
+                labels[0].textContent = 'Total PRVS + RCVD Qty';
+                labels[1].textContent = 'Total DLVD Qty';
+                labels[2].textContent = 'Net Movement Qty';
+                labels[3].textContent = 'Total PRVS + RCVD Value';
+                labels[4].textContent = 'Total DLVD Value';
+                labels[5].textContent = 'Net Movement Value';
+                labels[6].textContent = 'Opening Stock (Previous)';
+                labels[7].textContent = 'Closing Stock (Present)';
             }
+
+            if (buyerId) {
+                const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
+                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Ledger Total — ${buyerName}`;
+            } else {
+                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Ledger Total — All Buyers`;
+            }
+
+            card.style.display = 'block';
         }
 
-        // =========================================
-        // EXCEL-STYLE COLUMN FILTER (BLUE HEADER)
-        // =========================================
         function openColumnFilter(evt, colIndex, colKey, colLabel) {
             evt.stopPropagation();
             ocActiveFilterCol = colIndex;
@@ -2204,7 +2211,7 @@
                     }).join('')}
                 </div>
                 <div class="col-filter-actions">
-                    <button class="btn btn-success" onclick="applyColumnFilter()"><i class="fas fa-check"></i> OK</button>
+                    <button class="btn btn-search" onclick="applyColumnFilter()"><i class="fas fa-check"></i> OK</button>
                     <button class="btn btn-cancel" onclick="clearColumnFilter()"><i class="fas fa-times"></i> Clear</button>
                 </div>
             `;
@@ -2743,12 +2750,14 @@
             const stockTotals = computeStockTotals(filteredData);
 
             html += `<tfoot><tr>
-                <td colspan="11" style="text-align:right;">GRAND TOTAL (all filtered rows):</td>
-                <td>${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
+                <td colspan="11" style="text-align:right; font-weight:700; color:var(--accent-blue);">
+                    <i class="fas fa-calculator"></i> NET MOVEMENT & CLOSING STOCK (Filtered):
+                </td>
+                <td style="color:var(--accent-blue); font-weight:800;">${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
                 <td>—</td>
-                <td>${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
-                <td>${fmt(stockTotals.stock)}</td>
-                <td>$${fmt(stockTotals.stockVal)}</td>
+                <td style="color:var(--accent-blue); font-weight:800;">${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
+                <td style="color:var(--accent-green); font-weight:800;">${fmt(stockTotals.stock)}</td>
+                <td style="color:var(--accent-green); font-weight:800;">$${fmt(stockTotals.stockVal)}</td>
                 <td colspan="4"></td>
             </tr></tfoot>`;
 
@@ -2833,7 +2842,7 @@
                 `).limit(10000);
                 if (itemError) throw itemError;
 
-                const { data: txns, error: txnError } = await db.from('transactions').select('item_id, type, qty').limit(10000);
+                const { data: txns, error: txnError } = await db.from('transactions').select('item_id, type, qty').limit(30000);
                 if (txnError) throw txnError;
 
                 const itemStats = {};
@@ -2860,7 +2869,7 @@
                         itemStats[key] = { buyer: buyerName, item: item.description, unit: item.unit, rcvdQty: 0, dlvdQty: 0, presentStock: 0 };
                     }
                     
-                    if (txn.type === 'RCVD') {
+                    if (txn.type === 'RCVD' || txn.type === 'PRVS') {
                         itemStats[key].rcvdQty += parseFloat(txn.qty) || 0;
                     } else if (txn.type === 'DLVD') {
                         itemStats[key].dlvdQty += parseFloat(txn.qty) || 0;
