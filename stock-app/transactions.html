@@ -2096,69 +2096,58 @@
             return { stock, stockVal };
         }
 
+        // =========================================
+        // FIXED: Strict PRVS + RCVD - DLVD Logic
+        // =========================================
         async function updateBuyerTotal() {
             const card = document.getElementById('buyerTotalCard');
             const titleEl = document.getElementById('buyerTotalTitle');
             const buyerSelect = document.getElementById('fBuyer');
             const buyerId = buyerSelect.value;
 
-            let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
+            let prvsQty = 0, prvsVal = 0, rcvdQty = 0, rcvdVal = 0, dlvdQty = 0, dlvdVal = 0;
+
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
-                if (txn.type === 'RCVD') {
-                    rcvdQty += qty;
-                    rcvdVal += val;
-                } else if (txn.type === 'DLVD') {
-                    dlvdQty += qty;
-                    dlvdVal += val;
-                } else if (txn.type === 'PRVS') {
-                    prvsQty += qty;
-                    prvsVal += val;
+                if (txn.type === 'PRVS') { 
+                    prvsQty += qty; 
+                    prvsVal += val; 
+                } else if (txn.type === 'RCVD') { 
+                    rcvdQty += qty; 
+                    rcvdVal += val; 
+                } else if (txn.type === 'DLVD') { 
+                    dlvdQty += qty; 
+                    dlvdVal += val; 
                 }
             });
 
-            const netQty = (prvsQty + rcvdQty) - dlvdQty;
-            const netVal = (prvsVal + rcvdVal) - dlvdVal;
+            // সরাসরি আপনার লজিক: (PRVS + RCVD) - DLVD = Present Stock
+            const totalAddQty = prvsQty + rcvdQty;
+            const totalAddVal = prvsVal + rcvdVal;
+            const netQty = totalAddQty - dlvdQty;
+            const netVal = totalAddVal - dlvdVal;
 
-            try {
-                let query = db.from('items').select('current_stock, current_value');
-                if (buyerId) {
-                    query = query.eq('buyer_id', buyerId);
-                }
-                
-                const { data: itemsData, error } = await query;
-                if (error) throw error;
+            document.getElementById('btRcvdQty').textContent = fmt(totalAddQty);
+            document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
+            document.getElementById('btNetQty').textContent = fmt(netQty);
+            
+            document.getElementById('btRcvdVal').textContent = '$' + fmt(totalAddVal);
+            document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
+            document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
+            
+            // Present Stock সরাসরি Net Qty এবং Net Value এর সমান হবে
+            document.getElementById('btStock').textContent = fmt(netQty);
+            document.getElementById('btStockVal').textContent = '$' + fmt(netVal);
 
-                let totalStock = 0;
-                let totalStockVal = 0;
-                if (itemsData) {
-                    totalStock = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_stock) || 0), 0);
-                    totalStockVal = itemsData.reduce((sum, i) => sum + (parseFloat(i.current_value) || 0), 0);
-                }
-
-                document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
-                document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
-                document.getElementById('btNetQty').textContent = fmt(netQty);
-                document.getElementById('btRcvdVal').textContent = '$' + fmt(prvsVal + rcvdVal);
-                document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
-                document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
-                
-                document.getElementById('btStock').textContent = fmt(totalStock);
-                document.getElementById('btStockVal').textContent = '$' + fmt(totalStockVal);
-
-                if (buyerId) {
-                    const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
-                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerName}`;
-                } else {
-                    titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — All Buyers`;
-                }
-
-                card.style.display = 'block';
-            } catch (err) {
-                console.error('updateBuyerTotal error:', err);
-                card.style.display = 'none';
+            if (buyerId) {
+                const buyerName = buyerSelect.options[buyerSelect.selectedIndex].text;
+                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — ${buyerName}`;
+            } else {
+                titleEl.innerHTML = `<i class="fas fa-calculator"></i> Grand Total — All Buyers (PRVS + RCVD - DLVD)`;
             }
+
+            card.style.display = 'block';
         }
 
         // =========================================
@@ -2740,15 +2729,14 @@
             const footNetQty = footAddQty - footDlvdQty;
             const footNetVal = footAddVal - footDlvdVal;
 
-            const stockTotals = computeStockTotals(filteredData);
-
+            // FIXED: Table footer now also strictly uses (PRVS + RCVD) - DLVD for Present Stock
             html += `<tfoot><tr>
                 <td colspan="11" style="text-align:right;">GRAND TOTAL (all filtered rows):</td>
                 <td>${footNetQty >= 0 ? '+' : ''}${fmt(footNetQty)}</td>
                 <td>—</td>
                 <td>${footNetVal >= 0 ? '$' : '-$'}${fmt(Math.abs(footNetVal))}</td>
-                <td>${fmt(stockTotals.stock)}</td>
-                <td>$${fmt(stockTotals.stockVal)}</td>
+                <td>${fmt(footNetQty)}</td>
+                <td>$${fmt(footNetVal)}</td>
                 <td colspan="4"></td>
             </tr></tfoot>`;
 
