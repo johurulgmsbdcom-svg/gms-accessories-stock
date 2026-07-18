@@ -1084,6 +1084,34 @@
         let allBuyers = [];
         let selectedBuyerIds = [];
 
+        // ==========================================================
+        // FIX: Supabase PostgREST caps ANY single request at the
+        // project's "Max Rows" setting (default 1000), regardless of
+        // what .limit() you pass. If items or transactions exceed
+        // that count, rows silently go missing. This helper pages
+        // through with .range() in batches of 1000 until every row
+        // is fetched, so Present/Previous stock totals always match
+        // the real database (same fix applied to transactions.html).
+        // ==========================================================
+        async function fetchAllRows(queryBuilder) {
+            const BATCH_SIZE = 1000;
+            let allRows = [];
+            let from = 0;
+
+            while (true) {
+                const { data: batch, error } = await queryBuilder.range(from, from + BATCH_SIZE - 1);
+                if (error) throw error;
+                if (!batch || batch.length === 0) break;
+
+                allRows = allRows.concat(batch);
+
+                if (batch.length < BATCH_SIZE) break; // last page reached
+                from += BATCH_SIZE;
+            }
+
+            return allRows;
+        }
+
         function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -1189,7 +1217,7 @@
 
         async function loadBuyerOptions() {
             try {
-                const { data: buyers } = await db.from('buyers').select('id, name').order('name');
+                const buyers = await fetchAllRows(db.from('buyers').select('id, name').order('name'));
                 allBuyers = buyers || [];
                 
                 const optionsContainer = document.getElementById('buyerOptions');
@@ -1233,14 +1261,17 @@
 
             for (let i = 0; i < itemIds.length; i += CHUNK) {
                 const chunkIds = itemIds.slice(i, i + CHUNK);
-                const { data, error } = await db
-                    .from('transactions')
-                    .select('id, item_id, type, txn_date, qty, line_value')
-                    .in('item_id', chunkIds)
-                    .order('id', { ascending: true })
-                    .limit(20000);
 
-                if (error) throw error;
+                // FIX: page through ALL matching transactions for this
+                // chunk of items instead of relying on a single .limit(20000)
+                // call, which the Supabase server caps at Max Rows (1000)
+                // no matter what number is passed.
+                const data = await fetchAllRows(
+                    db.from('transactions')
+                        .select('id, item_id, type, txn_date, qty, line_value')
+                        .in('item_id', chunkIds)
+                        .order('id', { ascending: true })
+                );
 
                 (data || []).forEach(txn => {
                     if (!byItem[txn.item_id]) byItem[txn.item_id] = [];
@@ -1319,9 +1350,9 @@
                     query = query.in('buyer_id', selectedBuyerIds);
                 }
 
-                const { data, error } = await query;
-
-                if (error) throw error;
+                // FIX: page through ALL matching items instead of a plain
+                // query (which the server silently caps at Max Rows / 1000).
+                const data = await fetchAllRows(query);
 
                 allItems = data || [];
 
