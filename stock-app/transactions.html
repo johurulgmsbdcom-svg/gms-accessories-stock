@@ -2617,11 +2617,15 @@
                 // Net Qty to match it. Since Present Stock should always equal the
                 // sum of that item's own transactions, zero transactions means the
                 // correct stock is 0 — so we write that back explicitly.
-                const { error: zeroErr } = await db
+                const { data: zeroData, error: zeroErr } = await db
                     .from('items')
                     .update({ current_stock: 0, current_value: 0 })
-                    .eq('id', itemId);
+                    .eq('id', itemId)
+                    .select('id');
                 if (zeroErr) throw zeroErr;
+                if (!zeroData || zeroData.length === 0) {
+                    throw new Error(`Update matched 0 rows for item ${itemId} — likely blocked by a Row Level Security (RLS) policy on the "items" table's UPDATE permission.`);
+                }
                 return;
             }
 
@@ -2692,14 +2696,25 @@
             // so both sides always agree going forward.
             // ==========================================================
             const finalBalance = updates[updates.length - 1];
-            const { error: itemStockErr } = await db
+            const { data: itemUpdData, error: itemStockErr } = await db
                 .from('items')
                 .update({
                     current_stock: finalBalance.present_stock_after,
                     current_value: finalBalance.stock_value_after
                 })
-                .eq('id', itemId);
+                .eq('id', itemId)
+                .select('id');
             if (itemStockErr) throw itemStockErr;
+            if (!itemUpdData || itemUpdData.length === 0) {
+                // FIX #8: supabase-js does NOT throw an error when an UPDATE is
+                // blocked by Row Level Security — it just silently matches 0 rows
+                // and reports "success". That's exactly why "Fix All Stock" showed
+                // a success toast but the numbers never actually changed. Adding
+                // .select() lets us see how many rows really got updated, so we
+                // can surface this as a real, visible error instead of a false
+                // "success".
+                throw new Error(`Update matched 0 rows for item ${itemId} — likely blocked by a Row Level Security (RLS) policy on the "items" table's UPDATE permission.`);
+            }
         }
 
         // ==========================================================
