@@ -1984,7 +1984,7 @@
 
                 applySorting();
                 updateStats();
-                updateBuyerTotal(); // Removed await as it is now synchronous
+                updateBuyerTotal(); 
                 renderTable();
 
             } catch (err) {
@@ -2079,32 +2079,38 @@
         }
 
         // ==========================================
-        // CORRECTED: Present Stock = (PRVS + RCVD) - DLVD
+        // BULLETPROOF: Present Stock = (PRVS + RCVD) - DLVD
         // ==========================================
         function computeStockTotals(data) {
-            let addQty = 0, dlvdQty = 0, addVal = 0, dlvdVal = 0;
+            let prvsQty = 0, prvsVal = 0;
+            let rcvdQty = 0, rcvdVal = 0;
+            let dlvdQty = 0, dlvdVal = 0;
             
             data.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
+                const type = (txn.type || '').toUpperCase().trim();
                 
-                if (txn.type === 'PRVS' || txn.type === 'RCVD') {
-                    addQty += qty;
-                    addVal += val;
-                } else if (txn.type === 'DLVD') {
+                if (type === 'PRVS') {
+                    prvsQty += qty;
+                    prvsVal += val;
+                } else if (type === 'RCVD') {
+                    rcvdQty += qty;
+                    rcvdVal += val;
+                } else if (type === 'DLVD') {
                     dlvdQty += qty;
                     dlvdVal += val;
                 }
             });
             
-            const netQty = addQty - dlvdQty;
-            const netVal = addVal - dlvdVal;
+            const netQty = (prvsQty + rcvdQty) - dlvdQty;
+            const netVal = (prvsVal + rcvdVal) - dlvdVal;
             
             return { stock: netQty, stockVal: netVal };
         }
 
         // ==========================================
-        // CORRECTED: Removed DB lookup, uses filtered sum
+        // BULLETPROOF: Removed DB lookup, uses filtered sum with DEBUG LOG
         // ==========================================
         function updateBuyerTotal() {
             const card = document.getElementById('buyerTotalCard');
@@ -2112,25 +2118,39 @@
             const buyerSelect = document.getElementById('fBuyer');
             const buyerId = buyerSelect.value;
 
-            let rcvdQty = 0, dlvdQty = 0, rcvdVal = 0, dlvdVal = 0, prvsQty = 0, prvsVal = 0;
+            let prvsQty = 0, prvsVal = 0;
+            let rcvdQty = 0, rcvdVal = 0;
+            let dlvdQty = 0, dlvdVal = 0;
             
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
-                if (txn.type === 'RCVD') {
-                    rcvdQty += qty;
-                    rcvdVal += val;
-                } else if (txn.type === 'DLVD') {
-                    dlvdQty += qty;
-                    dlvdVal += val;
-                } else if (txn.type === 'PRVS') {
+                const type = (txn.type || '').toUpperCase().trim();
+                
+                if (type === 'PRVS') {
                     prvsQty += qty;
                     prvsVal += val;
+                } else if (type === 'RCVD') {
+                    rcvdQty += qty;
+                    rcvdVal += val;
+                } else if (type === 'DLVD') {
+                    dlvdQty += qty;
+                    dlvdVal += val;
                 }
             });
 
+            // STRICT FORMULA: (PRVS + RCVD) - DLVD
             const netQty = (prvsQty + rcvdQty) - dlvdQty;
             const netVal = (prvsVal + rcvdVal) - dlvdVal;
+
+            // DEBUG LOG: Open browser console (F12) to verify the exact math being performed
+            console.log("=== STOCK CALCULATION DEBUG ===");
+            console.log("Total PRVS Qty:", prvsQty);
+            console.log("Total RCVD Qty:", rcvdQty);
+            console.log("Total DLVD Qty:", dlvdQty);
+            console.log("Formula: (PRVS + RCVD) - DLVD = ", (prvsQty + rcvdQty) - dlvdQty);
+            console.log("Final Present Stock:", netQty);
+            console.log("===============================");
 
             document.getElementById('btRcvdQty').textContent = fmt(prvsQty + rcvdQty);
             document.getElementById('btDlvdQty').textContent = fmt(dlvdQty);
@@ -2140,7 +2160,6 @@
             document.getElementById('btDlvdVal').textContent = '$' + fmt(dlvdVal);
             document.getElementById('btNetVal').textContent = '$' + fmt(netVal);
             
-            // FIX: Use calculated netQty/netVal instead of items.current_stock/current_value
             document.getElementById('btStock').textContent = fmt(netQty);
             document.getElementById('btStockVal').textContent = '$' + fmt(netVal);
 
@@ -2720,18 +2739,31 @@
 
             html += '</tbody>';
 
-            let footAddQty = 0, footDlvdQty = 0, footAddVal = 0, footDlvdVal = 0;
+            let footPRVSQty = 0, footPRVSVal = 0;
+            let footRCVDQty = 0, footRCVDVal = 0;
+            let footDLVDQty = 0, footDLVDVal = 0;
+
             filteredData.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
                 const val = parseFloat(txn.line_value) || 0;
-                if (txn.type === 'PRVS' || txn.type === 'RCVD') { footAddQty += qty; footAddVal += val; }
-                else if (txn.type === 'DLVD') { footDlvdQty += qty; footDlvdVal += val; }
-            });
-            const footNetQty = footAddQty - footDlvdQty;
-            const footNetVal = footAddVal - footDlvdVal;
+                const type = (txn.type || '').toUpperCase().trim();
 
-            // CORRECT FORMULA: Present Stock = footNetQty, Present Stock Value = footNetVal
-            // We use the already-calculated net totals directly for consistency.
+                if (type === 'PRVS') {
+                    footPRVSQty += qty;
+                    footPRVSVal += val;
+                } else if (type === 'RCVD') {
+                    footRCVDQty += qty;
+                    footRCVDVal += val;
+                } else if (type === 'DLVD') {
+                    footDLVDQty += qty;
+                    footDLVDVal += val;
+                }
+            });
+
+            // STRICT FORMULA: (PRVS + RCVD) - DLVD
+            const footNetQty = (footPRVSQty + footRCVDQty) - footDLVDQty;
+            const footNetVal = (footPRVSVal + footRCVDVal) - footDLVDVal;
+
             html += `<tfoot><tr>
                 <td colspan="11" style="text-align:right; font-weight:700; color:var(--accent-blue);">
                     <i class="fas fa-calculator"></i> PRESENT STOCK (Filtered):
@@ -2853,17 +2885,18 @@
                     }
                     
                     const qty = parseFloat(txn.qty) || 0;
-                    if (txn.type === 'PRVS') {
+                    const type = (txn.type || '').toUpperCase().trim();
+                    if (type === 'PRVS') {
                         itemStats[key].prvsQty += qty;
-                    } else if (txn.type === 'RCVD') {
+                    } else if (type === 'RCVD') {
                         itemStats[key].rcvdQty += qty;
-                    } else if (txn.type === 'DLVD') {
+                    } else if (type === 'DLVD') {
                         itemStats[key].dlvdQty += qty;
                     }
                 });
 
                 const excelData = Object.values(itemStats).map(stat => {
-                    // CORRECT FORMULA applied to Excel export as well
+                    // STRICT FORMULA applied to Excel export as well
                     const presentStock = (stat.prvsQty + stat.rcvdQty) - stat.dlvdQty;
                     return {
                         'Buyer': stat.buyer,
