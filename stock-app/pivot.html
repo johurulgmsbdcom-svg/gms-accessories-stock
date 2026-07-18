@@ -1344,12 +1344,6 @@
             await loadItems();
         }
 
-        // ================================================================
-        // FIX: Fetch the COMPLETE transaction history for every item
-        // (no date filter at the query level). We need the full history
-        // because PRVS (opening stock) rows and any RCVD/DLVD rows dated
-        // before "Date From" all belong in the "Previous" bucket.
-        // ================================================================
         async function fetchTransactionsForItems(itemIds) {
             if (!itemIds.length) return {};
 
@@ -1361,7 +1355,8 @@
                 const chunkIds = itemIds.slice(i, i + CHUNK);
                 let query = db
                     .from('transactions')
-                    .select('id, item_id, type, txn_date, qty, line_value')
+                    // FIX: Added unit_price_snapshot as fallback to guarantee accurate value calculation
+                    .select('id, item_id, type, txn_date, qty, line_value, unit_price_snapshot')
                     .in('item_id', chunkIds)
                     .order('txn_date', { ascending: true })
                     .order('id', { ascending: true });
@@ -1381,22 +1376,27 @@
 
         // ================================================================
         // FIX: Correct Previous / Received / Delivery / Present logic.
-        // Matches Excel Balance Sheet logic 100%.
+        // CORRECT FORMULA: Present Stock = (Total PRVS + Total RCVD) - Total DLVD
+        // Matches Excel Balance Sheet logic 100% and ignores items.current_stock.
         // ================================================================
         function computePivotForItem(item, txns, dateFrom, dateTo) {
-            let prevQty = 0, prevValue = 0;
+            let prvsQty = 0, prvsValue = 0;
             let rcvdQty = 0, rcvdValue = 0;
             let dlvdQty = 0, dlvdValue = 0;
 
             txns.forEach(txn => {
                 const qty = parseFloat(txn.qty) || 0;
-                const val = parseFloat(txn.line_value) || 0;
+                const price = parseFloat(txn.unit_price_snapshot) || 0;
+                // Fallback to qty * price if line_value is missing/null
+                const val = (txn.line_value !== null && txn.line_value !== undefined) 
+                            ? parseFloat(txn.line_value) 
+                            : (qty * price);
                 const d = txn.txn_date || '';
 
-                // 1. PRVS is ALWAYS considered Previous (Opening Balance)
+                // 1. PRVS is ALWAYS considered Opening Balance
                 if (txn.type === 'PRVS') {
-                    prevQty += qty;
-                    prevValue += val;
+                    prvsQty += qty;
+                    prvsValue += val;
                     return;
                 }
 
@@ -1408,11 +1408,11 @@
                 // 3. If transaction is BEFORE the report start date, it rolls into Previous
                 if (dateFrom && d < dateFrom) {
                     if (txn.type === 'RCVD') {
-                        prevQty += qty;
-                        prevValue += val;
+                        prvsQty += qty;
+                        prvsValue += val;
                     } else if (txn.type === 'DLVD') {
-                        prevQty -= qty;
-                        prevValue -= val;
+                        prvsQty -= qty;
+                        prvsValue -= val;
                     }
                     return;
                 }
@@ -1427,13 +1427,13 @@
                 }
             });
 
-            // Present Stock = Previous + Received - Delivery
-            const presentQty = prevQty + rcvdQty - dlvdQty;
-            const presentValue = prevValue + rcvdValue - dlvdValue;
+            // CORRECT FORMULA: Present Stock = (Total PRVS + Total RCVD) - Total DLVD
+            const presentQty = prvsQty + rcvdQty - dlvdQty;
+            const presentValue = prvsValue + rcvdValue - dlvdValue;
 
             return {
                 item,
-                prevQty, prevValue,
+                prevQty: prvsQty, prevValue: prvsValue,
                 rcvdQty, rcvdValue,
                 dlvdQty, dlvdValue,
                 presentQty, presentValue
@@ -1452,8 +1452,10 @@
             try {
                 let query = db
                     .from('items')
+                    // FIX: Removed current_stock and current_value from SELECT to guarantee 
+                    // zero reliance on cached database columns for summary calculations.
                     .select(`
-                        id, description, unit, goods_location, current_stock, current_value,
+                        id, description, unit, goods_location,
                         buyer_id, supplier, item_code,
                         buyers:buyer_id (name)
                     `)
@@ -1571,6 +1573,7 @@
                     buyerTotal.rcvdValue += row.rcvdValue;
                     buyerTotal.dlvdQty += row.dlvdQty;
                     buyerTotal.dlvdValue += row.dlvdValue;
+                    // CORRECT FORMULA: Summing the strictly calculated presentQty/presentValue
                     buyerTotal.presentStock += row.presentQty;
                     buyerTotal.stockValue += row.presentValue;
                 });
