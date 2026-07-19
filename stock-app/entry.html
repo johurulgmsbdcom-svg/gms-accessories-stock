@@ -154,6 +154,9 @@
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
         }
+        .form-group input.invalid, .form-group select.invalid, .form-group textarea.invalid {
+            border-color: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,0.15);
+        }
         .form-group textarea { resize: vertical; min-height: 70px; }
         .form-group .hint {
             font-size: 11px; color: var(--muted); margin-top: 4px;
@@ -368,18 +371,18 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Order No</label>
-                        <input type="text" id="fOrder" placeholder="Order number (optional)">
+                        <label>Order No <span class="required">*</span></label>
+                        <input type="text" id="fOrder" placeholder="Order number" required>
                     </div>
 
                     <div class="form-group">
-                        <label>SR / Style No</label>
-                        <input type="text" id="fStyle" placeholder="Style number (optional)">
+                        <label>SR / Style No <span class="required">*</span></label>
+                        <input type="text" id="fStyle" placeholder="Style number" required>
                     </div>
 
                     <div class="form-group" id="supplierGroup">
-                        <label id="supplierLabel">Supplier</label>
-                        <input type="text" id="fSupplier" placeholder="Supplier name">
+                        <label id="supplierLabel">Supplier <span class="required">*</span></label>
+                        <input type="text" id="fSupplier" placeholder="Supplier name" required>
                     </div>
 
                     <div class="form-group">
@@ -633,7 +636,7 @@
                 badge.textContent = 'RCVD';
                 btnSave.className = 'btn btn-save rcvd';
                 supplierGroup.style.display = 'block';
-                supplierLabel.textContent = 'Supplier';
+                supplierLabel.innerHTML = 'Supplier <span class="required">*</span>';
                 document.getElementById('fSupplier').placeholder = 'Supplier name';
                 lcGroup.style.display = 'block';
                 challanLabel.textContent = 'Challan No';
@@ -646,8 +649,8 @@
                 badge.textContent = 'DLVD';
                 btnSave.className = 'btn btn-save dlvd';
                 supplierGroup.style.display = 'block';
-                supplierLabel.textContent = 'Supplier';
-                document.getElementById('fSupplier').placeholder = 'Supplier name (optional)';
+                supplierLabel.innerHTML = 'Supplier <span class="required">*</span>';
+                document.getElementById('fSupplier').placeholder = 'Supplier name';
                 lcGroup.style.display = 'none';
                 challanLabel.textContent = 'Challan / Issue No';
                 document.getElementById('challanHint').innerHTML = '<i class="fas fa-info-circle"></i> Issue/Delivery challan number';
@@ -664,6 +667,10 @@
             document.getElementById('fLcPi').value = '';
             document.getElementById('fRemarks').value = '';
             document.getElementById('fTeam').value = '';
+
+            ['fOrder', 'fStyle', 'fSupplier', 'fChallan', 'fQty'].forEach(id => {
+                document.getElementById(id).classList.remove('invalid');
+            });
 
             setTimeout(() => document.getElementById('fQty').focus(), 300);
             document.getElementById('fQty').addEventListener('input', checkStockWarning);
@@ -683,10 +690,16 @@
         }
 
         async function saveTransaction() {
+            // clear previous invalid highlights
+            ['fOrder', 'fStyle', 'fSupplier', 'fChallan', 'fQty'].forEach(id => {
+                document.getElementById(id).classList.remove('invalid');
+            });
+
             const qty = parseFloat(document.getElementById('fQty').value);
 
             if (!qty || qty <= 0) {
                 showToast('Qty দিন!', 'error');
+                document.getElementById('fQty').classList.add('invalid');
                 document.getElementById('fQty').focus();
                 return;
             }
@@ -694,7 +707,32 @@
             const challanVal = document.getElementById('fChallan').value.trim();
             if (!challanVal) {
                 showToast('Challan Number দিন!', 'error');
+                document.getElementById('fChallan').classList.add('invalid');
                 document.getElementById('fChallan').focus();
+                return;
+            }
+
+            const orderVal = document.getElementById('fOrder').value.trim();
+            if (!orderVal) {
+                showToast('Order No দিন!', 'error');
+                document.getElementById('fOrder').classList.add('invalid');
+                document.getElementById('fOrder').focus();
+                return;
+            }
+
+            const styleVal = document.getElementById('fStyle').value.trim();
+            if (!styleVal) {
+                showToast('SR / Style No দিন!', 'error');
+                document.getElementById('fStyle').classList.add('invalid');
+                document.getElementById('fStyle').focus();
+                return;
+            }
+
+            const supplierVal = document.getElementById('fSupplier').value.trim();
+            if (!supplierVal) {
+                showToast('Supplier দিন!', 'error');
+                document.getElementById('fSupplier').classList.add('invalid');
+                document.getElementById('fSupplier').focus();
                 return;
             }
 
@@ -716,11 +754,11 @@
                     qty: qty,
                     unit_price_snapshot: parseFloat(document.getElementById('fPrice').value) || 0,
                     challan_no: challanVal,
-                    order_no: document.getElementById('fOrder').value.trim() || null,
-                    style_no: document.getElementById('fStyle').value.trim() || null,
+                    order_no: orderVal,
+                    style_no: styleVal,
                     team_member_id: document.getElementById('fTeam').value || null,
                     remarks: document.getElementById('fRemarks').value.trim() || null,
-                    supplier: document.getElementById('fSupplier').value.trim() || null
+                    supplier: supplierVal
                 };
 
                 if (currentType === 'RCVD') {
@@ -786,6 +824,9 @@
             document.getElementById('fRemarks').value = '';
             document.getElementById('fLcPi').value = '';
             document.getElementById('warningBox').classList.remove('show');
+            ['fOrder', 'fStyle', 'fSupplier', 'fChallan', 'fQty'].forEach(id => {
+                document.getElementById(id).classList.remove('invalid');
+            });
             document.getElementById('fQty').focus();
             showToast('Qty দিয়ে আবার Save চাপুন', 'warning');
         }
