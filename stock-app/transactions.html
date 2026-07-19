@@ -1427,6 +1427,9 @@
                 <button class="btn btn-reset" id="fixAllStockBtn" onclick="if(confirm('সব item এর stock recalculate করা হবে (এটা কিছুক্ষণ সময় নিতে পারে item সংখ্যার উপর ভিত্তি করে)। এগোতে চান?')) recalcAllStock();">
                     <i class="fas fa-wrench"></i> Fix All Stock
                 </button>
+                <button class="btn btn-search" id="auditStockBtn" onclick="auditStock()">
+                    <i class="fas fa-search-plus"></i> Audit Stock
+                </button>
             </div>
         </div>
 
@@ -1678,6 +1681,26 @@
                 </button>
                 <button class="btn btn-search" id="editSaveBtn" onclick="saveEditTransaction()">
                     <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="auditModal">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-search-plus"></i> Stock Audit (Read-Only)</h3>
+                <button class="modal-close" onclick="closeAuditModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="auditContainer"></div>
+            <div class="print-actions">
+                <button class="btn btn-reset" id="auditFixSelectedBtn" style="display:none;" onclick="fixAuditedMismatches()">
+                    <i class="fas fa-wrench"></i> Fix These Items Now
+                </button>
+                <button class="btn btn-cancel" onclick="closeAuditModal()">
+                    <i class="fas fa-times"></i> Close
                 </button>
             </div>
         </div>
@@ -2772,6 +2795,166 @@
                     btn.disabled = false;
                     btn.innerHTML = originalHtml;
                 }
+            }
+        }
+
+        // ==========================================================
+        // AUDIT STOCK (read-only diagnostic)
+        // Compares items.current_stock/current_value against a fresh
+        // calculation from the full transactions table WITHOUT writing
+        // anything. Use this any time after an Edit, Delete, or new
+        // RCVD/DLVD entry to quickly confirm nothing drifted — no need
+        // to run the heavier "Fix All Stock" just to check.
+        // ==========================================================
+        let lastAuditMismatches = [];
+
+        // Shared calculation used by both auditStock() and the re-check after fixing.
+        // Keeping this in one place means the two can never drift out of sync with
+        // each other (i.e. no risk of "fixed" and "audit" using different logic).
+        async function computeStockMismatches() {
+            const items = await fetchAllRows(
+                db.from('items').select('id, description, current_stock, current_value, buyers:buyer_id (name)')
+            );
+            const txns = await fetchAllRows(
+                db.from('transactions').select('item_id, type, qty, line_value')
+            );
+
+            const calc = {};
+            txns.forEach(t => {
+                if (!calc[t.item_id]) calc[t.item_id] = { stock: 0, value: 0 };
+                const qty = parseFloat(t.qty) || 0;
+                const val = parseFloat(t.line_value) || 0;
+                if (t.type === 'PRVS' || t.type === 'RCVD') {
+                    calc[t.item_id].stock += qty;
+                    calc[t.item_id].value += val;
+                } else if (t.type === 'DLVD') {
+                    calc[t.item_id].stock -= qty;
+                    calc[t.item_id].value -= val;
+                }
+            });
+
+            const mismatches = [];
+            items.forEach(item => {
+                const c = calc[item.id] || { stock: 0, value: 0 };
+                const storedStock = parseFloat(item.current_stock) || 0;
+                const storedValue = parseFloat(item.current_value) || 0;
+                const stockDiff = Math.round((storedStock - c.stock) * 100) / 100;
+                const valueDiff = Math.round((storedValue - c.value) * 100) / 100;
+                if (Math.abs(stockDiff) > 0.01 || Math.abs(valueDiff) > 0.01) {
+                    mismatches.push({
+                        id: item.id,
+                        name: item.description,
+                        buyer: item.buyers?.name || 'N/A',
+                        storedStock, calcStock: c.stock, stockDiff,
+                        storedValue, calcValue: c.value, valueDiff
+                    });
+                }
+            });
+
+            return { mismatches, totalItems: items.length };
+        }
+
+        async function auditStock() {
+            const btn = document.getElementById('auditStockBtn');
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Auditing...';
+            }
+            try {
+                const { mismatches, totalItems } = await computeStockMismatches();
+                lastAuditMismatches = mismatches;
+                showAuditModal(mismatches, totalItems);
+
+            } catch (err) {
+                console.error('auditStock error:', err);
+                showToast('Audit failed: ' + err.message, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
+            }
+        }
+
+        function showAuditModal(mismatches, totalItems) {
+            const container = document.getElementById('auditContainer');
+            const fixBtn = document.getElementById('auditFixSelectedBtn');
+
+            if (mismatches.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle" style="color:var(--accent-green);"></i>
+                        <p><b>সব ঠিক আছে!</b><br><small>${totalItems} টা item চেক করা হয়েছে, কোনো mismatch পাওয়া যায়নি।</small></p>
+                    </div>
+                `;
+                fixBtn.style.display = 'none';
+            } else {
+                let html = `<p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;">
+                    ${totalItems} টার মধ্যে <b style="color:var(--accent-red);">${mismatches.length}</b> টা item এ mismatch পাওয়া গেছে:
+                </p>
+                <div class="table-wrapper" style="max-height:400px;">
+                <table style="min-width:100%;">
+                <thead><tr>
+                    <th>Item</th><th>Buyer</th>
+                    <th>Stored Stock</th><th>Calculated Stock</th><th>Diff</th>
+                    <th>Stored Value</th><th>Calculated Value</th><th>Diff</th>
+                </tr></thead><tbody>`;
+                mismatches.forEach(m => {
+                    html += `<tr>
+                        <td style="text-align:left;">${m.name}</td>
+                        <td>${m.buyer}</td>
+                        <td>${fmt(m.storedStock)}</td>
+                        <td>${fmt(m.calcStock)}</td>
+                        <td style="color:var(--accent-red);font-weight:700;">${m.stockDiff >= 0 ? '+' : ''}${fmt(m.stockDiff)}</td>
+                        <td>$${fmt(m.storedValue)}</td>
+                        <td>$${fmt(m.calcValue)}</td>
+                        <td style="color:var(--accent-red);font-weight:700;">${m.valueDiff >= 0 ? '+' : ''}$${fmt(m.valueDiff)}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table></div>`;
+                container.innerHTML = html;
+                fixBtn.style.display = 'inline-flex';
+            }
+
+            document.getElementById('auditModal').classList.add('active');
+        }
+
+        function closeAuditModal() {
+            document.getElementById('auditModal').classList.remove('active');
+        }
+
+        async function fixAuditedMismatches() {
+            if (!lastAuditMismatches || lastAuditMismatches.length === 0) return;
+            const btn = document.getElementById('auditFixSelectedBtn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+
+            try {
+                let done = 0;
+                for (const m of lastAuditMismatches) {
+                    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${++done}/${lastAuditMismatches.length}...`;
+                    await recalcItemStock(m.id);
+                }
+                showToast(`${lastAuditMismatches.length} item(s) fixed!`, 'success');
+
+                // Refresh the main table's totals in the background (don't block the modal).
+                loadTransactions();
+
+                // Re-audit right away, in the SAME modal, so the person can see the
+                // red mismatch rows actually disappear — visual confirmation the
+                // fix worked, instead of just trusting a toast message.
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Re-checking...';
+                const { mismatches: stillMismatched, totalItems } = await computeStockMismatches();
+                lastAuditMismatches = stillMismatched;
+                showAuditModal(stillMismatched, totalItems);
+
+            } catch (err) {
+                console.error('fixAuditedMismatches error:', err);
+                showToast('Fix failed: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
             }
         }
 
