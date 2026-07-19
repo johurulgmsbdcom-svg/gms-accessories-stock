@@ -1,0 +1,36 @@
+name: Daily Stock Digest
+
+# প্রতিদিন সকাল ৮টায় (Asia/Dhaka, UTC+6) নিজে থেকে চলবে এবং
+# গতকালের RCVD/DLVD summary + Ageing alert Telegram ও Email এ পাঠাবে।
+# GitHub Actions -> Actions tab থেকে "Run workflow" চেপে ম্যানুয়ালি টেস্টও করা যাবে।
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # UTC 02:00 = Asia/Dhaka সকাল ৮:০০
+  workflow_dispatch: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install nodemailer
+
+      - name: Run daily digest script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          DIGEST_EMAIL_TO: ${{ secrets.DIGEST_EMAIL_TO }}
+        run: node .github/scripts/daily-digest.mjs
