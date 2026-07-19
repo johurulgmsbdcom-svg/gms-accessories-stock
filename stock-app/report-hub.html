@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Report Hub — GMS Accessories Stock</title>
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#0a1628">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --glass-bg:rgba(255,255,255,.08); --glass-bg-strong:rgba(255,255,255,.12);
+  --glass-border:rgba(255,255,255,.15); --glass-shadow:0 8px 32px rgba(0,0,0,.3);
+  --text-primary:#fff; --text-secondary:rgba(255,255,255,.7); --text-muted:rgba(255,255,255,.5);
+  --accent-blue:#3b82f6; --accent-green:#10b981; --accent-red:#ef4444; --accent-yellow:#f59e0b;
+  --accent-purple:#8b5cf6; --accent-cyan:#06b6d4;
+}
+[data-theme="light"]{
+  --glass-bg:rgba(255,255,255,.6); --glass-bg-strong:rgba(255,255,255,.85);
+  --glass-border:rgba(255,255,255,.85); --glass-shadow:0 8px 32px rgba(0,0,0,.1);
+  --text-primary:#1e293b; --text-secondary:#475569; --text-muted:#94a3b8;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Poppins',sans-serif;min-height:100vh;padding-bottom:80px;overflow-x:hidden;position:relative}
+.bg-3d{position:fixed;inset:0;z-index:-2;background:linear-gradient(135deg,#0a1628 0%,#1a1a3e 25%,#0f2027 50%,#203a43 75%,#0a1628 100%);background-size:400% 400%;animation:gs 15s ease infinite}
+[data-theme="light"] .bg-3d{background:linear-gradient(135deg,#e0e7ff 0%,#c7d2fe 25%,#dbeafe 50%,#e0e7ff 75%,#f0f4ff 100%);background-size:400% 400%;animation:gs 15s ease infinite}
+@keyframes gs{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.glass{background:var(--glass-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:16px;box-shadow:var(--glass-shadow)}
+.header{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;background:rgba(10,22,40,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--glass-border)}
+[data-theme="light"] .header{background:rgba(255,255,255,.85)}
+.header-left{display:flex;align-items:center;gap:12px}
+.back-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-primary);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;box-shadow:0 4px 15px rgba(59,130,246,.4)}
+.header-title{font-size:16px;font-weight:700;background:linear-gradient(135deg,#fff 0%,#a5b4fc 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+[data-theme="light"] .header-title{background:linear-gradient(135deg,#1e293b 0%,#3b82f6 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-primary);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.main{padding:20px;max-width:1400px;margin:0 auto}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px}
+.tab-btn{flex-shrink:0;padding:10px 16px;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-secondary);font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;transition:all .2s}
+.tab-btn.active{background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));color:#fff;border-color:transparent}
+.panel{display:none;animation:fadeIn .3s ease}
+.panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card{padding:20px;margin-bottom:18px}
+.card h3{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;color:var(--text-primary)}
+.card h3 i{color:var(--accent-blue)}
+.card p.hint{font-size:11.5px;color:var(--text-muted);margin:-8px 0 14px;line-height:1.5}
+.filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.filter-group{display:flex;flex-direction:column;gap:6px}
+.filter-group label{font-size:10.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px}
+.filter-group input,.filter-group select{padding:10px 12px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(0,0,0,.2);color:var(--text-primary);font-family:'Poppins',sans-serif;font-size:13px;outline:none}
+[data-theme="light"] .filter-group input,[data-theme="light"] .filter-group select{background:rgba(255,255,255,.7)}
+.filter-group input:focus,.filter-group select:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.chk-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-secondary)}
+.btn{padding:10px 16px;border:none;border-radius:10px;font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;color:#fff;transition:all .2s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.2)}
+.btn-blue{background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple))}
+.btn-green{background:linear-gradient(135deg,var(--accent-green),#059669)}
+.btn-yellow{background:linear-gradient(135deg,var(--accent-yellow),#d97706);color:#1e293b}
+.btn-cyan{background:linear-gradient(135deg,var(--accent-cyan),#0891b2)}
+.btn-red{background:linear-gradient(135deg,var(--accent-red),#dc2626)}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.stat{padding:14px;text-align:center}
+.stat .v{font-size:19px;font-weight:800}
+.stat .l{font-size:9.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-top:4px}
+.stat.blue .v{color:var(--accent-blue)} .stat.green .v{color:var(--accent-green)} .stat.red .v{color:var(--accent-red)} .stat.yellow .v{color:var(--accent-yellow)} .stat.purple .v{color:var(--accent-purple)}
+.table-wrapper{overflow-x:auto;border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px;border:1px solid var(--glass-border)}
+thead th{padding:10px;text-align:left;font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);background:rgba(0,0,0,.25);border:1px solid var(--glass-border);white-space:nowrap}
+[data-theme="light"] thead th{background:rgba(255,255,255,.5)}
+tbody td{padding:9px 10px;color:var(--text-secondary);border:1px solid var(--glass-border);font-size:12px}
+tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+tbody tr:hover{background:rgba(59,130,246,.08)}
+tr.flag-row{background:rgba(239,68,68,.1) !important}
+tr.flag-row td{color:var(--accent-red);font-weight:600}
+.badge{padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;display:inline-block}
+.badge.rcvd{background:rgba(16,185,129,.2);color:var(--accent-green)}
+.badge.dlvd{background:rgba(239,68,68,.2);color:var(--accent-red)}
+.badge.dup{background:rgba(245,158,11,.25);color:var(--accent-yellow)}
+.badge.ok{background:rgba(16,185,129,.2);color:var(--accent-green)}
+.loading-state,.empty-state{text-align:center;padding:50px 20px;color:var(--text-muted)}
+.loading-state i{font-size:34px;color:var(--accent-blue);margin-bottom:14px;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state i{font-size:40px;margin-bottom:14px;opacity:.5}
+.doc-select-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.doc-select-row .filter-group{flex:1;min-width:220px}
+.print-doc{display:none}
+@media print{
+  @page{size:A4;margin:14mm}
+  body>*:not(#printArea){display:none !important}
+  #printArea{display:block !important}
+  body{background:#fff !important}
+}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,22,40,.92);backdrop-filter:blur(20px);border-top:1px solid var(--glass-border);display:flex;justify-content:space-around;padding:8px 0 10px;z-index:100;overflow-x:auto}
+[data-theme="light"] .bottom-nav{background:rgba(255,255,255,.92)}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;text-decoration:none;color:var(--text-muted);font-size:9.5px;font-weight:600;padding:6px 9px;border-radius:8px;flex-shrink:0}
+.nav-item.active{color:var(--accent-blue)}
+.nav-item .nav-icon{font-size:17px}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-120px);background:var(--glass-bg-strong);backdrop-filter:blur(20px);color:var(--text-primary);padding:12px 22px;border-radius:12px;border:1px solid var(--glass-border);box-shadow:0 10px 40px rgba(0,0,0,.3);z-index:500;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;transition:transform .4s ease}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.error{border-left:4px solid var(--accent-red)} .toast.success{border-left:4px solid var(--accent-green)}
+::-webkit-scrollbar{width:8px;height:8px} ::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--glass-border);border-radius:4px}
+@media(max-width:768px){.main{padding:14px}.filter-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.filter-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="bg-3d"></div>
+
+<header class="header">
+  <div class="header-left">
+    <a href="index.html" class="back-btn"><i class="fas fa-arrow-left"></i></a>
+    <div class="logo-icon">G</div>
+    <div class="header-title">Report Hub</div>
+  </div>
+  <button class="header-btn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
+</header>
+
+<main class="main">
+  <div class="tabs" id="tabBar">
+    <button class="tab-btn active" data-tab="digest" onclick="switchTab('digest')"><i class="fas fa-newspaper"></i> Daily Digest</button>
+    <button class="tab-btn" data-tab="breach" onclick="switchTab('breach')"><i class="fas fa-triangle-exclamation"></i> Threshold Breach</button>
+    <button class="tab-btn" data-tab="buyers" onclick="switchTab('buyers')"><i class="fas fa-address-book"></i> Buyer Master</button>
+    <button class="tab-btn" data-tab="count" onclick="switchTab('count')"><i class="fas fa-clipboard-list"></i> Stock Count Sheet</button>
+    <button class="tab-btn" data-tab="activity" onclick="switchTab('activity')"><i class="fas fa-history"></i> Activity Log</button>
+    <button class="tab-btn" data-tab="dup" onclick="switchTab('dup')"><i class="fas fa-copy"></i> Duplicate Challan</button>
+    <button class="tab-btn" data-tab="grn" onclick="switchTab('grn')"><i class="fas fa-file-invoice"></i> GRN Print</button>
+    <button class="tab-btn" data-tab="dc" onclick="switchTab('dc')"><i class="fas fa-truck"></i> Delivery Challan</button>
+  </div>
+
+  <!-- ============ 1. DAILY DIGEST ============ -->
+  <section class="panel active" id="panel-digest">
+    <div class="card glass">
+      <h3><i class="fas fa-newspaper"></i> Daily Digest Report</h3>
+      <p class="hint">Ekta din er shob RCVD / DLVD entry summary — sokal e check korar jonno ba print kore rakhar jonno.</p>
+      <div class="doc-select-row">
+        <div class="filter-group"><label>Date</label><input type="date" id="digestDate"></div>
+        <button class="btn btn-blue" onclick="loadDigest()"><i class="fas fa-search"></i> Load</button>
+        <button class="btn btn-cyan" onclick="printPanel('digest')"><i class="fas fa-print"></i> Print</button>
+      </div>
+      <div id="digestContent"><div class="empty-state"><i class="fas fa-calendar-day"></i><p>Ekta date select kore Load চাপুন</p></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 2. THRESHOLD BREACH ============ -->
+  <section class="panel" id="panel-breach">
+    <div class="card glass">
+      <h3><i class="fas fa-triangle-exclamation"></i> Threshold Breach Alert Log</h3>
+      <p class="hint">Prottek transaction er "present_stock_after" theke history replay kore dekhano hoy — kobe kon item stock threshold-er niche/shomoshomani/negative hoye giyechilo. Threshold change korle history abar recalculate hobe (already stored data theke).</p>
+      <div class="doc-select-row">
+        <div class="filter-group"><label>Threshold (≤)</label><input type="number" id="breachThreshold" value="0" step="any"></div>
+        <div class="filter-group"><label>Buyer</label><select id="breachBuyer"><option value="">All Buyers</option></select></div>
+        <button class="btn btn-blue" onclick="loadBreach()"><i class="fas fa-search"></i> Scan</button>
+      </div>
+      <div class="stats-row" id="breachStats" style="display:none;">
+        <div class="stat glass red"><div class="v" id="bCurrentCount">—</div><div class="l">Currently At/Below</div></div>
+        <div class="stat glass yellow"><div class="v" id="bHistEvents">—</div><div class="l">Historical Breach Events</div></div>
+        <div class="stat glass blue"><div class="v" id="bItemsAffected">—</div><div class="l">Items Ever Affected</div></div>
+      </div>
+      <div id="breachContent"><div class="empty-state"><i class="fas fa-magnifying-glass-chart"></i><p>Scan চাপুন — threshold ও buyer অনুযায়ী history বের করা হবে</p></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 3. BUYER MASTER LIST ============ -->
+  <section class="panel" id="panel-buyers">
+    <div class="card glass">
+      <h3><i class="fas fa-address-book"></i> Buyer Master List</h3>
+      <p class="hint">Shob buyer-er contact-directory style overview — item count, stock qty/value, total transaction.</p>
+      <div class="doc-select-row">
+        <button class="btn btn-blue" onclick="loadBuyerMaster()"><i class="fas fa-rotate"></i> Refresh</button>
+        <button class="btn btn-cyan" onclick="printPanel('buyers')"><i class="fas fa-print"></i> Print</button>
+        <button class="btn btn-green" onclick="exportBuyerMaster()"><i class="fas fa-file-excel"></i> Excel</button>
+      </div>
+      <div class="stats-row" id="buyerMasterStats" style="display:none;">
+        <div class="stat glass blue"><div class="v" id="bmTotalBuyers">—</div><div class="l">Total Buyers</div></div>
+        <div class="stat glass green"><div class="v" id="bmTotalItems">—</div><div class="l">Total Items</div></div>
+        <div class="stat glass purple"><div class="v" id="bmTotalValue">—</div><div class="l">Total Stock Value</div></div>
+      </div>
+      <div id="buyerMasterContent"><div class="loading-state"><i class="fas fa-circle-notch"></i><p>Loading...</p></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 4. STOCK COUNT SHEET ============ -->
+  <section class="panel" id="panel-count">
+    <div class="card glass">
+      <h3><i class="fas fa-clipboard-list"></i> Stock Count Sheet (Physical Audit Template)</h3>
+      <p class="hint">Godaam-e niye giye hate gunar jonno printable sheet — buyer name shoho, blank "Counted Qty" column-e likhe milbe.</p>
+      <div class="doc-select-row">
+        <div class="filter-group"><label>Buyer</label><select id="countBuyer"><option value="">All Buyers</option></select></div>
+        <div class="chk-row"><input type="checkbox" id="blindCount"><label for="blindCount">Blind count (system qty hide করুন)</label></div>
+        <button class="btn btn-blue" onclick="loadCountSheet()"><i class="fas fa-search"></i> Load</button>
+        <button class="btn btn-cyan" onclick="printPanel('count')"><i class="fas fa-print"></i> Print</button>
+      </div>
+      <div id="countContent"><div class="empty-state"><i class="fas fa-clipboard"></i><p>Load চাপুন</p></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 5. ACTIVITY LOG ============ -->
+  <section class="panel" id="panel-activity">
+    <div class="card glass">
+      <h3><i class="fas fa-history"></i> Daily Activity Log</h3>
+      <p class="hint"><b>Note:</b> Ei log প্রতিটি transaction-er creation timestamp (created_at), type, item, buyer, ও team member দেখায়। Edit/Delete-এর জন্য আলাদা history table নেই (edit korle row overwrite hoy, delete korle row muche jay) — tai eta শুধু "কে কবে entry দিয়েছিল" সেই creation-log, পূর্ণাঙ্গ edit/delete audit trail নয়। চাইলে আলাদা audit_log table বানিয়ে সেটাও যোগ করে দেওয়া যাবে।</p>
+      <div class="doc-select-row">
+        <div class="filter-group"><label>Date From</label><input type="date" id="actFrom"></div>
+        <div class="filter-group"><label>Date To</label><input type="date" id="actTo"></div>
+        <div class="filter-group"><label>Team Member</label><select id="actTeam"><option value="">All Members</option></select></div>
+        <button class="btn btn-blue" onclick="loadActivity()"><i class="fas fa-search"></i> Load</button>
+      </div>
+      <div id="activityContent"><div class="empty-state"><i class="fas fa-clock-rotate-left"></i><p>Load চাপুন</p></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 6. DUPLICATE CHALLAN ============ -->
+  <section class="panel" id="panel-dup">
+    <div class="card glass">
+      <h3><i class="fas fa-copy"></i> Duplicate Challan Detection</h3>
+      <p class="hint">Ekই challan_no jodi multiple date-e ba multiple buyer-e use hoy — sheta flag kore dekhabe (data-entry mistake ba genuine multi-line challan check korar jonno).</p>
+      <div class="doc-select-row">
+        <button class="btn btn-blue" onclick="loadDuplicates()"><i class="fas fa-rotate"></i> Scan All Challans</button>
+      </div>
+      <div class="stats-row" id="dupStats" style="display:none;">
+        <div class="stat glass yellow"><div class="v" id="dupCount">—</div><div class="l">Flagged Challan Numbers</div></div>
+        <div class="stat glass blue"><div class="v" id="dupTotalChallans">—</div><div class="l">Total Unique Challans</div></div>
+      </div>
+      <div id="dupContent"><div class="empty-state"><i class="fas fa-search"></i><p>Scan চাপুন</p></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 7. GRN PRINT ============ -->
+  <section class="panel" id="panel-grn">
+    <div class="card glass">
+      <h3><i class="fas fa-file-invoice"></i> Goods Receipt Note (GRN) Print</h3>
+      <p class="hint">Ekta RCVD transaction select kore formal GRN document print korun (MRR no shoho).</p>
+      <div class="doc-select-row">
+        <div class="filter-group"><label>Date From</label><input type="date" id="grnFrom"></div>
+        <div class="filter-group"><label>Date To</label><input type="date" id="grnTo"></div>
+        <div class="filter-group"><label>Buyer</label><select id="grnBuyer"><option value="">All Buyers</option></select></div>
+        <div class="filter-group"><label>Challan No</label><input type="text" id="grnChallan" placeholder="Search challan..."></div>
+        <button class="btn btn-blue" onclick="loadGrnList()"><i class="fas fa-search"></i> Search</button>
+      </div>
+      <div id="grnListContent"><div class="empty-state"><i class="fas fa-inbox"></i><p>Search করে RCVD entries list দেখুন, তারপর Print GRN চাপুন</p></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 8. DELIVERY CHALLAN PRINT ============ -->
+  <section class="panel" id="panel-dc">
+    <div class="card glass">
+      <h3><i class="fas fa-truck"></i> Delivery Challan Print</h3>
+      <p class="hint">Ekta DLVD transaction select kore formal delivery challan/slip print korun, buyer signature space shoho.</p>
+      <div class="doc-select-row">
+        <div class="filter-group"><label>Date From</label><input type="date" id="dcFrom"></div>
+        <div class="filter-group"><label>Date To</label><input type="date" id="dcTo"></div>
+        <div class="filter-group"><label>Buyer</label><select id="dcBuyer"><option value="">All Buyers</option></select></div>
+        <div class="filter-group"><label>Challan No</label><input type="text" id="dcChallan" placeholder="Search challan..."></div>
+        <button class="btn btn-blue" onclick="loadDcList()"><i class="fas fa-search"></i> Search</button>
+      </div>
+      <div id="dcListContent"><div class="empty-state"><i class="fas fa-inbox"></i><p>Search করে DLVD entries list দেখুন, তারপর Print Challan চাপুন</p></div></div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="bottom-nav">
+  <a href="index.html" class="nav-item"><i class="fas fa-home nav-icon"></i> Home</a>
+  <a href="dashboard.html" class="nav-item"><i class="fas fa-chart-line nav-icon"></i> Dashboard</a>
+  <a href="transactions.html" class="nav-item"><i class="fas fa-list nav-icon"></i> Ledger</a>
+  <a href="pivot.html" class="nav-item"><i class="fas fa-table nav-icon"></i> Pivot</a>
+  <a href="ageing.html" class="nav-item"><i class="fas fa-hourglass-half nav-icon"></i> Ageing</a>
+  <a href="challan-report.html" class="nav-item"><i class="fas fa-file-invoice nav-icon"></i> Challan</a>
+  <a href="daybook.html" class="nav-item"><i class="fas fa-book nav-icon"></i> Day Book</a>
+  <a href="report-hub.html" class="nav-item active"><i class="fas fa-folder-open nav-icon"></i> Reports</a>
+</nav>
+
+<div class="toast" id="toast"><i class="fas fa-check-circle" id="toastIcon"></i><span id="toastMsg">Success!</span></div>
+
+<!-- hidden print area, filled dynamically for GRN / Delivery Challan / generic panel print -->
+<div id="printArea" class="print-doc"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://qwtourjspllhiiryqewf.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_pcQFRFQWWAT1zTXfVfgdSw_43rcVr5S';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ============ THEME ============
+function toggleTheme(){
+  const html = document.documentElement;
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  document.getElementById('themeBtn').innerHTML = next==='dark' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+}
+(function(){
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.getElementById('themeBtn').innerHTML = saved==='dark' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+})();
+
+// ============ TOAST ============
+function showToast(msg, type='success'){
+  const t=document.getElementById('toast'), icon=document.getElementById('toastIcon'), m=document.getElementById('toastMsg');
+  t.className = 'toast ' + type;
+  icon.className = type==='error' ? 'fas fa-times-circle' : 'fas fa-check-circle';
+  m.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+// ============ UTILS ============
+function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '0'; return parseFloat(n).toLocaleString('en-US',{maximumFractionDigits:2}); }
+function todayISO(){ return new Date().toISOString().split('T')[0]; }
+function yesterdayISO(){ const d=new Date(); d.setDate(d.getDate()-1); return d.toISOString().split('T')[0]; }
+function esc(s){ return (s===null||s===undefined) ? '' : String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function fetchAllRows(queryBuilder){
+  const BATCH=1000; let all=[]; let from=0;
+  while(true){
+    const {data:batch, error} = await queryBuilder.range(from, from+BATCH-1);
+    if(error) throw error;
+    if(!batch || batch.length===0) break;
+    all = all.concat(batch);
+    if(batch.length < BATCH) break;
+    from += BATCH;
+  }
+  return all;
+}
+
+// ============ TABS ============
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id==='panel-'+tab));
+  if(tab==='buyers' && !buyerMasterLoaded) loadBuyerMaster();
+  if(tab==='dup' && !dupLoaded) loadDuplicates();
+}
+
+// ============ SHARED DROPDOWNS ============
+let allBuyers = [];
+async function loadBuyerDropdowns(){
+  const {data} = await db.from('buyers').select('id,name').order('name');
+  allBuyers = data || [];
+  const targets = ['breachBuyer','countBuyer','grnBuyer','dcBuyer'];
+  targets.forEach(id=>{
+    const el = document.getElementById(id);
+    allBuyers.forEach(b=>{ el.innerHTML += `<option value="${b.id}">${esc(b.name)}</option>`; });
+  });
+  const {data:teams} = await db.from('team_members').select('id,name').order('name');
+  const teamSel = document.getElementById('actTeam');
+  (teams||[]).forEach(t=>{ teamSel.innerHTML += `<option value="${t.id}">${esc(t.name)}</option>`; });
+}
+
+// =====================================================================
+// 1. DAILY DIGEST
+// =====================================================================
+async function loadDigest(){
+  const dateEl = document.getElementById('digestDate');
+  const date = dateEl.value || yesterdayISO();
+  dateEl.value = date;
+  const c = document.getElementById('digestContent');
+  c.innerHTML = `<div class="loading-state"><i class="fas fa-circle-notch"></i><p>Loading digest for ${date}...</p></div>`;
+
+  try {
+    const rows = await fetchAllRows(
+      db.from('transactions').select(`
+        id, type, qty, line_value, challan_no, mrr_no,
+        items:item_id ( description, unit, buyer_id, buyers:buyer_id (name) ),
+        team_members:team_member_id (name)
+      `).eq('txn_date', date).in('type', ['RCVD','DLVD']).order('id')
+    );
+
+    if(rows.length === 0){
+      c.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>${date} tarikhe kono RCVD/DLVD entry paoya jayni</p></div>`;
+      return;
+    }
+
+    let totalRcvdQty=0, totalRcvdVal=0, totalDlvdQty=0, totalDlvdVal=0;
+    const byBuyer = {};
+    rows.forEach(r=>{
+      const qty = parseFloat(r.qty)||0, val = parseFloat(r.line_value)||0;
+      const buyerName = r.items?.buyers?.name || 'Unknown';
+      if(!byBuyer[buyerName]) byBuyer[buyerName] = {rcvdQty:0, rcvdVal:0, dlvdQty:0, dlvdVal:0, lines:[]};
+      if(r.type==='RCVD'){ totalRcvdQty+=qty; totalRcvdVal+=val; byBuyer[buyerName].rcvdQty+=qty; byBuyer[buyerName].rcvdVal+=val; }
+      else { totalDlvdQty+=qty; totalDlvdVal+=val; byBuyer[buyerName].dlvdQty+=qty; byBuyer[buyerName].dlvdVal+=val; }
+      byBuyer[buyerName].lines.push(r);
+    });
+
+    let html = `
+      <div class="stats-row">
+        <div class="stat glass green"><div class="v">${fmt(totalRcvdQty)}</div><div class="l">RCVD Qty</div></div>
+        <div class="stat glass green"><div class="v">$${fmt(totalRcvdVal)}</div><div class="l">RCVD Value</div></div>
+        <div class="stat glass red"><div class="v">${fmt(totalDlvdQty)}</div><div class="l">DLVD Qty</div></div>
+        <div class="stat glass red"><div class="v">$${fmt(totalDlvdVal)}</div><div class="l">DLVD Value</div></div>
+        <div class="stat glass blue"><div class="v">${fmt(rows.length)}</div><div class="l">Total Entries</div></div>
+      </div>`;
+
+    Object.keys(byBuyer).sort().forEach(buyerName=>{
+      const b = byBuyer[buyerName];
+      html += `<div style="margin-bottom:18px;">
+        <div style="font-weight:700;font-size:13px;color:var(--text-primary);margin-bottom:8px;">
+          <i class="fas fa-building" style="color:var(--accent-blue);"></i> ${esc(buyerName)}
+          &nbsp; <span style="font-size:11px;color:var(--accent-green);">RCVD: ${fmt(b.rcvdQty)} qty / $${fmt(b.rcvdVal)}</span>
+          &nbsp; <span style="font-size:11px;color:var(--accent-red);">DLVD: ${fmt(b.dlvdQty)} qty / $${fmt(b.dlvdVal)}</span>
+        </div>
+        <div class="table-wrapper"><table><thead><tr>
+          <th>Type</th><th>Item</th><th>Unit</th><th>Qty</th><th>Value</th><th>Challan</th><th>MRR</th><th>Team</th>
+        </tr></thead><tbody>`;
+      b.lines.forEach(r=>{
+        html += `<tr>
+          <td><span class="badge ${r.type==='RCVD'?'rcvd':'dlvd'}">${r.type}</span></td>
+          <td>${esc(r.items?.description)}</td>
+          <td>${esc(r.items?.unit)}</td>
+          <td>${fmt(r.qty)}</td>
+          <td>$${fmt(r.line_value)}</td>
+          <td>${esc(r.challan_no)||'—'}</td>
+          <td>${esc(r.mrr_no)||'—'}</td>
+          <td>${esc(r.team_members?.name)||'—'}</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+    });
+
+    c.innerHTML = html;
+  } catch(err){
+    console.error(err);
+    c.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${esc(err.message)}</p></div>`;
+    showToast('Error loading digest', 'error');
+  }
+}
+document.getElementById('digestDate').value = yesterdayISO();
+
+// =====================================================================
+// 2. THRESHOLD BREACH ALERT LOG (replayed from present_stock_after)
+// =====================================================================
+async function loadBreach(){
+  const threshold = parseFloat(document.getElementById('breachThreshold').value);
+  const th = isNaN(threshold) ? 0 : threshold;
+  const buyerId = document.getElementById('breachBuyer').value;
+  const c = document.getElementById('breachContent');
+  c.innerHTML = `<div class="loading-state"><i class="fas fa-circle-notch"></i><p>Scanning transaction history...</p></div>`;
+  document.getElementById('breachStats').style.display = 'none';
+
+  try {
+    let itemsQuery = db.from('items').select('id, description, unit, current_stock, buyer_id, buyers:buyer_id (name)');
+    if(buyerId) itemsQuery = itemsQuery.eq('buyer_id', buyerId);
+    const items = await fetchAllRows(itemsQuery);
+    const itemIds = items.map(i=>i.id);
+    const itemById = {}; items.forEach(i=>{ itemById[i.id] = i; });
+
+    if(itemIds.length === 0){
+      c.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No items found for this filter</p></div>`;
+      return;
+    }
+
+    // page through transactions for these items in chunks
+    const CHUNK = 300;
+    let allTxns = [];
+    for(let i=0;i<itemIds.length;i+=CHUNK){
+      const chunk = itemIds.slice(i, i+CHUNK);
+      const rows = await fetchAllRows(
+        db.from('transactions').select('id,item_id,type,txn_date,qty,present_stock_after,challan_no')
+          .in('item_id', chunk).order('txn_date',{ascending:true}).order('id',{ascending:true})
+      );
+      allTxns = allTxns.concat(rows);
+    }
+
+    const events = allTxns.filter(t => (parseFloat(t.present_stock_after)||0) <= th);
+    const affectedItemIds = new Set(events.map(e=>e.item_id));
+    const currentBelow = items.filter(i => (parseFloat(i.current_stock)||0) <= th);
+
+    document.getElementById('bCurrentCount').textContent = fmt(currentBelow.length);
+    document.getElementById('bHistEvents').textContent = fmt(events.length);
+    document.getElementById('bItemsAffected').textContent = fmt(affectedItemIds.size);
+    document.getElementById('breachStats').style.display = '';
+
+    let html = '';
+
+    html += `<div style="font-weight:700;font-size:13px;color:var(--text-primary);margin:4px 0 8px;"><i class="fas fa-bolt" style="color:var(--accent-red);"></i> Currently at/below threshold (${th})</div>`;
+    if(currentBelow.length===0){
+      html += `<div class="empty-state" style="padding:20px;"><p>Kono item ekhon threshold-er niche nei</p></div>`;
+    } else {
+      html += `<div class="table-wrapper"><table><thead><tr><th>Buyer</th><th>Item</th><th>Unit</th><th>Current Stock</th></tr></thead><tbody>`;
+      currentBelow.forEach(i=>{
+        html += `<tr class="flag-row"><td>${esc(i.buyers?.name)}</td><td>${esc(i.description)}</td><td>${esc(i.unit)}</td><td>${fmt(i.current_stock)}</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+    }
+
+    html += `<div style="font-weight:700;font-size:13px;color:var(--text-primary);margin:20px 0 8px;"><i class="fas fa-clock-rotate-left" style="color:var(--accent-yellow);"></i> Historical breach events (from stored transaction history)</div>`;
+    if(events.length===0){
+      html += `<div class="empty-state" style="padding:20px;"><p>Kono historical breach event paoya jayni</p></div>`;
+    } else {
+      html += `<div class="table-wrapper"><table><thead><tr><th>Date</th><th>Buyer</th><th>Item</th><th>Type</th><th>Qty</th><th>Stock After</th><th>Challan</th></tr></thead><tbody>`;
+      events.sort((a,b)=> a.txn_date < b.txn_date ? 1 : (a.txn_date>b.txn_date?-1:0));
+      events.slice(0,500).forEach(e=>{
+        const item = itemById[e.item_id] || {};
+        html += `<tr class="flag-row">
+          <td>${e.txn_date}</td><td>${esc(item.buyers?.name)}</td><td>${esc(item.description)}</td>
+          <td><span class="badge ${e.type==='RCVD'?'rcvd':'dlvd'}">${e.type}</span></td>
+          <td>${fmt(e.qty)}</td><td>${fmt(e.present_stock_after)}</td><td>${esc(e.challan_no)||'—'}</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+      if(events.length>500) html += `<p class="hint" style="margin-top:8px;">Showing latest 500 of ${events.length} events.</p>`;
+    }
+
+    c.innerHTML = html;
+  } catch(err){
+    console.error(err);
+    c.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${esc(err.message)}</p></div>`;
+    showToast('Error scanning breach log', 'error');
+  }
+}
+
+// =====================================================================
+// 3. BUYER MASTER LIST
+// =====================================================================
+let buyerMasterLoaded = false;
+async function loadBuyerMaster(){
+  const c = document.getElementById('buyerMasterContent');
+  c.innerHTML = `<div class="loading-state"><i class="fas fa-circle-notch"></i><p>Loading buyer master list...</p></div>`;
+  document.getElementById('buyerMasterStats').style.display = 'none';
+
+  try {
+    const buyers = await fetchAllRows(db.from('buyers').select('id,name,created_at').order('name'));
+    const items = await fetchAllRows(db.from('items').select('id,buyer_id,current_stock,current_value'));
+    const txnCounts = await fetchAllRows(db.from('transactions').select('id,item_id'));
+
+    const itemBuyerMap = {}; items.forEach(i=>{ itemBuyerMap[i.id] = i.buyer_id; });
+
+    const stats = {};
+    buyers.forEach(b=>{ stats[b.id] = {name:b.name, created_at:b.created_at, itemCount:0, stockQty:0, stockVal:0, txnCount:0}; });
+    items.forEach(i=>{
+      if(stats[i.buyer_id]){
+        stats[i.buyer_id].itemCount++;
+        stats[i.buyer_id].stockQty += parseFloat(i.current_stock)||0;
+        stats[i.buyer_id].stockVal += parseFloat(i.current_value)||0;
+      }
+    });
+    txnCounts.forEach(t=>{
+      const bId = itemBuyerMap[t.item_id];
+      if(bId && stats[bId]) stats[bId].txnCount++;
+    });
+
+    const list = Object.values(stats).sort((a,b)=> b.stockVal - a.stockVal);
+    window._buyerMasterList = list;
+
+    let totalItems=0, totalValue=0;
+    list.forEach(b=>{ totalItems+=b.itemCount; totalValue+=b.stockVal; });
+    document.getElementById('bmTotalBuyers').textContent = fmt(list.length);
+    document.getElementById('bmTotalItems').textContent = fmt(totalItems);
+    document.getElementById('bmTotalValue').textContent = '$'+fmt(totalValue);
+    document.getElementById('buyerMasterStats').style.display = '';
+
+    if(list.length===0){
+      c.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No buyers found</p></div>`;
+      buyerMasterLoaded = true;
+      return;
+    }
+
+    let html = `<div class="table-wrapper"><table><thead><tr>
+      <th>#</th><th>Buyer</th><th>Buyer Since</th><th>Total Items</th><th>Total Stock Qty</th><th>Total Stock Value</th><th>Total Transactions</th>
+    </tr></thead><tbody>`;
+    list.forEach((b,idx)=>{
+      html += `<tr>
+        <td>${idx+1}</td><td style="font-weight:700;color:var(--text-primary);">${esc(b.name)}</td>
+        <td>${b.created_at ? String(b.created_at).split('T')[0] : '—'}</td>
+        <td>${fmt(b.itemCount)}</td><td>${fmt(b.stockQty)}</td><td>$${fmt(b.stockVal)}</td><td>${fmt(b.txnCount)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    c.innerHTML = html;
+    buyerMasterLoaded = true;
+  } catch(err){
+    console.error(err);
+    c.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${esc(err.message)}</p></div>`;
+    showToast('Error loading buyer master list', 'error');
+  }
+}
+function exportBuyerMaster(){
+  const list = window._buyerMasterList || [];
+  if(list.length===0){ showToast('No data to export', 'error'); return; }
+  const rows = list.map((b,idx)=>({
+    '#': idx+1, 'Buyer': b.name, 'Buyer Since': b.created_at ? String(b.created_at).split('T')[0] : '',
+    'Total Items': b.itemCount, 'Total Stock Qty': b.stockQty, 'Total Stock Value': b.stockVal, 'Total Transactions': b.txnCount
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:5},{wch:25},{wch:14},{wch:12},{wch:16},{wch:16},{wch:16}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Buyer Master');
+  XLSX.writeFile(wb, `GMS-Buyer-Master-${todayISO()}.xlsx`);
+  showToast('Excel downloaded!', 'success');
+}
+
+// =====================================================================
+// 4. STOCK COUNT SHEET
+// =====================================================================
+async function loadCountSheet(){
+  const buyerId = document.getElementById('countBuyer').value;
+  const blind = document.getElementById('blindCount').checked;
+  const c = document.getElementById('countContent');
+  c.innerHTML = `<div class="loading-state"><i class="fas fa-circle-notch"></i><p>Loading items...</p></div>`;
+
+  try {
+    let q = db.from('items').select('id,description,item_code,unit,goods_location,current_stock,buyer_id,buyers:buyer_id (name)')
+      .order('buyers(name)',{ascending:true}).order('description',{ascending:true});
+    if(buyerId) q = q.eq('buyer_id', buyerId);
+    const items = await fetchAllRows(q);
+
+    if(items.length===0){
+      c.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No items found</p></div>`;
+      return;
+    }
+
+    let html = `<p class="hint">Generated: ${new Date().toLocaleString('en-US')} &nbsp;|&nbsp; Total Items: ${items.length}</p>`;
+    html += `<div class="table-wrapper"><table><thead><tr>
+      <th>#</th><th>Buyer</th><th>Item Code</th><th>Description</th><th>Unit</th><th>Location</th>
+      ${blind ? '' : '<th>System Qty</th>'}
+      <th style="min-width:110px;">Counted Qty</th>
+      <th style="min-width:110px;">Variance</th>
+      <th style="min-width:120px;">Remarks / Sign</th>
+    </tr></thead><tbody>`;
+    items.forEach((i,idx)=>{
+      html += `<tr>
+        <td>${idx+1}</td><td>${esc(i.buyers?.name)}</td><td>${esc(i.item_code)}</td>
+        <td>${esc(i.description)}</td><td>${esc(i.unit)}</td><td>${esc(i.goods_location)||'—'}</td>
+        ${blind ? '' : `<td>${fmt(i.current_stock)}</td>`}
+        <td></td><td></td><td></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    c.innerHTML = html;
+  } catch(err){
+    console.error(err);
+    c.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${esc(err.message)}</p></div>`;
+    showToast('Error loading count sheet', 'error');
+  }
+}
+
+// =====================================================================
+// 5. ACTIVITY LOG (creation log — see note in UI)
+// =====================================================================
+async function loadActivity(){
+  const from = document.getElementById('actFrom').value;
+  const to = document.getElementById('actTo').value;
+  const teamId = document.getElementById('actTeam').value;
+  const c = document.getElementById('activityContent');
+  c.innerHTML = `<div class="loading-state"><i class="fas fa-circle-notch"></i><p>Loading activity...</p></div>`;
+
+  try {
+    let q = db.from('transactions').select(`
+        id, type, txn_date, qty, created_at, challan_no,
+        items:item_id ( description, buyer_id, buyers:buyer_id (name) ),
+        team_members:team_member_id (name)
+      `).order('created_at',{ascending:false});
+    if(from) q = q.gte('txn_date', from);
+    if(to) q = q.lte('txn_date', to);
+    if(teamId) q = q.eq('team_member_id', teamId);
+
+    const rows = await fetchAllRows(q.limit ? q : q);
+
+    if(rows.length===0){
+      c.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No activity found for this filter</p></div>`;
+      return;
+    }
+
+    let html = `<div class="table-wrapper"><table><thead><tr>
+      <th>Entered At</th><th>Txn Date</th><th>Type</th><th>Buyer</th><th>Item</th><th>Qty</th><th>Challan</th><th>Team Member</th>
+    </tr></thead><tbody>`;
+    rows.slice(0,1000).forEach(r=>{
+      const enteredAt = r.created_at ? new Date(r.created_at).toLocaleString('en-US') : '—';
+      html += `<tr>
+        <td>${enteredAt}</td><td>${r.txn_date}</td>
+        <td><span class="badge ${r.type==='RCVD'?'rcvd':(r.type==='DLVD'?'dlvd':'dup')}">${r.type}</span></td>
+        <td>${esc(r.items?.buyers?.name)}</td><td>${esc(r.items?.description)}</td>
+        <td>${fmt(r.qty)}</td><td>${esc(r.challan_no)||'—'}</td><td>${esc(r.team_members?.name)||'—'}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    if(rows.length>1000) html += `<p class="hint" style="margin-top:8px;">Showing latest 1000 of ${rows.length} entries — narrow the date range for more.</p>`;
+    c.innerHTML = html;
+  } catch(err){
+    console.error(err);
+    c.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${esc(err.message)}</p></div>`;
+    showToast('Error loading activity log', 'error');
+  }
+}
+
+// =====================================================================
+// 6. DUPLICATE CHALLAN DETECTION
+// =====================================================================
+let dupLoaded = false;
+async function loadDuplicates(){
+  const c = document.getElementById('dupContent');
+  c.innerHTML = `<div class="loading-state"><i class="fas fa-circle-notch"></i><p>Scanning all challans...</p></div>`;
+  document.getElementById('dupStats').style.display = 'none';
+
+  try {
+    const rows = await fetchAllRows(
+      db.from('transactions').select(`
+        id, type, txn_date, qty, challan_no, mrr_no,
+        items:item_id ( description, buyer_id, buyers:buyer_id (name) )
+      `).not('challan_no','is',null).order('txn_date')
+    );
+
+    const groups = {};
+    rows.forEach(r=>{
+      const key = r.challan_no.trim();
+      if(!key) return;
+      if(!groups[key]) groups[key] = { challanNo:key, buyers:new Set(), dates:new Set(), mrrs:new Set(), lines:[] };
+      groups[key].buyers.add(r.items?.buyers?.name || 'Unknown');
+      groups[key].dates.add(r.txn_date);
+      if(r.mrr_no) groups[key].mrrs.add(r.mrr_no);
+      groups[key].lines.push(r);
+    });
+
+    const allGroups = Object.values(groups);
+    const flagged = allGroups.filter(g => g.buyers.size > 1 || g.dates.size > 1 || g.mrrs.size > 1);
+
+    document.getElementById('dupCount').textContent = fmt(flagged.length);
+    document.getElementById('dupTotalChallans').textContent = fmt(allGroups.length);
+    document.getElementById('dupStats').style.display = '';
+
+    if(flagged.length===0){
+      c.innerHTML = `<div class="empty-state"><i class="fas fa-circle-check" style="color:var(--accent-green);"></i><p>Kono duplicate/suspicious challan paoya jayni</p></div>`;
+      dupLoaded = true;
+      return;
+    }
+
+    flagged.sort((a,b)=> b.lines.length - a.lines.length);
+
+    let html = '';
+    flagged.forEach(g=>{
+      const reason = [];
+      if(g.buyers.size>1) reason.push(`${g.buyers.size} different buyers`);
+      if(g.dates.size>1) reason.push(`${g.dates.size} different dates`);
+      if(g.mrrs.size>1) reason.push(`${g.mrrs.size} different MRR nos`);
+      html += `<div style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:13px;color:var(--accent-yellow);margin-bottom:6px;">
+          <i class="fas fa-triangle-exclamation"></i> Challan: ${esc(g.challanNo)}
+          <span class="badge dup">${esc(reason.join(', '))}</span>
+        </div>
+        <div class="table-wrapper"><table><thead><tr>
+          <th>Date</th><th>Type</th><th>Buyer</th><th>Item</th><th>Qty</th><th>MRR</th>
+        </tr></thead><tbody>`;
+      g.lines.forEach(r=>{
+        html += `<tr class="flag-row">
+          <td>${r.txn_date}</td><td><span class="badge ${r.type==='RCVD'?'rcvd':'dlvd'}">${r.type}</span></td>
+          <td>${esc(r.items?.buyers?.name)}</td><td>${esc(r.items?.description)}</td>
+          <td>${fmt(r.qty)}</td><td>${esc(r.mrr_no)||'—'}</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+    });
+
+    c.innerHTML = html;
+    dupLoaded = true;
+  } catch(err){
+    console.error(err);
+    c.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${esc(err.message)}</p></div>`;
+    showToast('Error scanning duplicates', 'error');
+  }
+}
+
+// =====================================================================
+// 7 & 8. GRN / DELIVERY CHALLAN — shared search + print
+// =====================================================================
+async function searchTxnList(kind){
+  const prefix = kind === 'RCVD' ? 'grn' : 'dc';
+  const from = document.getElementById(prefix+'From').value;
+  const to = document.getElementById(prefix+'To').value;
+  const buyerId = document.getElementById(prefix+'Buyer').value;
+  const challan = document.getElementById(prefix+'Challan').value.trim();
+  const contentId = kind==='RCVD' ? 'grnListContent' : 'dcListContent';
+  const c = document.getElementById(contentId);
+  c.innerHTML = `<div class="loading-state"><i class="fas fa-circle-notch"></i><p>Searching...</p></div>`;
+
+  try {
+    let q = db.from('transactions').select(`
+        id, type, txn_date, qty, unit_price_snapshot, line_value, challan_no, mrr_no, order_no, style_no, remarks, supplier,
+        items:item_id ( description, unit, item_code, buyer_id, goods_location, buyers:buyer_id (name) ),
+        team_members:team_member_id (name)
+      `).eq('type', kind).order('txn_date',{ascending:false}).order('id',{ascending:false});
+    if(from) q = q.gte('txn_date', from);
+    if(to) q = q.lte('txn_date', to);
+    if(buyerId) q = q.eq('items.buyer_id', buyerId);
+    if(challan) q = q.ilike('challan_no', `%${challan}%`);
+
+    const rows = await fetchAllRows(q);
+
+    if(rows.length===0){
+      c.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No ${kind} entries found</p></div>`;
+      return;
+    }
+
+    let html = `<div class="table-wrapper"><table><thead><tr>
+      <th>Date</th><th>Buyer</th><th>Item</th><th>Qty</th><th>Value</th><th>Challan</th>${kind==='RCVD'?'<th>MRR</th>':''}<th></th>
+    </tr></thead><tbody>`;
+    rows.slice(0,500).forEach(r=>{
+      html += `<tr>
+        <td>${r.txn_date}</td><td>${esc(r.items?.buyers?.name)}</td><td>${esc(r.items?.description)}</td>
+        <td>${fmt(r.qty)}</td><td>$${fmt(r.line_value)}</td><td>${esc(r.challan_no)||'—'}</td>
+        ${kind==='RCVD'?`<td>${esc(r.mrr_no)||'—'}</td>`:''}
+        <td><button class="btn ${kind==='RCVD'?'btn-green':'btn-red'}" style="padding:6px 12px;font-size:11px;" onclick='printDoc(${JSON.stringify(r).replace(/'/g,"&#39;")}, "${kind}")'>
+          <i class="fas fa-print"></i> Print
+        </button></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    if(rows.length>500) html += `<p class="hint" style="margin-top:8px;">Showing latest 500 of ${rows.length} — narrow filters for more.</p>`;
+    c.innerHTML = html;
+  } catch(err){
+    console.error(err);
+    c.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${esc(err.message)}</p></div>`;
+    showToast('Error searching entries', 'error');
+  }
+}
+function loadGrnList(){ searchTxnList('RCVD'); }
+function loadDcList(){ searchTxnList('DLVD'); }
+
+function printDoc(r, kind){
+  const isRcvd = kind === 'RCVD';
+  const title = isRcvd ? 'GOODS RECEIPT NOTE (GRN)' : 'DELIVERY CHALLAN';
+  const docNo = isRcvd ? (r.mrr_no || '—') : (r.challan_no || ('DC-'+r.id));
+  const area = document.getElementById('printArea');
+
+  area.innerHTML = `
+    <div style="font-family:Arial,sans-serif;color:#000;max-width:800px;margin:0 auto;padding:20px;">
+      <div style="text-align:center;border-bottom:3px solid #000;padding-bottom:14px;margin-bottom:20px;">
+        <h1 style="font-size:20px;margin-bottom:4px;">GMS Accessories Stock</h1>
+        <h2 style="font-size:16px;letter-spacing:1px;">${title}</h2>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:13px;">
+        <tr>
+          <td style="padding:4px 0;"><b>${isRcvd?'MRR No':'Delivery Challan No'}:</b> ${esc(docNo)}</td>
+          <td style="padding:4px 0;text-align:right;"><b>Date:</b> ${esc(r.txn_date)}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;"><b>Buyer:</b> ${esc(r.items?.buyers?.name)}</td>
+          <td style="padding:4px 0;text-align:right;"><b>${isRcvd?'Supplier Challan No':'Challan No'}:</b> ${esc(r.challan_no)||'—'}</td>
+        </tr>
+        ${r.items?.goods_location ? `<tr><td style="padding:4px 0;" colspan="2"><b>Location:</b> ${esc(r.items.goods_location)}</td></tr>` : ''}
+      </table>
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:24px;">
+        <thead>
+          <tr style="background:#eee;">
+            <th style="border:1px solid #000;padding:8px;">Item Code</th>
+            <th style="border:1px solid #000;padding:8px;">Description</th>
+            <th style="border:1px solid #000;padding:8px;">Unit</th>
+            <th style="border:1px solid #000;padding:8px;">Qty</th>
+            <th style="border:1px solid #000;padding:8px;">Unit Price</th>
+            <th style="border:1px solid #000;padding:8px;">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="border:1px solid #000;padding:8px;">${esc(r.items?.item_code)}</td>
+            <td style="border:1px solid #000;padding:8px;">${esc(r.items?.description)}</td>
+            <td style="border:1px solid #000;padding:8px;text-align:center;">${esc(r.items?.unit)}</td>
+            <td style="border:1px solid #000;padding:8px;text-align:right;">${fmt(r.qty)}</td>
+            <td style="border:1px solid #000;padding:8px;text-align:right;">${parseFloat(r.unit_price_snapshot||0).toFixed(4)}</td>
+            <td style="border:1px solid #000;padding:8px;text-align:right;">$${fmt(r.line_value)}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr><td colspan="5" style="border:1px solid #000;padding:8px;text-align:right;font-weight:bold;">Total Value</td>
+          <td style="border:1px solid #000;padding:8px;text-align:right;font-weight:bold;">$${fmt(r.line_value)}</td></tr>
+        </tfoot>
+      </table>
+      <table style="width:100%;font-size:12.5px;margin-bottom:30px;">
+        <tr>
+          <td style="padding:3px 0;"><b>Order No:</b> ${esc(r.order_no)||'—'}</td>
+          <td style="padding:3px 0;"><b>Style/SR No:</b> ${esc(r.style_no)||'—'}</td>
+        </tr>
+        <tr>
+          <td style="padding:3px 0;"><b>${isRcvd?'Supplier':'Prepared By'}:</b> ${esc(isRcvd ? (r.supplier||r.items?.buyers?.name) : (r.team_members?.name || '—'))}</td>
+          <td style="padding:3px 0;"><b>Remarks:</b> ${esc(r.remarks)||'—'}</td>
+        </tr>
+      </table>
+      <table style="width:100%;margin-top:60px;font-size:12.5px;">
+        <tr>
+          <td style="width:33%;text-align:center;">
+            <div style="border-top:1px solid #000;padding-top:6px;">Prepared By</div>
+          </td>
+          <td style="width:33%;text-align:center;">
+            <div style="border-top:1px solid #000;padding-top:6px;">Checked By</div>
+          </td>
+          <td style="width:33%;text-align:center;">
+            <div style="border-top:1px solid #000;padding-top:6px;">${isRcvd ? 'Store Received By' : 'Buyer Signature'}</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
+  setTimeout(()=>window.print(), 100);
+}
+
+// generic panel print (Daily Digest / Buyer Master / Stock Count sheet)
+function printPanel(tabId){
+  const content = document.getElementById('panel-'+tabId).outerHTML;
+  const area = document.getElementById('printArea');
+  const now = new Date().toLocaleString('en-US');
+  area.innerHTML = `
+    <div style="font-family:Arial,sans-serif;color:#000;padding:10px;">
+      <div style="text-align:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:16px;">
+        <h1 style="font-size:18px;">GMS Accessories Stock</h1>
+        <p style="font-size:11px;color:#444;">Generated: ${now}</p>
+      </div>
+      <div class="print-inner">${content}</div>
+    </div>
+  `;
+  // strip interactive controls (buttons/inputs) from the print copy, keep tables/text
+  area.querySelectorAll('button, .doc-select-row, .tab-btn').forEach(el=>el.remove());
+  area.querySelectorAll('input, select').forEach(el=>el.remove());
+  setTimeout(()=>window.print(), 100);
+}
+
+// ============ INIT ============
+(async () => {
+  await loadBuyerDropdowns();
+  loadDigest();
+})();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('../sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
