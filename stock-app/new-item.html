@@ -824,18 +824,45 @@
 
                 if (itemError) throw itemError;
 
-                // 2. Insert PRVS transaction to maintain ledger consistency
+                // ==========================================================
+                // FIX: Two bugs here previously:
+                // 1) 'line_value' was being set explicitly on INSERT. This
+                //    column is DB-generated/identity (same issue as elsewhere
+                //    in this project — Postgres error: "column can only be
+                //    updated to DEFAULT"), so trying to set it explicitly
+                //    made the ENTIRE insert fail.
+                // 2) The insert's { error } was never checked. Supabase-js
+                //    does NOT throw on a DB error — it just returns
+                //    { data: null, error: {...} }. Since nobody looked at
+                //    that error, the PRVS transaction row silently failed
+                //    to be created while the code kept going and showed
+                //    "Item created successfully!" anyway. The item itself
+                //    (and its current_stock) got created fine, but NO
+                //    matching row ever existed in the transactions table —
+                //    which is exactly why Total PRVS+RCVD Qty never
+                //    reflected the new item's opening stock.
+                // Fix: drop line_value from the payload (let the DB set it),
+                // and explicitly check/throw on error so failures are loud,
+                // not silent.
+                // ==========================================================
                 if (prevQty > 0 && prevDate) {
-                    await db.from('transactions').insert({
+                    const { error: txnError } = await db.from('transactions').insert({
                         item_id: itemData.id,
                         type: 'PRVS',
                         txn_date: prevDate,
                         qty: prevQty,
                         unit_price_snapshot: price,
-                        line_value: prevQty * price,              // ADDED for Pivot/Ledger consistency
-                        present_stock_after: prevQty,             // ADDED for Pivot/Ledger consistency
-                        stock_value_after: prevQty * price        // ADDED for Pivot/Ledger consistency
+                        present_stock_after: prevQty,
+                        stock_value_after: prevQty * price
                     });
+                    if (txnError) {
+                        // Item WAS created, but its opening-stock ledger entry failed.
+                        // Surface this clearly instead of pretending everything worked.
+                        console.error('PRVS transaction insert failed:', txnError);
+                        showToast('⚠ Item created, কিন্তু Opening Stock entry ব্যর্থ হয়েছে: ' + txnError.message, 'error');
+                        showQR(itemCode, desc, buyerName);
+                        return;
+                    }
                 }
 
                 showQR(itemCode, desc, buyerName);
