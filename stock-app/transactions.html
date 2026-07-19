@@ -2632,23 +2632,16 @@
 
             if (error) throw error;
             if (!rows || rows.length === 0) {
-                // FIX #6: Previously this just returned, leaving items.current_stock
-                // untouched for any item with NO transaction rows at all. If that
-                // item had a stale/incorrect current_stock value sitting in the DB
-                // (e.g. from before transactions existed, or a data-entry mistake),
-                // it silently inflated Total Present Stock forever, with nothing in
-                // Net Qty to match it. Since Present Stock should always equal the
-                // sum of that item's own transactions, zero transactions means the
-                // correct stock is 0 — so we write that back explicitly.
-                const { data: zeroData, error: zeroErr } = await db
-                    .from('items')
-                    .update({ current_stock: 0, current_value: 0 })
-                    .eq('id', itemId)
-                    .select('id');
-                if (zeroErr) throw zeroErr;
-                if (!zeroData || zeroData.length === 0) {
-                    throw new Error(`Update matched 0 rows for item ${itemId} — likely blocked by a Row Level Security (RLS) policy on the "items" table's UPDATE permission.`);
-                }
+                // FIX #9 (reverting FIX #6 — it was destructive): FIX #6 used to
+                // zero out items.current_stock whenever an item had no transaction
+                // rows, assuming that meant "stale leftover data". But new items are
+                // apparently created with current_stock set DIRECTLY (their opening
+                // qty), without inserting a matching PRVS row in `transactions`. For
+                // those items, "0 transactions" is a NORMAL, valid state — not
+                // corruption. Auto-zeroing wiped out real, freshly-entered stock.
+                // Safer behavior: leave current_stock/current_value untouched when
+                // there's no transaction history to recalc from. Flag it in the
+                // Audit view instead of silently overwriting it.
                 return;
             }
 
@@ -2835,6 +2828,7 @@
 
             const mismatches = [];
             items.forEach(item => {
+                const hasHistory = !!calc[item.id];
                 const c = calc[item.id] || { stock: 0, value: 0 };
                 const storedStock = parseFloat(item.current_stock) || 0;
                 const storedValue = parseFloat(item.current_value) || 0;
@@ -2846,7 +2840,13 @@
                         name: item.description,
                         buyer: item.buyers?.name || 'N/A',
                         storedStock, calcStock: c.stock, stockDiff,
-                        storedValue, calcValue: c.value, valueDiff
+                        storedValue, calcValue: c.value, valueDiff,
+                        // FIX #9: no transaction rows exist for this item at all.
+                        // This is normal for a freshly-created item whose opening
+                        // qty was set directly on items.current_stock. NOT safe to
+                        // auto-fix (that would zero out real stock) — flag it for
+                        // manual review instead.
+                        noHistory: !hasHistory
                     });
                 }
             });
@@ -2880,6 +2880,8 @@
         function showAuditModal(mismatches, totalItems) {
             const container = document.getElementById('auditContainer');
             const fixBtn = document.getElementById('auditFixSelectedBtn');
+            const fixable = mismatches.filter(m => !m.noHistory);
+            const noHistoryCount = mismatches.length - fixable.length;
 
             if (mismatches.length === 0) {
                 container.innerHTML = `
@@ -2891,30 +2893,44 @@
                 fixBtn.style.display = 'none';
             } else {
                 let html = `<p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;">
-                    ${totalItems} টার মধ্যে <b style="color:var(--accent-red);">${mismatches.length}</b> টা item এ mismatch পাওয়া গেছে:
-                </p>
+                    ${totalItems} টার মধ্যে <b style="color:var(--accent-red);">${mismatches.length}</b> টা item এ mismatch পাওয়া গেছে`;
+                if (noHistoryCount > 0) {
+                    html += ` (এর মধ্যে <b style="color:var(--accent-yellow);">${noHistoryCount}</b> টা "No History" — এগুলো auto-fix হবে না, ম্যানুয়ালি চেক করুন)`;
+                }
+                html += `:</p>
                 <div class="table-wrapper" style="max-height:400px;">
                 <table style="min-width:100%;">
                 <thead><tr>
                     <th>Item</th><th>Buyer</th>
                     <th>Stored Stock</th><th>Calculated Stock</th><th>Diff</th>
-                    <th>Stored Value</th><th>Calculated Value</th><th>Diff</th>
+                    <th>Stored Value</th><th>Calculated Value</th><th>Diff</th><th>Note</th>
                 </tr></thead><tbody>`;
                 mismatches.forEach(m => {
+                    const diffColor = m.noHistory ? 'var(--accent-yellow)' : 'var(--accent-red)';
+                    const note = m.noHistory
+                        ? '<span style="color:var(--accent-yellow);font-weight:700;">⚠ No transaction history</span>'
+                        : '';
                     html += `<tr>
                         <td style="text-align:left;">${m.name}</td>
                         <td>${m.buyer}</td>
                         <td>${fmt(m.storedStock)}</td>
                         <td>${fmt(m.calcStock)}</td>
-                        <td style="color:var(--accent-red);font-weight:700;">${m.stockDiff >= 0 ? '+' : ''}${fmt(m.stockDiff)}</td>
+                        <td style="color:${diffColor};font-weight:700;">${m.stockDiff >= 0 ? '+' : ''}${fmt(m.stockDiff)}</td>
                         <td>$${fmt(m.storedValue)}</td>
                         <td>$${fmt(m.calcValue)}</td>
-                        <td style="color:var(--accent-red);font-weight:700;">${m.valueDiff >= 0 ? '+' : ''}$${fmt(m.valueDiff)}</td>
+                        <td style="color:${diffColor};font-weight:700;">${m.valueDiff >= 0 ? '+' : ''}$${fmt(m.valueDiff)}</td>
+                        <td style="text-align:left;">${note}</td>
                     </tr>`;
                 });
                 html += `</tbody></table></div>`;
                 container.innerHTML = html;
-                fixBtn.style.display = 'inline-flex';
+
+                if (fixable.length > 0) {
+                    fixBtn.style.display = 'inline-flex';
+                    fixBtn.innerHTML = `<i class="fas fa-wrench"></i> Fix These ${fixable.length} Item(s) Now`;
+                } else {
+                    fixBtn.style.display = 'none';
+                }
             }
 
             document.getElementById('auditModal').classList.add('active');
@@ -2925,18 +2941,23 @@
         }
 
         async function fixAuditedMismatches() {
-            if (!lastAuditMismatches || lastAuditMismatches.length === 0) return;
+            // FIX #9: only auto-fix items that HAVE transaction history. Items
+            // flagged noHistory are skipped — recalculating them from an empty
+            // transaction set would wipe out legitimately-entered opening stock
+            // (e.g. freshly created items). Those need manual review instead.
+            const fixable = (lastAuditMismatches || []).filter(m => !m.noHistory);
+            if (fixable.length === 0) return;
             const btn = document.getElementById('auditFixSelectedBtn');
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
 
             try {
                 let done = 0;
-                for (const m of lastAuditMismatches) {
-                    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${++done}/${lastAuditMismatches.length}...`;
+                for (const m of fixable) {
+                    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${++done}/${fixable.length}...`;
                     await recalcItemStock(m.id);
                 }
-                showToast(`${lastAuditMismatches.length} item(s) fixed!`, 'success');
+                showToast(`${fixable.length} item(s) fixed!`, 'success');
 
                 // Refresh the main table's totals in the background (don't block the modal).
                 loadTransactions();
