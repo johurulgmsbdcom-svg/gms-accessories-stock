@@ -747,12 +747,44 @@
             btnSave.disabled = true;
 
             try {
+                const price = parseFloat(document.getElementById('fPrice').value) || 0;
+                const lineValue = qty * price;
+
+                // ==========================================================
+                // FIX (ROOT CAUSE of "RCVD/DLVD দিলে stock+ হয় না"):
+                // This used to insert the transaction row, then compute
+                // `newStock` as a LOCAL variable ONLY for display in the
+                // success modal — it never actually wrote that value back
+                // to items.current_stock / items.current_value. So the
+                // ledger entry was created (visible in transactions.html),
+                // but the item's real stock never moved.
+                //
+                // Fix: compute the new stock/value BEFORE saving, write it
+                // into both the transaction row (present_stock_after /
+                // stock_value_after, for ledger display) AND the items
+                // table (current_stock / current_value, the actual source
+                // of truth) — with .select() on the items update to catch
+                // silent RLS failures instead of pretending it worked.
+                // ==========================================================
+                const prevStock = parseFloat(currentItem.current_stock) || 0;
+                const prevValue = parseFloat(currentItem.current_value) || 0;
+                let newStock, newValue;
+                if (currentType === 'RCVD') {
+                    newStock = prevStock + qty;
+                    newValue = prevValue + lineValue;
+                } else {
+                    newStock = prevStock - qty;
+                    newValue = prevValue - lineValue;
+                }
+
                 const txnData = {
                     item_id: currentItem.item_id,
                     type: currentType,
                     txn_date: document.getElementById('fDate').value,
                     qty: qty,
-                    unit_price_snapshot: parseFloat(document.getElementById('fPrice').value) || 0,
+                    unit_price_snapshot: price,
+                    present_stock_after: newStock,
+                    stock_value_after: newValue,
                     challan_no: challanVal,
                     order_no: orderVal,
                     style_no: styleVal,
@@ -769,18 +801,35 @@
                 if (error) throw error;
 
                 const txn = data && data[0] ? data[0] : null;
-                const lineValue = qty * (parseFloat(document.getElementById('fPrice').value) || 0);
-                
-                let newStock;
-                if (currentType === 'RCVD') {
-                    newStock = parseFloat(currentItem.current_stock) + qty;
-                } else {
-                    newStock = parseFloat(currentItem.current_stock) - qty;
+
+                // Now actually persist the new stock onto the item itself.
+                const { data: updData, error: updErr } = await db
+                    .from('items')
+                    .update({
+                        current_stock: newStock,
+                        current_value: newValue,
+                        last_txn_date: txnData.txn_date
+                    })
+                    .eq('id', currentItem.item_id)
+                    .select('id');
+
+                if (updErr) throw updErr;
+                if (!updData || updData.length === 0) {
+                    // Transaction WAS saved, but the stock update matched 0 rows —
+                    // most likely blocked by a Row Level Security policy on the
+                    // items table. Surface this loudly instead of silently
+                    // showing a fake "success" with unchanged stock.
+                    throw new Error('Transaction saved, কিন্তু item stock update ব্যর্থ হয়েছে (0 rows matched) — সম্ভবত RLS policy items টেবিলের UPDATE ব্লক করছে।');
                 }
+
+                // Keep local state in sync so the info card & next entry start from the right number.
+                currentItem.current_stock = newStock;
+                currentItem.current_value = newValue;
+                document.getElementById('infoStock').textContent = fmt(newStock) + ' ' + currentItem.unit;
 
                 showSuccessModal({
                     qty: qty,
-                    price: parseFloat(document.getElementById('fPrice').value) || 0,
+                    price: price,
                     lineValue: lineValue,
                     mrrNo: txn?.mrr_no || null,
                     newStock: newStock
