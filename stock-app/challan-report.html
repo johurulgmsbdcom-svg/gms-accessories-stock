@@ -578,7 +578,7 @@ tr.challan-total td{background:rgba(139,92,246,.12);font-weight:700;color:var(--
   <section class="panel" id="panel-monthwise">
     <div class="card glass">
       <h3><i class="fas fa-calendar-alt"></i> Month-Wise Total Entry History (RCVD / DLVD)</h3>
-      <p class="hint">প্রতিটি মাসে মোট কতগুলো RCVD এবং DLVD entry (Transaction Ledger-এর মতোই) হয়েছে — মাস অনুযায়ী গ্রুপ করা, প্রতি মাসের শেষে সাবটোটাল এবং সবার নিচে RCVD ও DLVD-এর গ্র্যান্ড টোটাল।</p>
+      <p class="hint">Transaction Ledger-এর মতোই প্রতিটা entry (item, buyer, qty, price, value, stock after ইত্যাদি সহ) মাস অনুযায়ী গ্রুপ করে দেখাবে — প্রতি মাসের শেষে RCVD ও DLVD সাবটোটাল, আর সবার শেষে RCVD ও DLVD-এর গ্র্যান্ড টোটাল।</p>
       <div class="doc-select-row">
         <div class="filter-group"><label>Date From (optional)</label><input type="date" id="mwFrom"></div>
         <div class="filter-group"><label>Date To (optional)</label><input type="date" id="mwTo"></div>
@@ -1396,6 +1396,7 @@ async function loadCountSheet(){
 // =====================================================================
 // 5. ACTIVITY LOG (creation log — see note in UI)
 // =====================================================================
+let activityRows = [];
 async function loadActivity(){
   const from = document.getElementById('actFrom').value;
   const to = document.getElementById('actTo').value;
@@ -1414,6 +1415,7 @@ async function loadActivity(){
     if(teamId) q = q.eq('team_member_id', teamId);
 
     const rows = await fetchAllRows(q);
+    activityRows = rows;
 
     if(rows.length===0){
       c.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No activity found for this filter</p></div>`;
@@ -1433,13 +1435,33 @@ async function loadActivity(){
       </tr>`;
     });
     html += `</tbody></table></div>`;
-    if(rows.length>1000) html += `<p class="hint" style="margin-top:8px;">Showing latest 1000 of ${rows.length} entries — narrow the date range for more.</p>`;
+    if(rows.length>1000) html += `<p class="hint" style="margin-top:8px;">Showing latest 1000 of ${rows.length} entries (table view) — Excel download-এ কিন্তু সবগুলোই (${rows.length}) থাকবে।</p>`;
     c.innerHTML = html;
   } catch(err){
     console.error(err);
     c.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${esc(err.message)}</p></div>`;
     showToast('Error loading activity log', 'error');
   }
+}
+
+function exportActivity(){
+  if(activityRows.length===0){ showToast('No data to export — আগে Load চাপুন', 'error'); return; }
+  const rows = activityRows.map(r=>({
+    'Entered At': r.created_at ? new Date(r.created_at).toLocaleString('en-US') : '',
+    'Txn Date': r.txn_date || '',
+    'Type': r.type,
+    'Buyer': r.items?.buyers?.name || '',
+    'Item': r.items?.description || '',
+    'Qty': parseFloat(r.qty) || 0,
+    'Challan No': r.challan_no || '',
+    'Team Member': r.team_members?.name || ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:20},{wch:12},{wch:8},{wch:20},{wch:26},{wch:10},{wch:14},{wch:18}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Activity Log');
+  XLSX.writeFile(wb, `GMS-Activity-Log-${todayISO()}.xlsx`);
+  showToast(`Excel downloaded! (${rows.length} entries)`, 'success');
 }
 
 // =====================================================================
@@ -2136,9 +2158,9 @@ function exportCurrentStock(){
 }
 
 // =====================================================================
-// MONTH-WISE BUYER RCVD / DLVD SUMMARY (total entry history per month)
+// MONTH-WISE BUYER RCVD / DLVD SUMMARY (full detailed entry history)
 // =====================================================================
-let mwRows = [];
+let mwGroups = [];   // one entry per month: { month, lines:[...], rcvdEntries, rcvdQty, rcvdVal, dlvdEntries, dlvdQty, dlvdVal }
 const MONTH_NAMES_MW = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 function monthLabelMW(ym) {
   const [y, m] = ym.split('-').map(Number);
@@ -2156,9 +2178,16 @@ async function loadMonthWise(){
 
   try {
     let q = db.from('transactions')
-      .select(`type, txn_date, qty, line_value, items:item_id!inner ( buyer_id, buyers:buyer_id (name) )`)
+      .select(`
+        id, type, txn_date, qty, unit_price_snapshot, line_value,
+        challan_no, mrr_no, order_no, style_no, remarks, supplier,
+        present_stock_after, stock_value_after,
+        items:item_id!inner ( description, unit, item_code, buyer_id, buyers:buyer_id (name) ),
+        team_members:team_member_id (name)
+      `)
       .in('type', ['RCVD', 'DLVD'])
-      .order('txn_date', { ascending: true });
+      .order('txn_date', { ascending: true })
+      .order('id', { ascending: true });
 
     if (fromDate) q = q.gte('txn_date', fromDate);
     if (toDate)   q = q.lte('txn_date', toDate);
@@ -2168,68 +2197,107 @@ async function loadMonthWise(){
 
     if (rows.length === 0) {
       c.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>কোনো transaction পাওয়া যায়নি</p></div>`;
-      mwRows = [];
+      mwGroups = [];
       return;
     }
 
-    // Group by month only (all buyers combined per month, as requested)
+    // Group every individual entry by month
     const map = new Map();
     rows.forEach(r => {
       const month = r.txn_date.slice(0, 7); // "YYYY-MM"
       if (!map.has(month)) {
-        map.set(month, { month, rcvdEntries: 0, rcvdQty: 0, rcvdVal: 0, dlvdEntries: 0, dlvdQty: 0, dlvdVal: 0 });
+        map.set(month, { month, lines: [], rcvdEntries: 0, rcvdQty: 0, rcvdVal: 0, dlvdEntries: 0, dlvdQty: 0, dlvdVal: 0 });
       }
       const g = map.get(month);
       const qty = parseFloat(r.qty) || 0;
       const val = parseFloat(r.line_value) || 0;
       if (r.type === 'RCVD') { g.rcvdEntries += 1; g.rcvdQty += qty; g.rcvdVal += val; }
       else                    { g.dlvdEntries += 1; g.dlvdQty += qty; g.dlvdVal += val; }
+      g.lines.push(r);
     });
 
-    mwRows = Array.from(map.values()).sort((a, b) => a.month < b.month ? -1 : 1);
+    mwGroups = Array.from(map.values()).sort((a, b) => a.month < b.month ? -1 : 1);
 
     let grandRcvdEntries = 0, grandDlvdEntries = 0, grandRcvdQty = 0, grandDlvdQty = 0, grandRcvdVal = 0, grandDlvdVal = 0;
-    mwRows.forEach(r => {
-      grandRcvdEntries += r.rcvdEntries; grandDlvdEntries += r.dlvdEntries;
-      grandRcvdQty += r.rcvdQty; grandDlvdQty += r.dlvdQty;
-      grandRcvdVal += r.rcvdVal; grandDlvdVal += r.dlvdVal;
+    mwGroups.forEach(g => {
+      grandRcvdEntries += g.rcvdEntries; grandDlvdEntries += g.dlvdEntries;
+      grandRcvdQty += g.rcvdQty; grandDlvdQty += g.dlvdQty;
+      grandRcvdVal += g.rcvdVal; grandDlvdVal += g.dlvdVal;
     });
 
-    document.getElementById('mwMonths').textContent = fmt(mwRows.length);
+    document.getElementById('mwMonths').textContent = fmt(mwGroups.length);
     document.getElementById('mwEntries').textContent = fmt(grandRcvdEntries + grandDlvdEntries);
     document.getElementById('mwRcvdEntries').textContent = fmt(grandRcvdEntries);
     document.getElementById('mwDlvdEntries').textContent = fmt(grandDlvdEntries);
     document.getElementById('mwStats').style.display = '';
 
-    let html = '<div class="table-wrapper"><table><thead><tr>' +
-      '<th>Month</th>' +
-      '<th>RCVD Entries</th><th>RCVD Qty</th><th>RCVD Value</th>' +
-      '<th>DLVD Entries</th><th>DLVD Qty</th><th>DLVD Value</th>' +
-      '<th>Total Entries</th>' +
-      '</tr></thead><tbody>';
+    // ---- Render full detailed ledger-style table, grouped by month ----
+    let html = '<div class="table-wrapper"><table class="challan-table" style="min-width:1500px;">';
+    html += `<thead class="main-head"><tr>
+      <th>#</th><th>Date</th><th>Buyer</th><th>Item</th><th>Item Code</th><th>Unit</th><th>Type</th>
+      <th>Challan</th><th>MRR</th><th>Order No</th><th>Style No</th>
+      <th>Qty</th><th>Price</th><th>Value</th><th>Stock After</th><th>Stock Value</th>
+      <th>Supplier</th><th>Team</th><th>Remarks</th>
+    </tr></thead><tbody>`;
 
-    mwRows.forEach(r => {
-      html += `<tr>
-        <td style="font-weight:700;color:var(--text-primary);"><i class="fas fa-calendar-alt" style="color:var(--accent-blue);"></i> ${monthLabelMW(r.month)}</td>
-        <td style="color:var(--accent-green);font-weight:700;">${fmt(r.rcvdEntries)}</td>
-        <td>${fmt(r.rcvdQty)}</td>
-        <td style="color:var(--accent-green);">$${fmt(r.rcvdVal)}</td>
-        <td style="color:var(--accent-red);font-weight:700;">${fmt(r.dlvdEntries)}</td>
-        <td>${fmt(r.dlvdQty)}</td>
-        <td style="color:var(--accent-red);">$${fmt(r.dlvdVal)}</td>
-        <td style="font-weight:800;color:var(--text-primary);">${fmt(r.rcvdEntries + r.dlvdEntries)}</td>
+    let rowNo = 0;
+    mwGroups.forEach(g => {
+      html += `<tr class="challan-head">
+        <td colspan="19">
+          <i class="fas fa-calendar-alt"></i> ${monthLabelMW(g.month)}
+          &nbsp;|&nbsp; <span class="badge rcvd">RCVD: ${fmt(g.rcvdEntries)} entries / ${fmt(g.rcvdQty)} qty / $${fmt(g.rcvdVal)}</span>
+          &nbsp; <span class="badge dlvd">DLVD: ${fmt(g.dlvdEntries)} entries / ${fmt(g.dlvdQty)} qty / $${fmt(g.dlvdVal)}</span>
+          &nbsp; <span class="badge dup">Total: ${fmt(g.rcvdEntries + g.dlvdEntries)} entries</span>
+        </td>
+      </tr>`;
+
+      g.lines.forEach(r => {
+        rowNo++;
+        const item = r.items || {};
+        const typeTagClass = r.type === 'RCVD' ? 'rcvd' : 'dlvd';
+        const qtySign = r.type === 'RCVD' ? '+' : '-';
+        html += `<tr class="item-row">
+          <td>${rowNo}</td>
+          <td>${r.txn_date || ''}</td>
+          <td>${esc(item.buyers?.name)}</td>
+          <td>${esc(item.description)}</td>
+          <td>${esc(item.item_code)}</td>
+          <td>${esc(item.unit)}</td>
+          <td><span class="type-tag ${typeTagClass}">${r.type}</span></td>
+          <td>${esc(r.challan_no)||'—'}</td>
+          <td>${esc(r.mrr_no)||'—'}</td>
+          <td>${esc(r.order_no)||'—'}</td>
+          <td>${esc(r.style_no)||'—'}</td>
+          <td>${qtySign}${fmt(r.qty)}</td>
+          <td>${parseFloat(r.unit_price_snapshot||0).toFixed(4)}</td>
+          <td>$${fmt(r.line_value)}</td>
+          <td>${fmt(r.present_stock_after)}</td>
+          <td>$${fmt(r.stock_value_after)}</td>
+          <td>${esc(r.supplier)||'—'}</td>
+          <td>${esc(r.team_members?.name)||'—'}</td>
+          <td>${esc(r.remarks)||'—'}</td>
+        </tr>`;
+      });
+
+      html += `<tr class="challan-total">
+        <td colspan="19" style="text-align:right;">
+          ${monthLabelMW(g.month)} Subtotal &nbsp;→&nbsp;
+          RCVD: ${fmt(g.rcvdEntries)} entries / ${fmt(g.rcvdQty)} qty / $${fmt(g.rcvdVal)}
+          &nbsp;|&nbsp;
+          DLVD: ${fmt(g.dlvdEntries)} entries / ${fmt(g.dlvdQty)} qty / $${fmt(g.dlvdVal)}
+        </td>
       </tr>`;
     });
 
-    html += `<tr style="background:linear-gradient(135deg,rgba(59,130,246,.3),rgba(139,92,246,.3));font-weight:800;">
-      <td style="text-align:right;font-size:13px;">GRAND TOTAL</td>
-      <td style="color:var(--accent-green);">${fmt(grandRcvdEntries)}</td>
-      <td>${fmt(grandRcvdQty)}</td>
-      <td style="color:var(--accent-green);">$${fmt(grandRcvdVal)}</td>
-      <td style="color:var(--accent-red);">${fmt(grandDlvdEntries)}</td>
-      <td>${fmt(grandDlvdQty)}</td>
-      <td style="color:var(--accent-red);">$${fmt(grandDlvdVal)}</td>
-      <td>${fmt(grandRcvdEntries + grandDlvdEntries)}</td>
+    html += `<tr style="background:linear-gradient(135deg,rgba(59,130,246,.35),rgba(139,92,246,.35));">
+      <td colspan="19" style="text-align:right;font-weight:800;font-size:13px;padding:12px 10px;color:var(--text-primary);">
+        GRAND TOTAL (all months) &nbsp;→&nbsp;
+        RCVD: ${fmt(grandRcvdEntries)} entries / ${fmt(grandRcvdQty)} qty / $${fmt(grandRcvdVal)}
+        &nbsp;|&nbsp;
+        DLVD: ${fmt(grandDlvdEntries)} entries / ${fmt(grandDlvdQty)} qty / $${fmt(grandDlvdVal)}
+        &nbsp;|&nbsp;
+        Total Entries: ${fmt(grandRcvdEntries + grandDlvdEntries)}
+      </td>
     </tr>`;
 
     html += '</tbody></table></div>';
@@ -2248,38 +2316,73 @@ function resetMonthWise(){
   document.getElementById('mwBuyer').value = '';
   document.getElementById('mwStats').style.display = 'none';
   document.getElementById('mwContent').innerHTML = `<div class="empty-state"><i class="fas fa-calendar-alt"></i><p>Load চাপুন</p></div>`;
-  mwRows = [];
+  mwGroups = [];
   showToast('Filters reset', 'success');
 }
 
 function exportMonthWise(){
-  if (mwRows.length === 0) { showToast('No data to export', 'error'); return; }
-  const rows = mwRows.map(r => ({
-    'Month':        monthLabelMW(r.month),
-    'RCVD Entries': r.rcvdEntries,
-    'RCVD Qty':     r.rcvdQty,
-    'RCVD Value':   r.rcvdVal,
-    'DLVD Entries': r.dlvdEntries,
-    'DLVD Qty':     r.dlvdQty,
-    'DLVD Value':   r.dlvdVal,
-    'Total Entries':r.rcvdEntries + r.dlvdEntries
-  }));
+  if (mwGroups.length === 0) { showToast('No data to export', 'error'); return; }
 
+  const rows = [];
   let grandRcvdEntries = 0, grandDlvdEntries = 0, grandRcvdQty = 0, grandDlvdQty = 0, grandRcvdVal = 0, grandDlvdVal = 0;
-  mwRows.forEach(r => {
-    grandRcvdEntries += r.rcvdEntries; grandDlvdEntries += r.dlvdEntries;
-    grandRcvdQty += r.rcvdQty; grandDlvdQty += r.dlvdQty;
-    grandRcvdVal += r.rcvdVal; grandDlvdVal += r.dlvdVal;
+
+  mwGroups.forEach(g => {
+    g.lines.forEach(r => {
+      const item = r.items || {};
+      rows.push({
+        'Month': monthLabelMW(g.month),
+        'Date': r.txn_date || '',
+        'Buyer': item.buyers?.name || '',
+        'Item': item.description || '',
+        'Item Code': item.item_code || '',
+        'Unit': item.unit || '',
+        'Type': r.type,
+        'Challan No': r.challan_no || '',
+        'MRR No': r.mrr_no || '',
+        'Order No': r.order_no || '',
+        'Style No': r.style_no || '',
+        'Qty': parseFloat(r.qty) || 0,
+        'Unit Price': parseFloat(r.unit_price_snapshot) || 0,
+        'Value': parseFloat(r.line_value) || 0,
+        'Stock After': parseFloat(r.present_stock_after) || 0,
+        'Stock Value After': parseFloat(r.stock_value_after) || 0,
+        'Supplier': r.supplier || '',
+        'Team Member': r.team_members?.name || '',
+        'Remarks': r.remarks || ''
+      });
+    });
+
+    rows.push({
+      'Month': monthLabelMW(g.month) + ' — SUBTOTAL',
+      'Date': '', 'Buyer': '', 'Item': '', 'Item Code': '', 'Unit': '', 'Type': '',
+      'Challan No': '', 'MRR No': '', 'Order No': '', 'Style No': '',
+      'Qty': '', 'Unit Price': '', 'Value': '', 'Stock After': '', 'Stock Value After': '',
+      'Supplier': `RCVD: ${g.rcvdEntries} entries / ${fmt(g.rcvdQty)} qty / $${fmt(g.rcvdVal)}`,
+      'Team Member': `DLVD: ${g.dlvdEntries} entries / ${fmt(g.dlvdQty)} qty / $${fmt(g.dlvdVal)}`,
+      'Remarks': ''
+    });
+
+    grandRcvdEntries += g.rcvdEntries; grandDlvdEntries += g.dlvdEntries;
+    grandRcvdQty += g.rcvdQty; grandDlvdQty += g.dlvdQty;
+    grandRcvdVal += g.rcvdVal; grandDlvdVal += g.dlvdVal;
   });
+
   rows.push({
-    'Month': 'GRAND TOTAL',
-    'RCVD Entries': grandRcvdEntries, 'RCVD Qty': grandRcvdQty, 'RCVD Value': grandRcvdVal,
-    'DLVD Entries': grandDlvdEntries, 'DLVD Qty': grandDlvdQty, 'DLVD Value': grandDlvdVal,
-    'Total Entries': grandRcvdEntries + grandDlvdEntries
+    'Month': 'GRAND TOTAL (all months)',
+    'Date': '', 'Buyer': '', 'Item': '', 'Item Code': '', 'Unit': '', 'Type': '',
+    'Challan No': '', 'MRR No': '', 'Order No': '', 'Style No': '',
+    'Qty': '', 'Unit Price': '', 'Value': '', 'Stock After': '', 'Stock Value After': '',
+    'Supplier': `RCVD: ${grandRcvdEntries} entries / ${fmt(grandRcvdQty)} qty / $${fmt(grandRcvdVal)}`,
+    'Team Member': `DLVD: ${grandDlvdEntries} entries / ${fmt(grandDlvdQty)} qty / $${fmt(grandDlvdVal)}`,
+    'Remarks': ''
   });
 
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{wch:18},{wch:13},{wch:10},{wch:14},{wch:13},{wch:10},{wch:14},{wch:13}];
+  ws['!cols'] = [
+    { wch: 16 }, { wch: 12 }, { wch: 18 }, { wch: 26 }, { wch: 16 }, { wch: 8 }, { wch: 8 },
+    { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
+    { wch: 12 }, { wch: 14 }, { wch: 30 }, { wch: 30 }, { wch: 20 }
+  ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Month-Wise Entry History');
   XLSX.writeFile(wb, `GMS-MonthWise-Entry-History-${todayISO()}.xlsx`);
