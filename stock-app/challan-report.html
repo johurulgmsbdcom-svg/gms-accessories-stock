@@ -215,6 +215,7 @@ tr.challan-total td{background:rgba(139,92,246,.12);font-weight:700;color:var(--
     <button class="tab-btn" data-tab="itemmaster" onclick="switchTab('itemmaster')"><i class="fas fa-boxes-packing"></i> Item Master List</button>
     <button class="tab-btn" data-tab="newitems" onclick="switchTab('newitems')"><i class="fas fa-square-plus"></i> New Items Added</button>
     <button class="tab-btn" data-tab="ledger" onclick="switchTab('ledger')"><i class="fas fa-scale-balanced"></i> Buyer Ledger Balance</button>
+    <button class="tab-btn" data-tab="monthwise" onclick="switchTab('monthwise')"><i class="fas fa-calendar-alt"></i> Month-Wise Summary</button>
   </div>
 
   <!-- ============ 0. CHALLAN / MRR WISE REPORT ============ -->
@@ -573,6 +574,29 @@ tr.challan-total td{background:rgba(139,92,246,.12);font-weight:700;color:var(--
     </div>
   </section>
 
+  <!-- ============ 17. MONTH-WISE BUYER RCVD/DLVD SUMMARY ============ -->
+  <section class="panel" id="panel-monthwise">
+    <div class="card glass">
+      <h3><i class="fas fa-calendar-alt"></i> Month-Wise Buyer RCVD / DLVD Summary</h3>
+      <p class="hint">প্রতিটি buyer-এর মাস ওয়ারি RCVD ও DLVD Qty ও Value — সম্পূর্ণ history বা নির্দিষ্ট date range-এ। প্রতি মাসের শেষে subtotal এবং সর্বশেষে grand total দেখাবে।</p>
+      <div class="doc-select-row">
+        <div class="filter-group"><label>Date From (optional)</label><input type="date" id="mwFrom"></div>
+        <div class="filter-group"><label>Date To (optional)</label><input type="date" id="mwTo"></div>
+        <div class="filter-group"><label>Buyer</label><select id="mwBuyer"><option value="">All Buyers</option></select></div>
+        <button class="btn btn-blue" onclick="loadMonthWise()"><i class="fas fa-search"></i> Load</button>
+        <button class="btn btn-cyan" onclick="printPanel('monthwise')"><i class="fas fa-print"></i> Print</button>
+        <button class="btn btn-green" onclick="exportMonthWise()"><i class="fas fa-file-excel"></i> Excel</button>
+      </div>
+      <div class="stats-row" id="mwStats" style="display:none;">
+        <div class="stat glass blue"><div class="v" id="mwMonths">—</div><div class="l">Total Months</div></div>
+        <div class="stat glass green"><div class="v" id="mwRcvdVal">—</div><div class="l">Grand RCVD Value</div></div>
+        <div class="stat glass red"><div class="v" id="mwDlvdVal">—</div><div class="l">Grand DLVD Value</div></div>
+        <div class="stat glass purple"><div class="v" id="mwNetVal">—</div><div class="l">Net Value</div></div>
+      </div>
+      <div id="mwContent"><div class="empty-state"><i class="fas fa-calendar-alt"></i><p>Load চাপুন</p></div></div>
+    </div>
+  </section>
+
 </main>
 
 <!-- Password gate / Edit modal (used by Buyer Statement edit/delete) -->
@@ -661,7 +685,7 @@ let allBuyers = [];
 async function loadBuyerDropdowns(){
   const {data} = await db.from('buyers').select('id,name').order('name');
   allBuyers = data || [];
-  const targets = ['fBuyer','breachBuyer','countBuyer','grnBuyer','dcBuyer','stmtBuyer','pendBuyer','csBuyer','ztBuyer','imBuyer','niBuyer','ledgerBuyer'];
+  const targets = ['fBuyer','breachBuyer','countBuyer','grnBuyer','dcBuyer','stmtBuyer','pendBuyer','csBuyer','ztBuyer','imBuyer','niBuyer','ledgerBuyer','mwBuyer'];
   targets.forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
@@ -2107,6 +2131,171 @@ function exportCurrentStock(){
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Current Stock');
   XLSX.writeFile(wb, `GMS-Current-Stock-${todayISO()}.xlsx`);
+  showToast('Excel downloaded!', 'success');
+}
+
+// =====================================================================
+// 17. MONTH-WISE BUYER RCVD / DLVD SUMMARY
+// =====================================================================
+let mwRows = [];
+
+async function loadMonthWise(){
+  const c = document.getElementById('mwContent');
+  document.getElementById('mwStats').style.display = 'none';
+  c.innerHTML = `<div class="loading-state"><i class="fas fa-circle-notch"></i><p>Loading month-wise summary...</p></div>`;
+
+  const fromDate = document.getElementById('mwFrom').value;
+  const toDate   = document.getElementById('mwTo').value;
+  const buyerId  = document.getElementById('mwBuyer').value;
+
+  try {
+    let q = db.from('transactions')
+      .select(`type, txn_date, qty, line_value, items:item_id!inner ( buyer_id, buyers:buyer_id (name) )`)
+      .in('type', ['RCVD', 'DLVD'])
+      .order('txn_date', { ascending: true });
+
+    if (fromDate) q = q.gte('txn_date', fromDate);
+    if (toDate)   q = q.lte('txn_date', toDate);
+    if (buyerId)  q = q.eq('items.buyer_id', buyerId);
+
+    const rows = await fetchAllRows(q);
+
+    if (rows.length === 0) {
+      c.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>কোনো transaction পাওয়া যায়নি</p></div>`;
+      mwRows = [];
+      return;
+    }
+
+    // Group by month + buyer
+    const map = new Map();
+
+    rows.forEach(r => {
+      const month = r.txn_date.slice(0, 7); // "YYYY-MM"
+      const buyer = r.items?.buyers?.name || 'Unknown';
+      const key   = month + '|||' + buyer;
+
+      if (!map.has(key)) {
+        map.set(key, { month, buyer, rcvdQty: 0, rcvdVal: 0, dlvdQty: 0, dlvdVal: 0 });
+      }
+      const g = map.get(key);
+      const qty = parseFloat(r.qty) || 0;
+      const val = parseFloat(r.line_value) || 0;
+      if (r.type === 'RCVD') { g.rcvdQty += qty; g.rcvdVal += val; }
+      else                    { g.dlvdQty += qty; g.dlvdVal += val; }
+    });
+
+    mwRows = Array.from(map.values()).sort((a, b) => {
+      if (a.month !== b.month) return a.month < b.month ? -1 : 1;
+      return a.buyer.localeCompare(b.buyer);
+    });
+
+    const uniqueMonths = new Set(mwRows.map(r => r.month));
+    let grandRcvdVal = 0, grandDlvdVal = 0;
+    mwRows.forEach(r => { grandRcvdVal += r.rcvdVal; grandDlvdVal += r.dlvdVal; });
+
+    document.getElementById('mwMonths').textContent  = fmt(uniqueMonths.size);
+    document.getElementById('mwRcvdVal').textContent = '$' + fmt(grandRcvdVal);
+    document.getElementById('mwDlvdVal').textContent = '$' + fmt(grandDlvdVal);
+    document.getElementById('mwNetVal').textContent  = '$' + fmt(grandRcvdVal - grandDlvdVal);
+    document.getElementById('mwStats').style.display = '';
+
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    function monthLabel(ym) {
+      const [y, m] = ym.split('-').map(Number);
+      return MONTH_NAMES[m - 1] + ' ' + y;
+    }
+
+    let html = '<div class="table-wrapper"><table><thead><tr>' +
+      '<th>Month</th><th>Buyer</th>' +
+      '<th>RCVD Qty</th><th>RCVD Value</th>' +
+      '<th>DLVD Qty</th><th>DLVD Value</th>' +
+      '<th>Net Qty</th><th>Net Value</th>' +
+      '</tr></thead><tbody>';
+
+    let curMonth = null;
+    let mRcvdQty=0, mRcvdVal=0, mDlvdQty=0, mDlvdVal=0;
+
+    function flushMonthTotal(month) {
+      html += `<tr style="background:rgba(139,92,246,.15);font-weight:700;">
+        <td colspan="2" style="text-align:right;">${monthLabel(month)} — Total</td>
+        <td>${fmt(mRcvdQty)}</td><td>$${fmt(mRcvdVal)}</td>
+        <td>${fmt(mDlvdQty)}</td><td>$${fmt(mDlvdVal)}</td>
+        <td>${fmt(mRcvdQty - mDlvdQty)}</td><td>$${fmt(mRcvdVal - mDlvdVal)}</td>
+      </tr>`;
+      mRcvdQty=0; mRcvdVal=0; mDlvdQty=0; mDlvdVal=0;
+    }
+
+    mwRows.forEach(r => {
+      if (r.month !== curMonth) {
+        if (curMonth !== null) flushMonthTotal(curMonth);
+        curMonth = r.month;
+        html += `<tr style="background:rgba(59,130,246,.18);">
+          <td colspan="8" style="font-weight:700;color:var(--text-primary);padding:10px 8px;border-top:2px solid var(--accent-blue);">
+            <i class="fas fa-calendar-alt"></i> ${monthLabel(r.month)}
+          </td>
+        </tr>`;
+      }
+      const netQty = r.rcvdQty - r.dlvdQty;
+      const netVal = r.rcvdVal - r.dlvdVal;
+      mRcvdQty += r.rcvdQty; mRcvdVal += r.rcvdVal;
+      mDlvdQty += r.dlvdQty; mDlvdVal += r.dlvdVal;
+
+      html += `<tr>
+        <td></td>
+        <td style="font-weight:600;color:var(--text-primary);">${esc(r.buyer)}</td>
+        <td>${fmt(r.rcvdQty)}</td>
+        <td style="color:var(--accent-green);">$${fmt(r.rcvdVal)}</td>
+        <td>${fmt(r.dlvdQty)}</td>
+        <td style="color:var(--accent-red);">$${fmt(r.dlvdVal)}</td>
+        <td style="font-weight:700;">${fmt(netQty)}</td>
+        <td style="font-weight:700;color:${netVal >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)'};">$${fmt(netVal)}</td>
+      </tr>`;
+    });
+
+    if (curMonth !== null) flushMonthTotal(curMonth);
+
+    html += `<tr style="background:linear-gradient(135deg,rgba(59,130,246,.3),rgba(139,92,246,.3));font-weight:800;">
+      <td colspan="2" style="text-align:right;font-size:13px;">GRAND TOTAL</td>
+      <td>${fmt(mwRows.reduce((s,r)=>s+r.rcvdQty,0))}</td>
+      <td>$${fmt(grandRcvdVal)}</td>
+      <td>${fmt(mwRows.reduce((s,r)=>s+r.dlvdQty,0))}</td>
+      <td>$${fmt(grandDlvdVal)}</td>
+      <td>${fmt(mwRows.reduce((s,r)=>s+r.rcvdQty-r.dlvdQty,0))}</td>
+      <td>$${fmt(grandRcvdVal - grandDlvdVal)}</td>
+    </tr>`;
+
+    html += '</tbody></table></div>';
+    c.innerHTML = html;
+
+  } catch(err) {
+    console.error(err);
+    c.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${esc(err.message)}</p></div>`;
+    showToast('Error loading month-wise summary', 'error');
+  }
+}
+
+function exportMonthWise(){
+  if (mwRows.length === 0) { showToast('No data to export', 'error'); return; }
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  function monthLabel(ym) {
+    const [y, m] = ym.split('-').map(Number);
+    return MONTH_NAMES[m - 1] + ' ' + y;
+  }
+  const rows = mwRows.map(r => ({
+    'Month':       monthLabel(r.month),
+    'Buyer':       r.buyer,
+    'RCVD Qty':    r.rcvdQty,
+    'RCVD Value':  r.rcvdVal,
+    'DLVD Qty':    r.dlvdQty,
+    'DLVD Value':  r.dlvdVal,
+    'Net Qty':     r.rcvdQty - r.dlvdQty,
+    'Net Value':   r.rcvdVal - r.dlvdVal
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:18},{wch:22},{wch:10},{wch:14},{wch:10},{wch:14},{wch:10},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Month-Wise Summary');
+  XLSX.writeFile(wb, `GMS-MonthWise-Summary-${todayISO()}.xlsx`);
   showToast('Excel downloaded!', 'success');
 }
 
